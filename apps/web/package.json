@@ -6,7 +6,7 @@
     "dev": "next dev --port 3020",
     "build": "next build",
     "start": "next start --port 3020",
-    "lint": "prettier --check src",
+    "lint": "prettier --check src && eslint src",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
   },

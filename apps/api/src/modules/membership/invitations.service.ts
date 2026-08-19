@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { ERROR_CODES, EVENTS, newId } from '@aviora/shared';
+import { ERROR_CODES, EVENTS } from '@aviora/shared';
 import { appendEvent } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';

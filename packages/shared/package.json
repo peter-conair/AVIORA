@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "prettier --check src",
+    "lint": "prettier --check src && eslint src",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
