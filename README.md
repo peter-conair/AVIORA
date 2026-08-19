@@ -23,11 +23,11 @@ pnpm dev                   # web :3020 · api :3021
 
 ## Key commands
 
-| Command                                      | What                                          |
-| -------------------------------------------- | --------------------------------------------- |
-| `pnpm check`                                 | lint + typecheck + unit tests (pre-push gate) |
-| `pnpm --filter @aviora/api test:integration` | **tenant-isolation suite** (RLS, CI-blocking) |
-| `pnpm db:migrate` / `pnpm db:seed`           | migrations / idempotent seed                  |
+| Command                                      | What                                                                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm check`                                 | lint + typecheck + unit tests (pre-push gate)                                                                                              |
+| `pnpm --filter @aviora/api test:integration` | **tenant-isolation suite** (RLS, CI-blocking) — stop the dev API first: its outbox relay is cross-tenant and would drain the tests' events |
+| `pnpm db:migrate` / `pnpm db:seed`           | migrations / idempotent seed                                                                                                               |
 
 ## Non-negotiables
 

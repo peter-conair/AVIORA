@@ -30,7 +30,7 @@ export class NotificationHandlers implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.bus.on(EVENTS.MemberInvited, async (event) => {
+    this.bus.on(EVENTS.MemberInvited, 'email.invite', async (event) => {
       const p = event.payload as InvitedPayload;
       const tenantName = await this.tenantName(event.tenantId);
       const base = process.env.AVIORA_WEB_URL ?? 'http://localhost:3020';
@@ -42,7 +42,7 @@ export class NotificationHandlers implements OnModuleInit {
       this.logger.log(`invite email sent to ${p.email}`);
     });
 
-    this.bus.on(EVENTS.MembershipActivated, async (event) => {
+    this.bus.on(EVENTS.MembershipActivated, 'email.welcome', async (event) => {
       const p = event.payload as ActivatedPayload;
       const tenantName = await this.tenantName(event.tenantId);
       const { subject, html } = this.email.welcomeEmail({
@@ -54,7 +54,7 @@ export class NotificationHandlers implements OnModuleInit {
     });
 
     // ── in-app notifications (Sprint 3 notification center) ──
-    this.bus.on(EVENTS.MembershipActivated, async (event) => {
+    this.bus.on(EVENTS.MembershipActivated, 'notify.welcome', async (event) => {
       const p = event.payload as ActivatedPayload;
       if (!event.tenantId) return;
       await this.notifications.deliver({
@@ -67,7 +67,7 @@ export class NotificationHandlers implements OnModuleInit {
       });
     });
 
-    this.bus.on(EVENTS.MemberJoinedTeam, async (event) => {
+    this.bus.on(EVENTS.MemberJoinedTeam, 'notify.team-joined', async (event) => {
       const p = event.payload as { memberId: string };
       if (!event.tenantId) return;
       await this.notifications.deliver({
@@ -79,7 +79,7 @@ export class NotificationHandlers implements OnModuleInit {
       });
     });
 
-    this.bus.on(EVENTS.LeaderAssigned, async (event) => {
+    this.bus.on(EVENTS.LeaderAssigned, 'notify.leader-assigned', async (event) => {
       const p = event.payload as { memberId: string; leadershipRole: string };
       if (!event.tenantId) return;
       await this.notifications.deliver({
@@ -92,7 +92,7 @@ export class NotificationHandlers implements OnModuleInit {
       });
     });
 
-    this.bus.on(EVENTS.CustomerConverted, async (event) => {
+    this.bus.on(EVENTS.CustomerConverted, 'notify.customer-converted', async (event) => {
       const p = event.payload as { ownerMemberId: string; name: string };
       if (!event.tenantId) return;
       await this.notifications.deliver({

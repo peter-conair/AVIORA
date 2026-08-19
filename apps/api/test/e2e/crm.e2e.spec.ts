@@ -4,6 +4,11 @@
  * follow-ups and interactions, CRM ownership scoping (a member sees only their
  * own book; a leader sees their org's; another member sees neither),
  * event-driven in-app notifications, and the audit viewer's filters.
+ *
+ * NOTE: the outbox relay is cross-tenant by design (FOR UPDATE SKIP LOCKED),
+ * so a locally running API instance polling the same database will drain these
+ * events before the test's own relay.tick() sees them. Stop any dev API server
+ * before running the suite against the local database.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
@@ -100,10 +105,14 @@ beforeAll(async () => {
   await app.listen(0);
   base = (await app.getUrl()).replace('[::1]', '127.0.0.1');
   relay = app.get(OutboxRelayService);
-  // email delivery is not under test here — drop those handlers
+  // Email delivery is not under test here (no SMTP in CI). Handlers are
+  // independent, so dropping the email ones must not affect the notification
+  // ones — which is exactly what the assertions below rely on.
   const bus = app.get(EventBus);
-  (bus as unknown as { handlers: Map<string, unknown[]> }).handlers.forEach((list, key) => {
-    if (key === 'MemberInvited') list.length = 0;
+  const registry = (bus as unknown as { handlers: Map<string, { name: string }[]> }).handlers;
+  registry.forEach((list, key) => {
+    const kept = list.filter((r) => !r.name.startsWith('email.'));
+    registry.set(key, kept);
   });
 
   const platform = await login(PLATFORM_EMAIL);

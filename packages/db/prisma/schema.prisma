@@ -611,3 +611,15 @@ model NotificationPreference {
   @@index([tenantId, memberId])
   @@map("notification_preferences")
 }
+
+/// Per-handler completion ledger (docs/11 §idempotency): a retried event must
+/// not re-run handlers that already succeeded, and one failing handler must not
+/// block the others.
+model ProcessedEvent {
+  eventId     String   @map("event_id") @db.Uuid
+  handler     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@id([eventId, handler])
+  @@map("processed_events")
+}
