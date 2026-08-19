@@ -15,7 +15,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { createOwnerClient, ensureAppRole, KNOWLEDGE_SEED, type PrismaClient } from '@aviora/db';
+import {
+  createOwnerClient,
+  ensureAppRole,
+  seedGlobalKnowledge,
+  type PrismaClient,
+} from '@aviora/db';
 import { ENTITLEMENTS, PERMISSIONS } from '@aviora/shared';
 import { createApp } from '../../src/app.factory';
 
@@ -83,108 +88,6 @@ async function addMember(
   return acc.body.memberId;
 }
 
-/** Mirrors prisma/seed.ts seedKnowledge — global rows, idempotent by code. */
-async function seedGlobalKnowledge() {
-  const k = KNOWLEDGE_SEED;
-  const goalId = new Map<string, string>();
-  const topicId = new Map<string, string>();
-  const ingredientId = new Map<string, string>();
-  const brandId = new Map<string, string>();
-
-  for (const g of k.healthGoals) {
-    const found = await owner.healthGoal.findFirst({ where: { tenantId: null, code: g.code } });
-    const row =
-      found ??
-      (await owner.healthGoal.create({
-        data: { code: g.code, name: g.name, description: g.description, order: g.order },
-      }));
-    goalId.set(g.code, row.id);
-  }
-  for (const t of k.topics) {
-    const found = await owner.topic.findFirst({ where: { tenantId: null, code: t.code } });
-    const row =
-      found ??
-      (await owner.topic.create({ data: { code: t.code, name: t.name, summary: t.summary } }));
-    topicId.set(t.code, row.id);
-    for (const gc of t.goals) {
-      const hg = goalId.get(gc)!;
-      const link = await owner.healthGoalTopic.findFirst({
-        where: { healthGoalId: hg, topicId: row.id },
-      });
-      if (!link)
-        await owner.healthGoalTopic.create({ data: { healthGoalId: hg, topicId: row.id } });
-    }
-  }
-  for (const i of k.ingredients) {
-    const found = await owner.ingredient.findFirst({ where: { tenantId: null, code: i.code } });
-    const row =
-      found ??
-      (await owner.ingredient.create({
-        data: { code: i.code, name: i.name, summary: i.summary, safetyNotes: i.safetyNotes },
-      }));
-    ingredientId.set(i.code, row.id);
-    for (const tc of i.topics) {
-      const t = topicId.get(tc)!;
-      const link = await owner.topicIngredient.findFirst({
-        where: { topicId: t, ingredientId: row.id },
-      });
-      if (!link) await owner.topicIngredient.create({ data: { topicId: t, ingredientId: row.id } });
-    }
-  }
-  for (const a of k.articles) {
-    const found = await owner.article.findFirst({ where: { tenantId: null, slug: a.slug } });
-    const row =
-      found ??
-      (await owner.article.create({
-        data: { slug: a.slug, title: a.title, summary: a.summary, body: a.body },
-      }));
-    for (const tc of a.topics) {
-      const t = topicId.get(tc)!;
-      const link = await owner.articleTopic.findFirst({
-        where: { articleId: row.id, topicId: t },
-      });
-      if (!link) await owner.articleTopic.create({ data: { articleId: row.id, topicId: t } });
-    }
-    for (const ic of a.ingredients) {
-      const i = ingredientId.get(ic)!;
-      const link = await owner.articleIngredient.findFirst({
-        where: { articleId: row.id, ingredientId: i },
-      });
-      if (!link)
-        await owner.articleIngredient.create({ data: { articleId: row.id, ingredientId: i } });
-    }
-  }
-  for (const b of k.brands) {
-    const found = await owner.brand.findFirst({ where: { tenantId: null, code: b.code } });
-    const row = found ?? (await owner.brand.create({ data: { code: b.code, name: b.name } }));
-    brandId.set(b.code, row.id);
-  }
-  for (const p of k.products) {
-    const found = await owner.product.findFirst({ where: { tenantId: null, code: p.code } });
-    const row =
-      found ??
-      (await owner.product.create({
-        data: {
-          brandId: brandId.get(p.brand)!,
-          code: p.code,
-          name: p.name,
-          description: p.description,
-          sourceUrl: p.sourceUrl,
-          safetyNotes: p.safetyNotes,
-          lastVerifiedAt: new Date(),
-        },
-      }));
-    for (const ic of p.ingredients) {
-      const i = ingredientId.get(ic)!;
-      const link = await owner.productIngredient.findFirst({
-        where: { productId: row.id, ingredientId: i },
-      });
-      if (!link)
-        await owner.productIngredient.create({ data: { productId: row.id, ingredientId: i } });
-    }
-  }
-}
-
 beforeAll(async () => {
   process.env.AVIORA_OUTBOX_DISABLED = 'true';
   delete process.env.AVIORA_AI_ANTHROPIC_KEY; // exercise the local grounded provider
@@ -196,7 +99,7 @@ beforeAll(async () => {
   for (const key of Object.values(ENTITLEMENTS)) {
     await owner.entitlement.upsert({ where: { key }, create: { key }, update: {} });
   }
-  await seedGlobalKnowledge();
+  await seedGlobalKnowledge(owner);
   await owner.user.upsert({
     where: { email: PLATFORM_EMAIL },
     create: {

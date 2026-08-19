@@ -527,3 +527,205 @@ export interface DashboardResponse {
   }[];
   teams: { teamId: string; name: string; joinedAt: string }[];
 }
+
+// ---- Knowledge OS ----
+
+export interface HealthGoal {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  /** `null` means platform-wide (shared) knowledge rather than tenant-authored. */
+  tenantId: string | null;
+}
+
+export interface HealthGoalsResponse {
+  healthGoals: HealthGoal[];
+}
+
+export interface KnowledgeTopic {
+  id: string;
+  code: string;
+  name: string;
+  summary: string | null;
+}
+
+export interface ArticleSummary {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+}
+
+export interface EvidenceReference {
+  title: string;
+  source: string | null;
+  url: string | null;
+  summary: string | null;
+  verifiedAt: string | null;
+}
+
+export interface ProductBrand {
+  id?: string;
+  code: string;
+  name: string;
+}
+
+export interface KnowledgeProduct {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  sourceUrl: string | null;
+  lastVerifiedAt?: string | null;
+  safetyNotes?: string | null;
+  brand: ProductBrand;
+}
+
+export interface JourneyIngredient {
+  id: string;
+  code: string;
+  name: string;
+  summary: string | null;
+  safetyNotes: string | null;
+  evidence: EvidenceReference[];
+  /** Product ids this ingredient leads to — products stay the last step (§74). */
+  productIds: string[];
+}
+
+export interface JourneyResponse {
+  goal: { id: string; code: string; name: string; description: string | null };
+  topics: KnowledgeTopic[];
+  articles: ArticleSummary[];
+  ingredients: JourneyIngredient[];
+  products: KnowledgeProduct[];
+  safetyNotice: string;
+}
+
+export interface ArticleDetail {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  /** Plain text with blank-line paragraph breaks — never HTML. */
+  body: string;
+  updatedAt: string;
+  topics: { id: string; code: string; name: string }[];
+  ingredients: { id: string; code: string; name: string; summary: string | null }[];
+}
+
+export interface ArticleResponse {
+  article: ArticleDetail;
+}
+
+export interface IngredientDetail {
+  id: string;
+  code: string;
+  name: string;
+  summary: string | null;
+  safetyNotes: string | null;
+  evidence: EvidenceReference[];
+  products: KnowledgeProduct[];
+}
+
+export interface IngredientResponse {
+  ingredient: IngredientDetail;
+}
+
+export const KNOWLEDGE_KINDS = ['health_goal', 'topic', 'article', 'ingredient'] as const;
+export type KnowledgeKind = (typeof KNOWLEDGE_KINDS)[number];
+
+export interface KnowledgeSearchHit {
+  kind: KnowledgeKind;
+  id: string;
+  /** Slug for articles, code for everything else. */
+  code: string;
+  title: string;
+  summary: string | null;
+}
+
+export interface KnowledgeSearchResponse {
+  query: string;
+  knowledge: KnowledgeSearchHit[];
+  products: KnowledgeProduct[];
+}
+
+/** Split a plain-text body into paragraphs — blank lines separate them. */
+export function toParagraphs(body: string): string[] {
+  return body
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+}
+
+// ---- AI assistant ----
+
+export interface AiUsage {
+  date: string;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  dailyRequestCap: number;
+  remaining: number;
+  provider: string;
+}
+
+export interface AiCitation {
+  kind: string;
+  code: string;
+  title: string;
+}
+
+export interface AiConversationSummary {
+  id: string;
+  title: string | null;
+  agent: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiConversationsResponse {
+  conversations: AiConversationSummary[];
+}
+
+export interface AiMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** Stored as JSON — narrow it with `toCitations()` before rendering. */
+  citations: unknown;
+  createdAt: string;
+}
+
+export interface AiConversationDetail {
+  id: string;
+  title: string | null;
+  agent: string | null;
+  createdAt: string;
+  messages: AiMessage[];
+}
+
+export interface AiConversationResponse {
+  conversation: AiConversationDetail;
+}
+
+export interface AiAskResponse {
+  conversationId: string;
+  answer: string;
+  citations: AiCitation[];
+  provider: string;
+  model: string;
+  remaining: number;
+}
+
+/** Narrow the JSON `citations` column to something renderable. */
+export function toCitations(value: unknown): AiCitation[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is AiCitation =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as AiCitation).title === 'string' &&
+      typeof (item as AiCitation).kind === 'string',
+  );
+}

@@ -4,3 +4,4 @@ export * from './unit-of-work';
 export * from './admin';
 export * from './system-roles';
 export * from './knowledge-seed';
+export * from './knowledge-seeder';
