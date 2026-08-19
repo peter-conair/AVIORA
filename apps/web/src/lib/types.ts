@@ -817,6 +817,203 @@ export interface HealthGrantsResponse {
   received: HealthGrantReceived[];
 }
 
+// ---- Community ----
+
+/** The caller's own member row — needed to tell "my post" from someone else's. */
+export interface MemberMeResponse {
+  member: { id: string; displayName: string } | null;
+}
+
+export interface CommunitySummary {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  teamId: string;
+  postCount: number;
+}
+
+export interface CommunitiesResponse {
+  communities: CommunitySummary[];
+}
+
+/** `GET /community/teams/:teamId` — creates the team's space on first access. */
+export interface TeamCommunityResponse {
+  community: { id: string; code: string; name: string; teamId: string };
+}
+
+/** `displayName` is null when the author's member row is no longer readable. */
+export interface PostAuthor {
+  id: string;
+  displayName: string | null;
+}
+
+export interface PostComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: PostAuthor;
+}
+
+export interface CommunityPost {
+  id: string;
+  body: string;
+  kind: string;
+  pinned: boolean;
+  createdAt: string;
+  author: PostAuthor;
+  reactionCount: number;
+  reactedByMe: boolean;
+  comments: PostComment[];
+}
+
+export interface CommunityFeedResponse {
+  community: { id: string; name: string; teamId: string };
+  posts: CommunityPost[];
+}
+
+// ---- Challenges ----
+
+export const CHALLENGE_SOURCES = ['habit', 'course', 'goal'] as const;
+export type ChallengeSource = (typeof CHALLENGE_SOURCES)[number];
+
+/** Only `habit` and `course` challenges point at a specific record. */
+export function needsSourceRef(source: string): boolean {
+  return source === 'habit' || source === 'course';
+}
+
+export interface Challenge {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  source: string;
+  sourceRef: string | null;
+  targetValue: number;
+  startsOn: string;
+  endsOn: string;
+  joined: boolean;
+  completedAt: string | null;
+}
+
+export interface ChallengesResponse {
+  challenges: Challenge[];
+}
+
+export interface ChallengeResponse {
+  challenge: Challenge;
+}
+
+/**
+ * One leaderboard row. Only the derived progress count crosses the boundary —
+ * never the habit logs, lessons or goals it was computed from.
+ */
+export interface ChallengeLeaderboardRow {
+  memberId: string;
+  displayName: string | null;
+  progress: number;
+  completedAt: string | null;
+  isMe: boolean;
+}
+
+export interface ChallengeLeaderboardResponse {
+  challenge: {
+    id: string;
+    code: string;
+    name: string;
+    source: string;
+    targetValue: number;
+    startsOn: string;
+    endsOn: string;
+  };
+  participantCount: number;
+  leaderboard: ChallengeLeaderboardRow[];
+  /** The API's own wording about who appears here — rendered verbatim. */
+  privacyNote: string;
+}
+
+// ---- Gamification ----
+
+/** Domain events a tenant may attach points to. Anything else earns nothing. */
+export const GAMIFICATION_EVENTS = [
+  'HabitLogged',
+  'GoalCompleted',
+  'CourseCompleted',
+  'ChallengeCompleted',
+  'MemberJoinedTeam',
+  'CustomerConverted',
+  'PostPublished',
+] as const;
+export type GamificationEvent = (typeof GAMIFICATION_EVENTS)[number];
+
+export function isKnownGamificationEvent(name: string): name is GamificationEvent {
+  return (GAMIFICATION_EVENTS as readonly string[]).includes(name);
+}
+
+export interface MemberBadge {
+  badgeCode: string;
+  badgeName: string;
+  awardedAt: string;
+}
+
+export interface PointEntry {
+  eventName: string;
+  points: number;
+  createdAt: string;
+}
+
+export interface GamificationStanding {
+  points: number;
+  level: number;
+  pointsToNextLevel: number;
+  badges: MemberBadge[];
+  recent: PointEntry[];
+}
+
+export interface GamificationLeaderboardRow {
+  rank: number;
+  memberId: string;
+  displayName: string | null;
+  points: number;
+}
+
+export interface GamificationLeaderboardResponse {
+  leaderboard: GamificationLeaderboardRow[];
+}
+
+export interface GamificationRule {
+  id: string;
+  eventName: string;
+  points: number;
+  badgeCode: string | null;
+  badgeName: string | null;
+}
+
+export interface GamificationRulesResponse {
+  rules: GamificationRule[];
+}
+
+export interface GamificationRuleResponse {
+  rule: GamificationRule;
+}
+
+/**
+ * How much of the current level is already earned, as a 0–100 percentage.
+ *
+ * The API never sends the level size, but it is recoverable from the three
+ * numbers it does send: with a level size `S`, `points + pointsToNextLevel`
+ * equals `S * level`. Deriving it keeps the bar correct if the curve changes.
+ */
+export function levelProgressPercent(
+  standing: Pick<GamificationStanding, 'points' | 'level' | 'pointsToNextLevel'>,
+): number {
+  if (standing.level <= 0) return 0;
+  const levelSize = (standing.points + standing.pointsToNextLevel) / standing.level;
+  if (!Number.isFinite(levelSize) || levelSize <= 0) return 0;
+  const earnedInLevel = levelSize - standing.pointsToNextLevel;
+  return Math.max(0, Math.min(100, Math.round((earnedInLevel / levelSize) * 100)));
+}
+
 /** Narrow the JSON `citations` column to something renderable. */
 export function toCitations(value: unknown): AiCitation[] {
   if (!Array.isArray(value)) return [];

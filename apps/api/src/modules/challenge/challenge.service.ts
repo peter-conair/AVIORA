@@ -11,6 +11,16 @@ import { AuditService } from '../../common/audit/audit.service';
 import type { TeamActor } from '../team/team-scope.service';
 
 export const CHALLENGE_SOURCES = ['habit', 'course', 'goal'] as const;
+
+/**
+ * The note that explains why the board looks the way it does. Like the health
+ * safety note, it is member-facing text about privacy, so it ships in every
+ * supported language rather than falling back to English.
+ */
+const PRIVACY_NOTE: Record<string, string> = {
+  en: 'Only members who joined appear here, and only their progress count — never the underlying records.',
+  th: 'แสดงเฉพาะสมาชิกที่เข้าร่วมเท่านั้น และแสดงเพียงจำนวนความคืบหน้า ไม่แสดงข้อมูลที่ใช้คำนวณ',
+};
 export type ChallengeSource = (typeof CHALLENGE_SOURCES)[number];
 
 /**
@@ -172,7 +182,7 @@ export class ChallengeService {
    * Leaderboard over the members who joined. Non-participants are absent —
    * not zero-scored — because their data was never shared.
    */
-  async leaderboard(challengeId: string, actor: TeamActor) {
+  async leaderboard(challengeId: string, actor: TeamActor, locale = 'en') {
     return this.db.tx(async (tx) => {
       const challenge = await tx.challenge.findFirst({ where: { id: challengeId } });
       if (!challenge) {
@@ -218,8 +228,7 @@ export class ChallengeService {
         },
         participantCount: rows.length,
         leaderboard: rows,
-        privacyNote:
-          'Only members who joined appear here, and only their progress count — never the underlying records.',
+        privacyNote: PRIVACY_NOTE[locale] ?? PRIVACY_NOTE.en!,
       };
     });
   }

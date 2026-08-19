@@ -410,6 +410,18 @@ describe('Challenges — progress derived from records that already exist', () =
     // not present at all — not present with a zero
     expect(ids).not.toContain(member.lurker);
     expect(board.body.privacyNote).toMatch(/only their progress count/i);
+
+    // the same sentence, in the reader's language — a privacy explanation
+    // nobody can read explains nothing
+    const thai = await fetch(`${base}/api/v1/challenges/${challengeId}/leaderboard`, {
+      headers: {
+        authorization: `Bearer ${joiner}`,
+        'x-tenant-id': tenantId,
+        'accept-language': 'th-TH,th;q=0.9',
+      },
+    });
+    const thaiBody = (await thai.json()) as { privacyNote: string };
+    expect(thaiBody.privacyNote).toMatch(/แสดงเฉพาะสมาชิกที่เข้าร่วม/);
   });
 
   it('the leaderboard exposes counts only, never the underlying health records', async () => {

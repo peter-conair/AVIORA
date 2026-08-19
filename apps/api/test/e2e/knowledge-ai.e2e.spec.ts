@@ -370,8 +370,13 @@ describe('Slice 3 — AI assistant', () => {
       tenant: tenantId,
     });
     expect(detail.status).toBe(200);
-    expect(detail.body.conversation.messages).toHaveLength(2); // user + assistant
-    expect(detail.body.conversation.messages[0].role).toBe('user');
+    // both messages of a turn are written in one transaction and share
+    // created_at, so the question must still come back before the answer
+    expect(detail.body.conversation.messages).toHaveLength(2);
+    expect(detail.body.conversation.messages.map((m: { role: string }) => m.role)).toEqual([
+      'user',
+      'assistant',
+    ]);
   });
 
   it("another member cannot open someone else's conversation", async () => {

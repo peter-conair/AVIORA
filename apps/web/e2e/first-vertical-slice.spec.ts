@@ -134,6 +134,31 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('community, challenges and rewards render on a phone', async ({ page }) => {
+    await signIn(page);
+
+    // Each screen keeps its heading whether or not the data behind it is in
+    // scope, so a workspace without communities or points is still a page.
+    for (const [path, heading] of [
+      ['/th/community', 'คอมมูนิตี้'],
+      ['/th/challenges', 'ชาเลนจ์'],
+      ['/th/rewards', 'แต้มและตรา'],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      await expectNoHorizontalScroll(page);
+    }
+  });
+
+  test('the gamification tab explains that points are configuration', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'แต้มและชาเลนจ์' }).click();
+    await expect(page.getByText('กติกาการให้แต้ม').first()).toBeVisible();
+    await expect(page.getByText('เหตุการณ์ที่ไม่ได้ตั้งกติกาไว้จะไม่ได้แต้มเลย')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('signing out leaves the authenticated area', async ({ page }) => {
     await signIn(page);
     await page.getByRole('button', { name: 'ออกจากระบบ' }).click();

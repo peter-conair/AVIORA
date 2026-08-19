@@ -837,11 +837,14 @@ model AiMessage {
   role           String
   content        String
   citations      Json?
+  /// Position within the conversation. created_at cannot order a turn: both
+  /// messages are written in one transaction and share now().
+  ordinal        Int      @default(0)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   conversation AiConversation @relation(fields: [conversationId], references: [id])
 
-  @@index([tenantId, conversationId, createdAt])
+  @@index([tenantId, conversationId, ordinal])
   @@map("ai_messages")
 }
 

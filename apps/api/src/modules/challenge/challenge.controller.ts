@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { PERMISSIONS } from '@aviora/shared';
@@ -57,8 +57,10 @@ export class ChallengeController {
   async leaderboard(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return await this.challenges.leaderboard(id, this.actor(user));
+    const locale = acceptLanguage?.split(',')[0]?.trim().slice(0, 2).toLowerCase();
+    return await this.challenges.leaderboard(id, this.actor(user), locale === 'th' ? 'th' : 'en');
   }
 
   @Post(':id/join')

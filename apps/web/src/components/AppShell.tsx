@@ -16,6 +16,9 @@ interface NavItem {
   key:
     | 'dashboard'
     | 'health'
+    | 'community'
+    | 'challenges'
+    | 'rewards'
     | 'goals'
     | 'learning'
     | 'knowledge'
@@ -31,6 +34,9 @@ interface NavItem {
 const BASE_NAV: NavItem[] = [
   { href: '/dashboard', key: 'dashboard' },
   { href: '/health', key: 'health' },
+  { href: '/community', key: 'community' },
+  { href: '/challenges', key: 'challenges' },
+  { href: '/rewards', key: 'rewards' },
   { href: '/goals', key: 'goals' },
   { href: '/learning', key: 'learning' },
   { href: '/knowledge', key: 'knowledge' },

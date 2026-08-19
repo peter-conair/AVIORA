@@ -76,7 +76,7 @@ export class AiService {
           agent: true,
           createdAt: true,
           messages: {
-            orderBy: { createdAt: 'asc' },
+            orderBy: { ordinal: 'asc' },
             select: { id: true, role: true, content: true, citations: true, createdAt: true },
           },
         },
@@ -161,7 +161,7 @@ export class AiService {
     const history = await this.db.tx((tx) =>
       tx.aiMessage.findMany({
         where: { conversationId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { ordinal: 'desc' },
         take: HISTORY_TURNS,
         select: { role: true, content: true },
       }),
@@ -182,12 +182,21 @@ export class AiService {
     });
 
     await this.db.tx(async (tx) => {
+      // Both rows land in one transaction and therefore share created_at, so
+      // the turn's order is stated explicitly rather than inferred from time.
+      const last = await tx.aiMessage.findFirst({
+        where: { conversationId },
+        orderBy: { ordinal: 'desc' },
+        select: { ordinal: true },
+      });
+      const nextOrdinal = (last?.ordinal ?? 0) + 1;
       await tx.aiMessage.create({
         data: {
           tenantId: this.db.tenantId,
           conversationId,
           role: 'user',
           content: input.question,
+          ordinal: nextOrdinal,
         },
       });
       await tx.aiMessage.create({
@@ -197,6 +206,7 @@ export class AiService {
           role: 'assistant',
           content: result.content,
           citations,
+          ordinal: nextOrdinal + 1,
         },
       });
       await tx.aiConversation.update({
