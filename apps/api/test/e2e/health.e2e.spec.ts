@@ -232,6 +232,21 @@ describe('Healthy Living — a member tracking their own life', () => {
     expect(res.body.note).toMatch(/not a health assessment/i);
     expect(JSON.stringify(res.body)).not.toMatch(/score|grade|risk/i);
   });
+
+  it('states the safety note in the reader language', async () => {
+    const person = await login(`person-${RUN}@test.local`);
+    const res = await fetch(`${base}/api/v1/health/me/summary`, {
+      headers: {
+        authorization: `Bearer ${person}`,
+        'x-tenant-id': tenantId,
+        'accept-language': 'th-TH,th;q=0.9',
+      },
+    });
+    const body = (await res.json()) as { note: string };
+    // an English disclaimer on a Thai screen is the one fallback that is not
+    // acceptable in this domain
+    expect(body.note).toMatch(/ไม่ใช่การประเมินสุขภาพ/);
+  });
 });
 
 describe('Health privacy — no role is a substitute for consent (spec §59)', () => {

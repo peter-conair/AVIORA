@@ -124,6 +124,16 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('healthy living leads with its privacy promise on a phone', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/health');
+    await expect(page.getByRole('button', { name: 'วันนี้' })).toBeVisible();
+    // the promise members are asked to trust has to be on the screen, not in a doc
+    await page.getByRole('button', { name: 'ความเป็นส่วนตัว' }).click();
+    await expect(page.getByText('ข้อมูลสุขภาพของคุณเป็นส่วนตัวโดยค่าเริ่มต้น')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('signing out leaves the authenticated area', async ({ page }) => {
     await signIn(page);
     await page.getByRole('button', { name: 'ออกจากระบบ' }).click();

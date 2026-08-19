@@ -12,6 +12,16 @@ import { HealthAccessService } from './health-access.service';
 
 const WINDOW_DAYS = 30;
 
+/**
+ * The safety note is the most important sentence in this domain, so it is
+ * localised like any other member-facing text — an English disclaimer on a Thai
+ * screen is the one place a fallback is not good enough.
+ */
+const SAFETY_NOTE: Record<string, string> = {
+  en: 'This is a record of what you logged, not a health assessment. Talk to a qualified healthcare professional about your health.',
+  th: 'นี่คือบันทึกสิ่งที่คุณกรอกไว้ ไม่ใช่การประเมินสุขภาพ กรุณาปรึกษาบุคลากรทางการแพทย์เกี่ยวกับสุขภาพของคุณ',
+};
+
 /** Metrics a member may record. Deliberately observational — no diagnoses. */
 export const TRACKED_METRICS = ['weight_kg', 'sleep_hours', 'water_ml', 'steps'] as const;
 
@@ -213,7 +223,7 @@ export class HealthService {
    * the latest reading per metric. Deliberately descriptive — it reports what
    * the member recorded and never scores, rates, or interprets their health.
    */
-  async summary(actorMemberId: string | null, subjectMemberId: string) {
+  async summary(actorMemberId: string | null, subjectMemberId: string, locale = 'en') {
     return this.db.tx(async (tx) => {
       await this.access.assertCanView(tx, actorMemberId, subjectMemberId);
       const since = startOfDay(new Date(Date.now() - WINDOW_DAYS * 86_400_000));
@@ -260,7 +270,7 @@ export class HealthService {
           unit: m.unit,
           measuredOn: m.measuredOn,
         })),
-        note: 'This is a record of what you logged, not a health assessment. Talk to a qualified healthcare professional about your health.',
+        note: SAFETY_NOTE[locale] ?? SAFETY_NOTE.en!,
       };
     });
   }

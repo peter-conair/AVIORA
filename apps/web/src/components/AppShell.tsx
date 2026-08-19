@@ -15,6 +15,7 @@ interface NavItem {
   href: string;
   key:
     | 'dashboard'
+    | 'health'
     | 'goals'
     | 'learning'
     | 'knowledge'
@@ -29,6 +30,7 @@ interface NavItem {
 
 const BASE_NAV: NavItem[] = [
   { href: '/dashboard', key: 'dashboard' },
+  { href: '/health', key: 'health' },
   { href: '/goals', key: 'goals' },
   { href: '/learning', key: 'learning' },
   { href: '/knowledge', key: 'knowledge' },

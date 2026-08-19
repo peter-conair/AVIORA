@@ -16,6 +16,7 @@
     "signOut": "Sign out",
     "nav": {
       "dashboard": "Dashboard",
+      "health": "Healthy Living",
       "goals": "Goals",
       "learning": "Learning",
       "knowledge": "Knowledge",
@@ -286,6 +287,101 @@
     "updatedAt": "Updated {date}",
     "ingredientsMentioned": "Ingredients mentioned",
     "ingredientNotFound": "This ingredient could not be found."
+  },
+  "health": {
+    "title": "Healthy Living",
+    "intro": "Log what you did today and see a record of what you logged. It stays yours until you choose to share it.",
+    "forbidden": "This area is outside your authorized scope.",
+    "tabs": {
+      "today": "Today",
+      "progress": "Progress",
+      "sharing": "Privacy"
+    },
+    "habits": {
+      "title": "Today's habits",
+      "hint": "Tap to log a habit for today. Logging again on the same day counts once.",
+      "empty": "No habits tracked yet. Add your first one with the form below.",
+      "log": "Log today",
+      "logged": "Logged today",
+      "target": "Target {value} {unit}",
+      "targetUnitOnly": "Unit {unit}",
+      "cadence": {
+        "daily": "Daily",
+        "weekly": "Weekly"
+      }
+    },
+    "addHabit": {
+      "title": "Add a habit",
+      "name": "Habit name",
+      "namePlaceholder": "e.g. Drink water",
+      "code": "Reference code",
+      "codePlaceholder": "e.g. drink-water",
+      "codeHint": "Lowercase letters, numbers and hyphens, 2–40 characters.",
+      "cadence": "Cadence",
+      "targetUnit": "Target unit (optional)",
+      "targetUnitPlaceholder": "e.g. glasses",
+      "targetValue": "Target value (optional)",
+      "submit": "Add habit"
+    },
+    "metrics": {
+      "title": "Record a measurement",
+      "hint": "Record as much or as little as you like. A second entry on the same day replaces the first.",
+      "metric": "Measurement",
+      "value": "Value",
+      "unit": "Unit",
+      "submit": "Save measurement",
+      "saved": "Saved",
+      "names": {
+        "weight_kg": "Weight",
+        "sleep_hours": "Hours of sleep",
+        "water_ml": "Water",
+        "steps": "Steps"
+      }
+    },
+    "profile": {
+      "title": "My details",
+      "notes": "Lifestyle notes",
+      "notesHint": "These notes are encrypted at rest and visible only to you and the people you share with.",
+      "focusGoals": "Health goals I'm focusing on",
+      "focusGoalsHint": "Choose up to {max} goals.",
+      "focusGoalsUnavailable": "No health goals are available to choose from right now.",
+      "save": "Save details",
+      "saved": "Saved",
+      "updatedAt": "Updated {date}"
+    },
+    "progress": {
+      "window": "A record of what you logged over the last {days} days.",
+      "habitsTitle": "Days each habit was logged",
+      "habitsEmpty": "No habits tracked yet.",
+      "daysLogged": "Logged on {days} of {window} days",
+      "metricsTitle": "Latest measurements",
+      "metricsEmpty": "No measurements recorded in this window.",
+      "measuredOn": "Measured {date}"
+    },
+    "sharing": {
+      "privacyNote": "Your health data is private by default — no leader and no admin can see it until you choose to share it with someone yourself.",
+      "shareTitle": "Share with a member",
+      "shareSelect": "Choose a member",
+      "sharePlaceholder": "— Choose a member —",
+      "shareMemberId": "Member ID",
+      "shareMemberIdHint": "The member directory is outside your authorized scope, so enter the member ID you want to share with.",
+      "shareEmpty": "There are no other members to choose from right now.",
+      "shareSubmit": "Share",
+      "givenTitle": "People you share with",
+      "givenEmpty": "You are not sharing your health data with anyone right now.",
+      "grantedAt": "Shared {date}",
+      "revoke": "Stop sharing",
+      "receivedTitle": "People who share with you",
+      "receivedEmpty": "Nobody has shared their health data with you.",
+      "viewSummary": "View summary"
+    },
+    "coach": {
+      "back": "← Back to Healthy Living",
+      "title": "A summary shared with you",
+      "member": "Member: {name}",
+      "notShared": "This member has not shared their health data with you.",
+      "notSharedHint": "Only the person the data belongs to can share it, and they can stop sharing at any time."
+    }
   },
   "assistant": {
     "title": "Assistant",

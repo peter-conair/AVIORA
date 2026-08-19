@@ -718,6 +718,105 @@ export interface AiAskResponse {
   remaining: number;
 }
 
+// ---- Healthy living ----
+
+/**
+ * Health data is the one domain where no role grants access to another
+ * member's records — only that member's own grant does. The UI mirrors that:
+ * everything here is self-scoped unless a grant says otherwise.
+ */
+export interface HealthProfile {
+  memberId: string;
+  /** Encrypted at rest by the API; plaintext only for readers who passed the access check. */
+  lifestyleNotes: string | null;
+  focusGoalIds: string[];
+  updatedAt: string;
+}
+
+export interface HealthProfileResponse {
+  profile: HealthProfile | null;
+}
+
+export const HABIT_CADENCES = ['daily', 'weekly'] as const;
+export type HabitCadence = (typeof HABIT_CADENCES)[number];
+
+export interface Habit {
+  id: string;
+  code: string;
+  name: string;
+  cadence: string;
+  targetUnit: string | null;
+  /** A decimal column — arrives as a string from the API. */
+  targetValue: string | number | null;
+}
+
+export interface HabitsResponse {
+  habits: Habit[];
+}
+
+export interface HabitResponse {
+  habit: Habit;
+}
+
+/** Metrics a member may record. Observational only — never a diagnosis. */
+export const TRACKED_METRICS = ['weight_kg', 'sleep_hours', 'water_ml', 'steps'] as const;
+export type TrackedMetric = (typeof TRACKED_METRICS)[number];
+
+/** The unit each metric is normally recorded in — a default, not a constraint. */
+export const METRIC_DEFAULT_UNITS: Record<TrackedMetric, string> = {
+  weight_kg: 'kg',
+  sleep_hours: 'h',
+  water_ml: 'ml',
+  steps: 'steps',
+};
+
+export interface HealthSummaryHabit {
+  id: string;
+  code: string;
+  name: string;
+  cadence: string;
+  targetUnit: string | null;
+  /** Distinct days this habit was logged inside the window. */
+  daysLogged: number;
+}
+
+export interface HealthMetricReading {
+  metric: string;
+  value: number;
+  unit: string;
+  measuredOn: string;
+}
+
+export interface HealthSummary {
+  memberId: string;
+  windowDays: number;
+  habits: HealthSummaryHabit[];
+  latestMetrics: HealthMetricReading[];
+  /** The API's own safety note — rendered verbatim, never paraphrased. */
+  note: string;
+}
+
+/** A grant this member gave away — someone else may read their summary. */
+export interface HealthGrantGiven {
+  id: string;
+  granteeMemberId: string;
+  scope: string;
+  grantedAt: string;
+}
+
+/** A grant this member received — they may read someone else's summary. */
+export interface HealthGrantReceived {
+  id: string;
+  memberId: string;
+  scope: string;
+  grantedAt: string;
+}
+
+export interface HealthGrantsResponse {
+  given: HealthGrantGiven[];
+  received: HealthGrantReceived[];
+}
+
 /** Narrow the JSON `citations` column to something renderable. */
 export function toCitations(value: unknown): AiCitation[] {
   if (!Array.isArray(value)) return [];

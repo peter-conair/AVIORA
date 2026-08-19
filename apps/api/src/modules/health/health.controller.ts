@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { PERMISSIONS } from '@aviora/shared';
@@ -49,6 +59,11 @@ export class HealthController {
     return (this.cls.get(CLS_MEMBER_ID) as string | undefined) ?? null;
   }
 
+  private locale(acceptLanguage?: string): string {
+    const first = acceptLanguage?.split(',')[0]?.trim().slice(0, 2).toLowerCase();
+    return first === 'th' ? 'th' : 'en';
+  }
+
   @Get('me')
   @RequirePermissions(PERMISSIONS.HEALTH_PROFILE_VIEW)
   async myProfile() {
@@ -64,9 +79,9 @@ export class HealthController {
 
   @Get('me/summary')
   @RequirePermissions(PERMISSIONS.HEALTH_PROFILE_VIEW)
-  async mySummary() {
+  async mySummary(@Headers('accept-language') acceptLanguage?: string) {
     const me = this.memberId();
-    return await this.health.summary(me, me ?? '');
+    return await this.health.summary(me, me ?? '', this.locale(acceptLanguage));
   }
 
   @Get('habits')
@@ -100,8 +115,11 @@ export class HealthController {
   /** A coach reads a member's summary — allowed only with an active grant. */
   @Get('members/:memberId/summary')
   @RequirePermissions(PERMISSIONS.HEALTH_COACH_VIEW)
-  async memberSummary(@Param('memberId', ParseUUIDPipe) memberId: string) {
-    return await this.health.summary(this.memberId(), memberId);
+  async memberSummary(
+    @Param('memberId', ParseUUIDPipe) memberId: string,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return await this.health.summary(this.memberId(), memberId, this.locale(acceptLanguage));
   }
 
   @Get('grants')
