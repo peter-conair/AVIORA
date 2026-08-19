@@ -64,31 +64,37 @@ Additional non-goals for MVP (implied by spec):
 - No MFA, social login, or SSO (Phase 2/4). No LINE/SMS/WhatsApp channels (Phase 2+).
 - No tenant billing/SaaS payments (Phase 2).
 
-## 3. Definition of MVP Done — Acceptance Checklist (spec §84, verbatim)
+## 3. Definition of MVP Done — Acceptance Checklist (spec §84)
 
-MVP is complete when every box checks:
+Status as built, with the automated proof for each line. Anything not fully
+covered says so rather than carrying a tick.
 
-- [ ] Platform Admin can create multiple tenants.
-- [ ] Tenant data is isolated.
-- [ ] One user can belong to multiple tenants.
-- [ ] Tenant can create membership plans.
-- [ ] Tenant can invite members.
-- [ ] Tenant can create unlimited nested teams.
-- [ ] Members can belong to multiple teams.
-- [ ] Teams can have independent leaders.
-- [ ] Leaders can manage authorized descendant teams.
-- [ ] Team hierarchy history is preserved.
-- [ ] Member can create goals.
-- [ ] Member can follow learning journey.
-- [ ] CRM supports leads and follow-up.
-- [ ] Dashboard shows personal and team progress.
-- [ ] Roles and permissions work.
-- [ ] AI respects tenant and team permissions.
-- [ ] Audit logs work.
-- [ ] Mobile UX is usable.
-- [ ] Automated tenant-isolation tests pass.
+| #   | Criterion (spec §84)                           | Status     | Proof                                                                                                                                                                                                                                                                                                                    |
+| --- | ---------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Platform Admin can create multiple tenants     | ✅         | `vertical-slice.e2e`, `multi-tenant-user.e2e`                                                                                                                                                                                                                                                                            |
+| 2   | Tenant data is isolated                        | ✅         | `tenant-isolation.spec` (RLS, as the app role), `route-coverage.spec` (sweeps every tenant-scoped route against a foreign tenant)                                                                                                                                                                                        |
+| 3   | One user can belong to multiple tenants        | ✅         | `multi-tenant-user.e2e` — one login, owner in one workspace and plain member in another                                                                                                                                                                                                                                  |
+| 4   | Tenant can create membership plans             | ✅         | `vertical-slice.e2e`                                                                                                                                                                                                                                                                                                     |
+| 5   | Tenant can invite members                      | ✅         | `vertical-slice.e2e` (invite → accept → membership activated)                                                                                                                                                                                                                                                            |
+| 6   | Tenant can create unlimited nested teams       | ✅         | `team-hierarchy.e2e` — four levels, closure depths asserted                                                                                                                                                                                                                                                              |
+| 7   | Members can belong to multiple teams           | ✅         | `team-hierarchy.e2e` — the A1.1 leader also sits in A1                                                                                                                                                                                                                                                                   |
+| 8   | Teams can have independent leaders             | ✅         | `team-hierarchy.e2e`                                                                                                                                                                                                                                                                                                     |
+| 9   | Leaders can manage authorized descendant teams | ✅         | `team-hierarchy.e2e` — DESCENDANT_TEAMS vs DIRECT_TEAM boundaries, ancestors and siblings denied                                                                                                                                                                                                                         |
+| 10  | Team hierarchy history is preserved            | ✅         | `team-hierarchy.e2e` — reassignment closes the previous leadership row with `effective_to`                                                                                                                                                                                                                               |
+| 11  | Member can create goals                        | ✅         | `vertical-slice.e2e`                                                                                                                                                                                                                                                                                                     |
+| 12  | Member can follow learning journey             | ✅         | `vertical-slice.e2e` — entitlement-gated course start and lesson completion                                                                                                                                                                                                                                              |
+| 13  | CRM supports leads and follow-up               | ✅         | `crm.e2e` — pipeline, follow-ups, interactions, conversion                                                                                                                                                                                                                                                               |
+| 14  | Dashboard shows personal and team progress     | ✅         | `vertical-slice.e2e` (personal), `team-hierarchy.e2e` (direct vs organization rollup)                                                                                                                                                                                                                                    |
+| 15  | Roles and permissions work                     | ✅         | `vertical-slice.e2e`, `team-hierarchy.e2e`, `crm.e2e` (ownership scopes)                                                                                                                                                                                                                                                 |
+| 16  | AI respects tenant and team permissions        | ⚠️ partial | Tenant scope proven (`knowledge-ai.e2e`: retrieval runs through the tenant-scoped service, conversations are per member, cross-member reads 404). **Team-scoped** knowledge does not exist yet, so there is nothing team-level for the assistant to respect — closing this needs team knowledge (Phase 2, docs/12 §RAG). |
+| 17  | Audit logs work                                | ✅         | `vertical-slice.e2e` (sensitive actions), `crm.e2e` (viewer paging and filters)                                                                                                                                                                                                                                          |
+| 18  | Mobile UX is usable                            | ⚠️ manual  | Verified by hand at ~360 px across sign-in, dashboard, teams, CRM, knowledge and assistant. No automated viewport check — a Playwright run at mobile width is the outstanding item.                                                                                                                                      |
+| 19  | Automated tenant-isolation tests pass          | ✅         | CI blocks on the isolation job; the route sweep fails if a new endpoint escapes coverage                                                                                                                                                                                                                                 |
 
-Each item maps to at least one automated test in `17-test-strategy.md`; the highest-priority test remains: **Tenant A must never access Tenant B data** (spec §69).
+**Remaining before MVP can be called done:** row 16 only — the assistant cannot
+respect team-level knowledge permissions until team-scoped knowledge exists
+(Phase 2, `12-ai-architecture.md` §RAG). Everything else is covered by an
+automated test that runs in CI.
 
 ## 4. MVP Guardrails
 

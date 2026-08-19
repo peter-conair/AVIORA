@@ -71,3 +71,59 @@ jobs:
         run: pnpm --filter @aviora/db exec tsx prisma/setup-app-role.ts
       - name: tenant isolation suite
         run: pnpm --filter @aviora/api test:integration
+
+  browser:
+    name: browser E2E (mobile viewport)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: aviora
+          POSTGRES_USER: aviora_owner
+          POSTGRES_PASSWORD: ci-owner-pw
+        ports:
+          - 5439:5432
+        options: >-
+          --health-cmd "pg_isready -U aviora_owner -d aviora"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      AVIORA_DATABASE_URL: postgresql://aviora_owner:ci-owner-pw@localhost:5439/aviora
+      AVIORA_APP_DATABASE_URL: postgresql://aviora_app:ci-app-pw@localhost:5439/aviora
+      AVIORA_JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-credential-x1
+      AVIORA_JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-credential-1
+      AVIORA_SEED_PLATFORM_ADMIN_EMAIL: admin@aviora.local
+      AVIORA_SEED_PLATFORM_ADMIN_PASSWORD: ci-only-admin-password-not-real-1
+      NEXT_PUBLIC_API_URL: http://localhost:3021/api/v1
+      AVIORA_API_PORT: '3021'
+      AVIORA_WEB_PORT: '3020'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @aviora/shared build
+      - run: pnpm --filter @aviora/db build
+      - name: migrate + app role + seed
+        run: |
+          pnpm --filter @aviora/db exec prisma migrate deploy
+          pnpm --filter @aviora/db exec tsx prisma/setup-app-role.ts
+          pnpm --filter @aviora/db exec tsx prisma/seed.ts
+      - name: build and start the API
+        run: |
+          pnpm --filter @aviora/api build
+          node apps/api/dist/main.js &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3021/healthz && break || sleep 1
+          done
+      - run: pnpm --filter @aviora/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @aviora/web e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
