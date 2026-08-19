@@ -12,6 +12,18 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'RolePermission',
   'MemberRole',
   'AuditLog',
+  'MembershipPlan',
+  'PlanEntitlement',
+  'Membership',
+  'Invitation',
+  'Team',
+  'TeamClosure',
+  'TeamMembership',
+  'TeamLeadership',
+  'Goal',
+  'Course',
+  'Lesson',
+  'LearningProgress',
 ]);
 
 const LIST_OPS = new Set([

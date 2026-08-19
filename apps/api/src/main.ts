@@ -5,23 +5,13 @@ dotenv.config({
   path: [path.resolve(process.cwd(), '.env'), path.resolve(process.cwd(), '../../.env')],
 });
 
-import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
-import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
+import { createApp } from './app.factory';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await createApp();
   app.useLogger(app.get(Logger));
-  app.setGlobalPrefix('api/v1', { exclude: ['healthz', 'readyz'] });
-  app.useGlobalFilters(app.get(AllExceptionsFilter));
-  app.enableCors({
-    origin: [/^http:\/\/localhost:\d+$/, /^http:\/\/.*\.localhost:\d+$/],
-    credentials: true,
-  });
-  app.enableShutdownHooks();
-
-  const port = Number(process.env.AVIORA_API_PORT ?? 3001);
+  const port = Number(process.env.AVIORA_API_PORT ?? 3021);
   await app.listen(port);
 }
 

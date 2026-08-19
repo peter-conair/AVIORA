@@ -1,0 +1,181 @@
+import * as crypto from 'node:crypto';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as argon2 from 'argon2';
+import { ERROR_CODES, newId } from '@aviora/shared';
+import { PrismaService } from '../../common/db/prisma.service';
+
+const ACCESS_TTL = '15m';
+const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+export interface SafeUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  locale: string;
+  platformRole: string | null;
+}
+
+export interface IssuedTokens {
+  accessToken: string;
+  refreshToken: string; // raw — set as HttpOnly cookie, never stored raw
+  refreshExpiresAt: Date;
+}
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+  ) {}
+
+  async register(input: {
+    email: string;
+    password: string;
+    displayName: string;
+    locale?: string;
+  }): Promise<SafeUser> {
+    const email = input.email.toLowerCase().trim();
+    const existing = await this.prisma.app.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        code: ERROR_CODES.CONFLICT,
+        message: 'An account with this email already exists',
+      });
+    }
+    const passwordHash = await argon2.hash(input.password, { type: argon2.argon2id });
+    const user = await this.prisma.app.user.create({
+      data: { email, passwordHash, displayName: input.displayName, locale: input.locale ?? 'th' },
+    });
+    return this.safe(user);
+  }
+
+  async validateCredentials(email: string, password: string): Promise<SafeUser> {
+    const user = await this.prisma.app.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    // argon2.verify on a dummy hash keeps timing comparable for unknown emails
+    const hash =
+      user?.passwordHash ??
+      '$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+    const ok = await argon2.verify(hash, password).catch(() => false);
+    if (!user || !ok || user.status !== 'active') {
+      throw new UnauthorizedException({
+        code: ERROR_CODES.UNAUTHENTICATED,
+        message: 'Invalid email or password',
+      });
+    }
+    await this.prisma.app.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    return this.safe(user);
+  }
+
+  async issueTokens(
+    user: SafeUser,
+    meta?: { userAgent?: string; ip?: string },
+  ): Promise<IssuedTokens> {
+    const accessToken = await this.jwt.signAsync(
+      { sub: user.id, email: user.email, prole: user.platformRole, type: 'access' },
+      { secret: process.env.AVIORA_JWT_ACCESS_SECRET, expiresIn: ACCESS_TTL },
+    );
+    const raw = crypto.randomBytes(48).toString('base64url');
+    const refreshExpiresAt = new Date(Date.now() + REFRESH_TTL_MS);
+    await this.prisma.app.refreshToken.create({
+      data: {
+        id: newId(),
+        userId: user.id,
+        tokenHash: this.hash(raw),
+        expiresAt: refreshExpiresAt,
+        userAgent: meta?.userAgent?.slice(0, 300),
+        ip: meta?.ip,
+      },
+    });
+    return { accessToken, refreshToken: raw, refreshExpiresAt };
+  }
+
+  /** Rotate a refresh token; reuse of a revoked token revokes the whole family. */
+  async rotate(
+    rawToken: string,
+    meta?: { userAgent?: string; ip?: string },
+  ): Promise<{
+    user: SafeUser;
+    tokens: IssuedTokens;
+  }> {
+    const row = await this.prisma.app.refreshToken.findUnique({
+      where: { tokenHash: this.hash(rawToken) },
+    });
+    if (!row || row.expiresAt < new Date()) {
+      throw new UnauthorizedException({
+        code: ERROR_CODES.UNAUTHENTICATED,
+        message: 'Refresh token invalid or expired',
+      });
+    }
+    if (row.revokedAt) {
+      // reuse detection — kill every session for this user
+      await this.prisma.app.refreshToken.updateMany({
+        where: { userId: row.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException({
+        code: ERROR_CODES.UNAUTHENTICATED,
+        message: 'Refresh token reuse detected — all sessions revoked',
+      });
+    }
+    const userRow = await this.prisma.app.user.findUniqueOrThrow({ where: { id: row.userId } });
+    const user = this.safe(userRow);
+    const tokens = await this.issueTokens(user, meta);
+    await this.prisma.app.refreshToken.update({
+      where: { id: row.id },
+      data: { revokedAt: new Date(), replacedBy: this.hash(tokens.refreshToken).slice(0, 36) },
+    });
+    return { user, tokens };
+  }
+
+  async revoke(rawToken: string): Promise<void> {
+    await this.prisma.app.refreshToken.updateMany({
+      where: { tokenHash: this.hash(rawToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.app.user.findUniqueOrThrow({ where: { id: userId } });
+    const memberships = await this.prisma.app.tenantMembership.findMany({
+      where: { userId, status: 'active' },
+      select: {
+        tenantId: true,
+        tenant: { select: { name: true, slug: true, defaultLanguage: true } },
+      },
+    });
+    return {
+      user: this.safe(user),
+      tenants: memberships.map((m) => ({
+        tenantId: m.tenantId,
+        name: m.tenant.name,
+        slug: m.tenant.slug,
+      })),
+    };
+  }
+
+  private hash(raw: string): string {
+    return crypto.createHash('sha256').update(raw).digest('hex');
+  }
+
+  private safe(u: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    locale: string;
+    platformRole: string | null;
+  }): SafeUser {
+    return {
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      locale: u.locale,
+      platformRole: u.platformRole,
+    };
+  }
+}

@@ -9,7 +9,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { PERMISSIONS, PermissionScope } from '@aviora/shared';
+import { ENTITLEMENTS, PERMISSIONS, PermissionScope } from '@aviora/shared';
 
 const prisma = new PrismaClient({ datasourceUrl: process.env.AVIORA_DATABASE_URL });
 
@@ -32,6 +32,15 @@ async function seedPermissions(): Promise<number> {
       create: { key, defaultScope: SCOPED_DEFAULTS[key] ?? PermissionScope.TENANT_ALL },
       update: {}, // catalog rows are append-only; scope changes go through migrations
     });
+    count++;
+  }
+  return count;
+}
+
+async function seedEntitlements(): Promise<number> {
+  let count = 0;
+  for (const key of Object.values(ENTITLEMENTS)) {
+    await prisma.entitlement.upsert({ where: { key }, create: { key }, update: {} });
     count++;
   }
   return count;
@@ -70,6 +79,9 @@ async function seedPlatformAdmin(): Promise<string | null> {
 async function main() {
   const permCount = await seedPermissions();
   console.log(`✓ permissions: ${permCount} keys ensured`);
+
+  const entCount = await seedEntitlements();
+  console.log(`✓ entitlements: ${entCount} keys ensured`);
 
   const adminId = await seedPlatformAdmin();
   console.log(adminId ? `✓ platform admin ensured (${adminId})` : '– platform admin skipped');

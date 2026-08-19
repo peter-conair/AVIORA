@@ -8,5 +8,6 @@ onlyBuiltDependencies:
   - '@prisma/engines'
   - prisma
   - esbuild
+  - '@swc/core'
   - sharp
   - unrs-resolver

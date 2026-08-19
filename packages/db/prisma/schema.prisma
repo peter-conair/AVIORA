@@ -215,9 +215,259 @@ model DomainEvent {
   occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(6)
   processedAt   DateTime? @map("processed_at") @db.Timestamptz(6)
   attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
   lastError     String?   @map("last_error")
 
-  @@index([processedAt, occurredAt])
+  @@index([processedAt, nextAttemptAt])
   @@index([tenantId, occurredAt])
   @@map("domain_events")
+}
+
+// ───────────────────────── Sprint 1 — platform-scope ─────────────────────────
+
+model RefreshToken {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  userAgent  String?   @map("user_agent")
+  ip         String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
+}
+
+// Global entitlement catalog (capability keys) — platform reference data.
+model Entitlement {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  planEntitlements PlanEntitlement[]
+
+  @@map("entitlements")
+}
+
+// ───────────────────────── Sprint 1 — tenant-owned (RLS) ─────────────────────────
+
+model MembershipPlan {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  code           String
+  name           String
+  description    String?
+  membershipType String   @default("standard") @map("membership_type")
+  price          Decimal  @default(0) @db.Decimal(12, 2)
+  currency       String   @default("THB") @db.Char(3)
+  billingCycle   String   @default("monthly") @map("billing_cycle")
+  trialDays      Int      @default(0) @map("trial_days")
+  benefits       Json?
+  limits         Json?
+  status         String   @default("active")
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  planEntitlements PlanEntitlement[]
+  memberships      Membership[]
+
+  @@unique([tenantId, code])
+  @@map("membership_plans")
+}
+
+model PlanEntitlement {
+  tenantId      String   @map("tenant_id") @db.Uuid
+  planId        String   @map("plan_id") @db.Uuid
+  entitlementId String   @map("entitlement_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  plan        MembershipPlan @relation(fields: [planId], references: [id])
+  entitlement Entitlement    @relation(fields: [entitlementId], references: [id])
+
+  @@id([planId, entitlementId])
+  @@index([tenantId])
+  @@map("plan_entitlements")
+}
+
+model Membership {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  memberId         String    @map("member_id") @db.Uuid
+  planId           String    @map("plan_id") @db.Uuid
+  status           String    @default("active")
+  startedAt        DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  trialEndsAt      DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+  currentPeriodEnd DateTime? @map("current_period_end") @db.Timestamptz(6)
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  plan MembershipPlan @relation(fields: [planId], references: [id])
+
+  @@index([tenantId, memberId, status])
+  @@map("memberships")
+}
+
+model Invitation {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  email             String
+  planId            String?   @map("plan_id") @db.Uuid
+  invitedByMemberId String?   @map("invited_by_member_id") @db.Uuid
+  tokenHash         String    @unique @map("token_hash")
+  status            String    @default("pending")
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt        DateTime? @map("accepted_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, email])
+  @@map("invitations")
+}
+
+model Team {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  parentTeamId String?  @map("parent_team_id") @db.Uuid
+  teamType     String   @default("team") @map("team_type")
+  code         String
+  name         String
+  description  String?
+  status       String   @default("active")
+  visibility   String   @default("private")
+  settings     Json?
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parent   Team?  @relation("TeamParent", fields: [parentTeamId], references: [id])
+  children Team[] @relation("TeamParent")
+
+  teamMemberships TeamMembership[]
+  teamLeaderships TeamLeadership[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, parentTeamId])
+  @@map("teams")
+}
+
+model TeamClosure {
+  tenantId         String @map("tenant_id") @db.Uuid
+  ancestorTeamId   String @map("ancestor_team_id") @db.Uuid
+  descendantTeamId String @map("descendant_team_id") @db.Uuid
+  depth            Int
+
+  @@id([ancestorTeamId, descendantTeamId])
+  @@index([tenantId, descendantTeamId])
+  @@map("team_closure")
+}
+
+model TeamMembership {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  teamId         String    @map("team_id") @db.Uuid
+  memberId       String    @map("member_id") @db.Uuid
+  membershipType String    @default("member") @map("membership_type")
+  status         String    @default("active")
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt         DateTime? @map("left_at") @db.Timestamptz(6)
+  metadata       Json?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, memberId])
+  @@index([tenantId, memberId])
+  @@map("team_memberships")
+}
+
+model TeamLeadership {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  teamId         String    @map("team_id") @db.Uuid
+  memberId       String    @map("member_id") @db.Uuid
+  leadershipRole String    @default("PRIMARY_LEADER") @map("leadership_role")
+  isPrimary      Boolean   @default(true) @map("is_primary")
+  status         String    @default("active")
+  effectiveFrom  DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo    DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@index([tenantId, teamId, status])
+  @@map("team_leaderships")
+}
+
+model Goal {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
+  title       String
+  description String?
+  category    String    @default("personal")
+  status      String    @default("active")
+  targetDate  DateTime? @map("target_date") @db.Date
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, memberId, status])
+  @@map("goals")
+}
+
+model Course {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  title       String
+  description String?
+  status      String   @default("published")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lessons Lesson[]
+
+  @@unique([tenantId, code])
+  @@map("courses")
+}
+
+model Lesson {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  courseId  String   @map("course_id") @db.Uuid
+  order     Int
+  title     String
+  content   String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([courseId, order])
+  @@map("lessons")
+}
+
+model LearningProgress {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  memberId           String    @map("member_id") @db.Uuid
+  courseId           String    @map("course_id") @db.Uuid
+  status             String    @default("in_progress")
+  completedLessonIds Json      @default("[]") @map("completed_lesson_ids")
+  startedAt          DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([memberId, courseId])
+  @@index([tenantId, memberId])
+  @@map("learning_progress")
 }

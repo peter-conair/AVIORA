@@ -14,6 +14,18 @@ const TENANT_OWNED_TABLES = [
   'role_permissions',
   'member_roles',
   'audit_logs',
+  'membership_plans',
+  'plan_entitlements',
+  'memberships',
+  'invitations',
+  'teams',
+  'team_closure',
+  'team_memberships',
+  'team_leaderships',
+  'goals',
+  'courses',
+  'lessons',
+  'learning_progress',
 ];
 
 let owner: PrismaClient;
