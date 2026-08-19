@@ -49,6 +49,20 @@ async function api(
   return { status: res.status, body: text ? JSON.parse(text) : null };
 }
 
+/**
+ * The relay drains the outbox oldest-first in bounded batches, and a shared dev
+ * database accumulates events from earlier runs — so one tick is not enough to
+ * reach this run's events. Drain until this tenant has nothing pending.
+ */
+async function drainOutbox(): Promise<void> {
+  for (let i = 0; i < 40; i++) {
+    const pending = await owner.domainEvent.count({ where: { tenantId, processedAt: null } });
+    if (pending === 0) return;
+    await relay.tick();
+  }
+  throw new Error('outbox did not drain for this tenant');
+}
+
 async function login(email: string): Promise<string> {
   const res = await fetch(`${base}/api/v1/auth/login`, {
     method: 'POST',
@@ -361,7 +375,7 @@ describe('Sprint 3 — CRM ownership scoping', () => {
 
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
-    await relay.tick(); // drain the outbox through the in-process handlers
+    await drainOutbox(); // push this tenant's events through the handlers
 
     const seller = await login(`seller-${RUN}@test.local`);
     const res = await api('/api/v1/notifications', { token: seller, tenant: tenantId });
@@ -419,7 +433,7 @@ describe('Sprint 3 — notification center', () => {
       tenant: tenantId,
       body: JSON.stringify({ memberId: member.leader }),
     });
-    await relay.tick();
+    await drainOutbox();
 
     const list = await api('/api/v1/notifications', { token: leader, tenant: tenantId });
     const assigned = list.body.notifications.filter(

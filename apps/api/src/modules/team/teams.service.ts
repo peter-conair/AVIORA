@@ -21,6 +21,14 @@ export class TeamsService {
     private readonly scope: TeamScopeService,
   ) {}
 
+  /** RLS scopes this lookup to the caller's tenant, so a foreign id is absent. */
+  private async assertTeamExists(tx: Tx, teamId: string) {
+    const team = await tx.team.findFirst({ where: { id: teamId }, select: { id: true } });
+    if (!team) {
+      throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Team not found' });
+    }
+  }
+
   private async assertScope(tx: Tx, actor: TeamActor, permKey: string, teamId: string) {
     const allowed = await this.scope.accessibleTeamIds(tx, actor, permKey);
     if (!this.scope.canAccess(allowed, teamId)) {
@@ -147,6 +155,7 @@ export class TeamsService {
   /** Whole subtree with depth (docs/05 §hierarchy queries). */
   async descendants(id: string, actor: TeamActor) {
     return this.db.tx(async (tx) => {
+      await this.assertTeamExists(tx, id);
       await this.assertScope(tx, actor, PERMISSIONS.TEAM_VIEW, id);
       const closure = await tx.teamClosure.findMany({
         where: { ancestorTeamId: id },
@@ -166,6 +175,9 @@ export class TeamsService {
 
   async members(id: string, actor: TeamActor) {
     return this.db.tx(async (tx) => {
+      // existence check first: a team in another tenant must look absent, not
+      // merely empty — otherwise a foreign id answers 200 with a blank list
+      await this.assertTeamExists(tx, id);
       await this.assertScope(tx, actor, PERMISSIONS.TEAM_MEMBER_VIEW, id);
       const rows = await tx.teamMembership.findMany({
         where: { teamId: id, status: 'active' },
@@ -403,6 +415,7 @@ export class TeamsService {
 
   async join(teamId: string, memberId: string, actorUserId: string, actor: TeamActor) {
     const membership = await this.db.tx(async (tx) => {
+      await this.assertTeamExists(tx, teamId);
       await this.assertScope(tx, actor, PERMISSIONS.TEAM_MEMBER_MANAGE, teamId);
       const [team, member] = await Promise.all([
         tx.team.findFirst({ where: { id: teamId, status: 'active' } }),
@@ -446,6 +459,7 @@ export class TeamsService {
   /** History of leadership for a team — closed rows included (spec §73). */
   async leadershipHistory(id: string, actor: TeamActor) {
     return this.db.tx(async (tx) => {
+      await this.assertTeamExists(tx, id);
       await this.assertScope(tx, actor, PERMISSIONS.TEAM_VIEW, id);
       return tx.teamLeadership.findMany({
         where: { teamId: id },
