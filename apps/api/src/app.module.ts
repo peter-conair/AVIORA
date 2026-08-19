@@ -30,6 +30,7 @@ import { InvitationsController } from './modules/membership/invitations.controll
 import { InvitationsService } from './modules/membership/invitations.service';
 import { TeamsController } from './modules/team/teams.controller';
 import { TeamsService } from './modules/team/teams.service';
+import { TeamScopeService } from './modules/team/team-scope.service';
 import { GoalsController } from './modules/goal/goals.controller';
 import { LearningController } from './modules/learning/learning.controller';
 import { DashboardController } from './modules/analytics/dashboard.controller';
@@ -92,6 +93,7 @@ import { NotificationHandlers } from './modules/notification/notification.handle
     PlansService,
     InvitationsService,
     TeamsService,
+    TeamScopeService,
     NotificationHandlers,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

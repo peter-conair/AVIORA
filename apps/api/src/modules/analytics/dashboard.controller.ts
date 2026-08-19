@@ -13,6 +13,59 @@ export class DashboardController {
     private readonly cls: ClsService,
   ) {}
 
+  /** Leader dashboard (spec §21): my led teams with direct vs organization counts. */
+  @Get('leader')
+  @RequirePermissions(PERMISSIONS.TEAM_ANALYTICS_VIEW)
+  async leader() {
+    const memberId = this.cls.get(CLS_MEMBER_ID) as string | undefined;
+    if (!memberId) {
+      throw new ForbiddenException({
+        code: ERROR_CODES.FORBIDDEN,
+        message: 'You are not a member of this tenant',
+      });
+    }
+    return this.db.tx(async (tx) => {
+      const led = await tx.teamLeadership.findMany({
+        where: { memberId, status: 'active' },
+        select: { teamId: true, leadershipRole: true, effectiveFrom: true },
+      });
+      const teams = await tx.team.findMany({
+        where: { id: { in: led.map((l) => l.teamId) }, status: 'active' },
+        select: { id: true, code: true, name: true },
+      });
+      const teamById = new Map(teams.map((t) => [t.id, t]));
+      const result = await Promise.all(
+        led
+          .filter((l) => teamById.has(l.teamId))
+          .map(async (l) => {
+            const sub = await tx.teamClosure.findMany({
+              where: { ancestorTeamId: l.teamId },
+              select: { descendantTeamId: true },
+            });
+            const [directRows, orgRows] = await Promise.all([
+              tx.teamMembership.findMany({
+                where: { teamId: l.teamId, status: 'active' },
+                select: { memberId: true },
+              }),
+              tx.teamMembership.findMany({
+                where: { teamId: { in: sub.map((s) => s.descendantTeamId) }, status: 'active' },
+                select: { memberId: true },
+              }),
+            ]);
+            return {
+              team: teamById.get(l.teamId)!,
+              leadershipRole: l.leadershipRole,
+              since: l.effectiveFrom,
+              directMembers: new Set(directRows.map((r) => r.memberId)).size,
+              organizationMembers: new Set(orgRows.map((r) => r.memberId)).size,
+              childTeams: sub.length - 1,
+            };
+          }),
+      );
+      return { teams: result };
+    });
+  }
+
   @Get('me')
   @RequirePermissions(PERMISSIONS.GOAL_VIEW)
   async me() {

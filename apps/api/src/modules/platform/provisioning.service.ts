@@ -17,13 +17,29 @@ export interface CreateTenantInput {
   adminPassword?: string; // omitted when the admin user already exists
 }
 
-/** Permission keys granted to the default MEMBER system role. */
-const MEMBER_ROLE_KEYS: string[] = [
-  PERMISSIONS.GOAL_VIEW,
-  PERMISSIONS.GOAL_MANAGE,
-  PERMISSIONS.LEARNING_VIEW,
-  PERMISSIONS.TEAM_VIEW,
-  PERMISSIONS.AI_ASSISTANT_USE,
+/**
+ * Default MEMBER system role. Scopes are stated explicitly here — never
+ * inherited from permission.defaultScope, which is catalog metadata that may
+ * predate a scope change and would silently over-grant.
+ */
+const MEMBER_ROLE_GRANTS: Array<{ key: string; scope: PermissionScope }> = [
+  { key: PERMISSIONS.GOAL_VIEW, scope: PermissionScope.SELF },
+  { key: PERMISSIONS.GOAL_MANAGE, scope: PermissionScope.SELF },
+  { key: PERMISSIONS.LEARNING_VIEW, scope: PermissionScope.SELF },
+  { key: PERMISSIONS.AI_ASSISTANT_USE, scope: PermissionScope.SELF },
+  { key: PERMISSIONS.TEAM_VIEW, scope: PermissionScope.DIRECT_TEAM },
+];
+
+/**
+ * LEADER system role — scoped grants (docs/07): a leader sees and manages
+ * their led teams and, where marked, the whole subtree below them.
+ */
+const LEADER_ROLE_GRANTS: Array<{ key: string; scope: PermissionScope }> = [
+  { key: PERMISSIONS.TEAM_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
+  { key: PERMISSIONS.TEAM_MEMBER_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
+  { key: PERMISSIONS.TEAM_ANALYTICS_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
+  { key: PERMISSIONS.TEAM_MEMBER_MANAGE, scope: PermissionScope.DIRECT_TEAM },
+  { key: PERMISSIONS.MEMBER_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
 ];
 
 /**
@@ -83,6 +99,18 @@ export class ProvisioningService {
       const memberRole = await tx.role.create({
         data: { tenantId: tenant.id, code: 'MEMBER', name: 'Member', isSystem: true },
       });
+      const leaderRole = await tx.role.create({
+        data: { tenantId: tenant.id, code: 'LEADER', name: 'Team Leader', isSystem: true },
+      });
+      const permByKey = new Map(permissions.map((p) => [p.key, p]));
+      await tx.rolePermission.createMany({
+        data: LEADER_ROLE_GRANTS.flatMap((g) => {
+          const p = permByKey.get(g.key);
+          return p
+            ? [{ tenantId: tenant.id, roleId: leaderRole.id, permissionId: p.id, scope: g.scope }]
+            : [];
+        }),
+      });
       await tx.rolePermission.createMany({
         data: permissions.map((p) => ({
           tenantId: tenant.id,
@@ -92,14 +120,12 @@ export class ProvisioningService {
         })),
       });
       await tx.rolePermission.createMany({
-        data: permissions
-          .filter((p) => MEMBER_ROLE_KEYS.includes(p.key))
-          .map((p) => ({
-            tenantId: tenant.id,
-            roleId: memberRole.id,
-            permissionId: p.id,
-            scope: p.defaultScope,
-          })),
+        data: MEMBER_ROLE_GRANTS.flatMap((g) => {
+          const p = permByKey.get(g.key);
+          return p
+            ? [{ tenantId: tenant.id, roleId: memberRole.id, permissionId: p.id, scope: g.scope }]
+            : [];
+        }),
       });
 
       // tenant admin (existing global user is linked, new one is created)

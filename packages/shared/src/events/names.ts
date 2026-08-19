@@ -10,6 +10,8 @@ export const EVENTS = {
   MembershipExpiring: 'MembershipExpiring',
   MembershipExpired: 'MembershipExpired',
   TeamCreated: 'TeamCreated',
+  TeamMoved: 'TeamMoved',
+  TeamArchived: 'TeamArchived',
   LeaderAssigned: 'LeaderAssigned',
   MemberJoinedTeam: 'MemberJoinedTeam',
   GoalCreated: 'GoalCreated',
