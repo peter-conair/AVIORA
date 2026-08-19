@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { ERROR_CODES, EVENTS, PERMISSIONS, PermissionScope, newId } from '@aviora/shared';
-import { appendEvent } from '@aviora/db';
+import { ERROR_CODES, EVENTS, PermissionScope, newId } from '@aviora/shared';
+import { appendEvent, SYSTEM_ROLES } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 
@@ -18,29 +18,11 @@ export interface CreateTenantInput {
 }
 
 /**
- * Default MEMBER system role. Scopes are stated explicitly here — never
- * inherited from permission.defaultScope, which is catalog metadata that may
- * predate a scope change and would silently over-grant.
+ * System roles and their scopes come from @aviora/db SYSTEM_ROLES — the same
+ * definition the seed's repair pass applies to already-provisioned tenants.
+ * Never derive scope from permission.defaultScope: that is catalog metadata
+ * which may predate a scope change and would silently over-grant.
  */
-const MEMBER_ROLE_GRANTS: Array<{ key: string; scope: PermissionScope }> = [
-  { key: PERMISSIONS.GOAL_VIEW, scope: PermissionScope.SELF },
-  { key: PERMISSIONS.GOAL_MANAGE, scope: PermissionScope.SELF },
-  { key: PERMISSIONS.LEARNING_VIEW, scope: PermissionScope.SELF },
-  { key: PERMISSIONS.AI_ASSISTANT_USE, scope: PermissionScope.SELF },
-  { key: PERMISSIONS.TEAM_VIEW, scope: PermissionScope.DIRECT_TEAM },
-];
-
-/**
- * LEADER system role — scoped grants (docs/07): a leader sees and manages
- * their led teams and, where marked, the whole subtree below them.
- */
-const LEADER_ROLE_GRANTS: Array<{ key: string; scope: PermissionScope }> = [
-  { key: PERMISSIONS.TEAM_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
-  { key: PERMISSIONS.TEAM_MEMBER_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
-  { key: PERMISSIONS.TEAM_ANALYTICS_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
-  { key: PERMISSIONS.TEAM_MEMBER_MANAGE, scope: PermissionScope.DIRECT_TEAM },
-  { key: PERMISSIONS.MEMBER_VIEW, scope: PermissionScope.DESCENDANT_TEAMS },
-];
 
 /**
  * Tenant provisioning saga (docs/03 §6): tenant → system roles → admin user →
@@ -87,46 +69,39 @@ export class ProvisioningService {
       });
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenant.id}, true)`;
 
-      // system roles
-      const ownerRole = await tx.role.create({
-        data: {
-          tenantId: tenant.id,
-          code: 'TENANT_OWNER',
-          name: 'Tenant Owner',
-          isSystem: true,
-        },
-      });
-      const memberRole = await tx.role.create({
-        data: { tenantId: tenant.id, code: 'MEMBER', name: 'Member', isSystem: true },
-      });
-      const leaderRole = await tx.role.create({
-        data: { tenantId: tenant.id, code: 'LEADER', name: 'Team Leader', isSystem: true },
-      });
+      // system roles (canonical definition — see SYSTEM_ROLES)
       const permByKey = new Map(permissions.map((p) => [p.key, p]));
-      await tx.rolePermission.createMany({
-        data: LEADER_ROLE_GRANTS.flatMap((g) => {
-          const p = permByKey.get(g.key);
-          return p
-            ? [{ tenantId: tenant.id, roleId: leaderRole.id, permissionId: p.id, scope: g.scope }]
-            : [];
-        }),
-      });
-      await tx.rolePermission.createMany({
-        data: permissions.map((p) => ({
-          tenantId: tenant.id,
-          roleId: ownerRole.id,
-          permissionId: p.id,
-          scope: PermissionScope.TENANT_ALL,
-        })),
-      });
-      await tx.rolePermission.createMany({
-        data: MEMBER_ROLE_GRANTS.flatMap((g) => {
-          const p = permByKey.get(g.key);
-          return p
-            ? [{ tenantId: tenant.id, roleId: memberRole.id, permissionId: p.id, scope: g.scope }]
-            : [];
-        }),
-      });
+      const roleIdByCode = new Map<string, string>();
+      for (const def of SYSTEM_ROLES) {
+        const role = await tx.role.create({
+          data: { tenantId: tenant.id, code: def.code, name: def.name, isSystem: true },
+        });
+        roleIdByCode.set(def.code, role.id);
+        await tx.rolePermission.createMany({
+          data:
+            def.grants === null
+              ? permissions.map((p) => ({
+                  tenantId: tenant.id,
+                  roleId: role.id,
+                  permissionId: p.id,
+                  scope: PermissionScope.TENANT_ALL,
+                }))
+              : def.grants.flatMap((g) => {
+                  const p = permByKey.get(g.key);
+                  return p
+                    ? [
+                        {
+                          tenantId: tenant.id,
+                          roleId: role.id,
+                          permissionId: p.id,
+                          scope: g.scope,
+                        },
+                      ]
+                    : [];
+                }),
+        });
+      }
+      const ownerRole = { id: roleIdByCode.get('TENANT_OWNER')! };
 
       // tenant admin (existing global user is linked, new one is created)
       let adminUser = await tx.user.findUnique({

@@ -7,6 +7,7 @@ import type {
   Member,
   MembersResponse,
   Team,
+  TeamDescendantsResponse,
   TeamDetail,
   TeamDetailResponse,
   TeamMemberEntry,
@@ -48,6 +49,12 @@ export function TeamsTab() {
   const [assigning, setAssigning] = useState(false);
   const [adding, setAdding] = useState(false);
 
+  // Move team — ids that can never be the new parent (the team itself + its subtree).
+  const [excludedIds, setExcludedIds] = useState<string[]>([]);
+  const [moveParentId, setMoveParentId] = useState('');
+  const [moving, setMoving] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([api.get<TeamsResponse>('/teams'), api.get<MembersResponse>('/members')])
@@ -73,14 +80,18 @@ export function TeamsTab() {
     setDetail(null);
     setTeamMembers([]);
     setDetailError(null);
+    setMoveError(null);
     setDetailLoading(true);
     try {
-      const [detailRes, membersRes] = await Promise.all([
+      const [detailRes, membersRes, descendantsRes] = await Promise.all([
         api.get<TeamDetailResponse>(`/teams/${teamId}`),
         api.get<TeamMembersResponse>(`/teams/${teamId}/members`),
+        api.get<TeamDescendantsResponse>(`/teams/${teamId}/descendants`),
       ]);
       setDetail(detailRes.team);
       setTeamMembers(membersRes.members);
+      setExcludedIds(descendantsRes.teams.map((tn) => tn.id).concat(teamId));
+      setMoveParentId(detailRes.team.parentTeamId ?? '');
     } catch (err: unknown) {
       setDetailError(err instanceof ApiError ? err.message : tc('errorGeneric'));
     } finally {
@@ -137,6 +148,23 @@ export function TeamsTab() {
       setDetailError(err instanceof ApiError ? err.message : tc('errorGeneric'));
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleMove = async () => {
+    if (!selectedTeamId) return;
+    setMoving(true);
+    setMoveError(null);
+    try {
+      await api.patch(`/teams/${selectedTeamId}/move`, { newParentId: moveParentId || null });
+      const teamsRes = await api.get<TeamsResponse>('/teams');
+      setTeams(teamsRes.teams);
+      await loadDetail(selectedTeamId);
+    } catch (err: unknown) {
+      // The API rejects cycles with a 400 — surface its message verbatim.
+      setMoveError(err instanceof ApiError ? err.message : tc('errorGeneric'));
+    } finally {
+      setMoving(false);
     }
   };
 
@@ -311,6 +339,38 @@ export function TeamsTab() {
                                   {t('add')}
                                 </Button>
                               </div>
+                            </div>
+
+                            <div className="border-t border-slate-200 pt-3">
+                              <div className="flex items-end gap-2">
+                                <div className="flex-1">
+                                  <Select
+                                    label={t('moveTitle')}
+                                    value={moveParentId}
+                                    onChange={(e) => setMoveParentId(e.target.value)}
+                                  >
+                                    <option value="">{t('moveToRoot')}</option>
+                                    {teams
+                                      .filter((candidate) => !excludedIds.includes(candidate.id))
+                                      .map((candidate) => (
+                                        <option key={candidate.id} value={candidate.id}>
+                                          {candidate.name}
+                                        </option>
+                                      ))}
+                                  </Select>
+                                </div>
+                                <Button
+                                  variant="secondary"
+                                  onClick={handleMove}
+                                  disabled={moving || moveParentId === (detail.parentTeamId ?? '')}
+                                >
+                                  {moving ? tc('saving') : t('move')}
+                                </Button>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-500">{t('moveHint')}</p>
+                              {moveError ? (
+                                <p className="mt-1 text-sm text-red-600">{moveError}</p>
+                              ) : null}
                             </div>
                           </>
                         ) : null}

@@ -18,6 +18,8 @@
       "dashboard": "Dashboard",
       "goals": "Goals",
       "learning": "Learning",
+      "teams": "Organization",
+      "leader": "My organization",
       "admin": "Admin",
       "platform": "Platform"
     }
@@ -110,6 +112,57 @@
     "courseCompleted": "Course completed",
     "notEntitled": "Your current plan doesn't include courses. Please contact your workspace admin to upgrade."
   },
+  "teams": {
+    "title": "Organization",
+    "scopeHint": "You can see the teams within your authorized scope.",
+    "treeTitle": "Team structure",
+    "empty": "No teams are visible to you yet.",
+    "selectHint": "Select a team to see its details.",
+    "forbidden": "This team is outside your authorized scope.",
+    "sectionUnavailable": "This section is outside your authorized scope.",
+    "parent": "Parent team",
+    "noParent": "No parent (root)",
+    "children": "Child teams",
+    "noChildren": "No child teams.",
+    "leaders": "Leaders",
+    "noLeaders": "No leaders assigned yet.",
+    "primary": "Primary",
+    "since": "Since {date}",
+    "now": "Now",
+    "unknownMember": "Unknown member",
+    "membersTitle": "Members",
+    "noMembers": "No members in this team yet.",
+    "memberCount": "{count} members",
+    "joined": "Joined {date}",
+    "dashboard": {
+      "title": "Team dashboard",
+      "direct": "Direct",
+      "organization": "Organization",
+      "members": "Members",
+      "newMembers30d": "New members (30d)",
+      "goalsCompleted": "Goals completed",
+      "coursesCompleted": "Courses completed",
+      "childTeams": "Child teams",
+      "organizationMembers": "{count} in organization"
+    },
+    "history": {
+      "title": "Leadership history",
+      "show": "Show",
+      "hide": "Hide",
+      "collapsed": "Show the history to see past and current leaders.",
+      "empty": "No leadership history yet."
+    }
+  },
+  "leader": {
+    "title": "My organization",
+    "empty": "You don't lead any team yet.",
+    "forbidden": "This view is outside your authorized scope.",
+    "since": "Leader since {date}",
+    "directMembers": "Direct members",
+    "organizationMembers": "Organization members",
+    "childTeams": "{count} child teams",
+    "viewInOrg": "Open in Organization"
+  },
   "admin": {
     "title": "Admin",
     "tabs": {
@@ -165,7 +218,11 @@
       "assignLeader": "Assign leader",
       "addMember": "Add member",
       "selectMember": "Select a member",
-      "add": "Add"
+      "add": "Add",
+      "moveTitle": "Move team",
+      "moveToRoot": "No parent (root)",
+      "move": "Move",
+      "moveHint": "The team itself and its sub-teams can't be chosen as the new parent."
     },
     "members": {
       "title": "Members",

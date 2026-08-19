@@ -12,13 +12,15 @@ interface AppShellProps {
 
 interface NavItem {
   href: string;
-  key: 'dashboard' | 'goals' | 'learning' | 'admin' | 'platform';
+  key: 'dashboard' | 'goals' | 'learning' | 'teams' | 'leader' | 'admin' | 'platform';
 }
 
 const BASE_NAV: NavItem[] = [
   { href: '/dashboard', key: 'dashboard' },
   { href: '/goals', key: 'goals' },
   { href: '/learning', key: 'learning' },
+  { href: '/teams', key: 'teams' },
+  { href: '/leader', key: 'leader' },
   { href: '/admin', key: 'admin' },
 ];
 

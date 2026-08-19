@@ -132,6 +132,8 @@ export interface Team {
   code: string;
   name: string;
   parentTeamId: string | null;
+  description?: string | null;
+  createdAt?: string;
 }
 
 export interface TeamsResponse {
@@ -141,6 +143,9 @@ export interface TeamsResponse {
 export interface TeamLeadership {
   memberId?: string;
   member?: { id: string; displayName: string };
+  leadershipRole?: string;
+  isPrimary?: boolean;
+  effectiveFrom?: string;
 }
 
 export interface TeamDetail extends Team {
@@ -155,12 +160,124 @@ export interface TeamDetailResponse {
 
 export interface TeamMemberEntry {
   memberId: string;
+  membershipType?: string;
   joinedAt: string;
-  member: { id: string; displayName: string };
+  member: { id: string; displayName: string; status?: string };
 }
 
 export interface TeamMembersResponse {
   members: TeamMemberEntry[];
+}
+
+/** Flat subtree rows returned by `GET /teams/:id/descendants` (depth 0 = the team itself). */
+export interface TeamDescendant {
+  id: string;
+  code: string;
+  name: string;
+  parentTeamId: string | null;
+  depth: number;
+}
+
+export interface TeamDescendantsResponse {
+  teams: TeamDescendant[];
+}
+
+export interface TeamMetrics {
+  members: number;
+  newMembers30d: number;
+  goalsCompleted: number;
+  coursesCompleted: number;
+}
+
+export interface TeamDashboardChild {
+  id: string;
+  code: string;
+  name: string;
+  organizationMembers: number;
+}
+
+export interface TeamDashboardResponse {
+  team: { id: string; code: string; name: string; parentTeamId: string | null };
+  direct: TeamMetrics;
+  organization: TeamMetrics;
+  children: TeamDashboardChild[];
+}
+
+export interface LeadershipHistoryEntry {
+  memberId: string;
+  leadershipRole: string;
+  isPrimary: boolean;
+  status: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
+export interface LeadershipHistoryResponse {
+  leaderships: LeadershipHistoryEntry[];
+}
+
+export interface MoveTeamResponse {
+  team: Team;
+}
+
+/** One card of `GET /dashboard/leader`. */
+export interface LeaderTeamSummary {
+  team: { id: string; code: string; name: string };
+  leadershipRole: string;
+  since: string;
+  directMembers: number;
+  organizationMembers: number;
+  childTeams: number;
+}
+
+export interface LeaderDashboardResponse {
+  teams: LeaderTeamSummary[];
+}
+
+interface TeamTreeNode {
+  team: Team;
+  children: TeamTreeNode[];
+}
+
+export interface TeamTreeRow {
+  team: Team;
+  depth: number;
+}
+
+/**
+ * Build an indented tree from a flat, permission-scoped team list.
+ * Teams whose parent is not present in `teams` are treated as roots — this is
+ * expected when the caller only sees their own subtree.
+ */
+export function buildTeamTree(teams: Team[]): TeamTreeRow[] {
+  const byId = new Map<string, TeamTreeNode>();
+  for (const team of teams) byId.set(team.id, { team, children: [] });
+
+  const roots: TeamTreeNode[] = [];
+  for (const node of byId.values()) {
+    const parent = node.team.parentTeamId ? byId.get(node.team.parentTeamId) : undefined;
+    if (parent && parent !== node) parent.children.push(node);
+    else roots.push(node);
+  }
+
+  const sortNodes = (nodes: TeamTreeNode[]): void => {
+    nodes.sort((a, b) => a.team.name.localeCompare(b.team.name));
+    for (const node of nodes) sortNodes(node.children);
+  };
+  sortNodes(roots);
+
+  const rows: TeamTreeRow[] = [];
+  const seen = new Set<string>();
+  const walk = (nodes: TeamTreeNode[], depth: number): void => {
+    for (const node of nodes) {
+      if (seen.has(node.team.id)) continue;
+      seen.add(node.team.id);
+      rows.push({ team: node.team, depth });
+      walk(node.children, depth + 1);
+    }
+  };
+  walk(roots, 0);
+  return rows;
 }
 
 // ---- Goals ----
