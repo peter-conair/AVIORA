@@ -1,0 +1,394 @@
+# 07 — Role & Permission Matrix
+
+> **Project:** AVIORA — Multi-Tenant Membership, Healthy Living & Growth Operating System
+> **Status:** Approved for MVP · **Last updated:** 2026-08-19
+> **Spec references:** §19 (permission scopes), §57 (roles), §58 (security), §59 (health data privacy), §60 (audit)
+
+---
+
+## 1. Overview
+
+AVIORA uses **RBAC with scope support**. Authorization is evaluated as:
+
+```text
+authn (JWT) → tenant resolution → RBAC (permission key) → scope check → entitlement check
+```
+
+Three concepts are strictly separated:
+
+| Concept         | Question it answers                                          | Example              |
+| --------------- | ------------------------------------------------------------ | -------------------- |
+| **Permission**  | _What action_ may be performed?                              | `team.member.manage` |
+| **Scope**       | _On which slice of data_ may it be performed?                | `DESCENDANT_TEAMS`   |
+| **Entitlement** | _Does the tenant's membership plan include this capability?_ | `ai.coach`           |
+
+A request succeeds only when all three pass. Permissions are never hard-coded to role
+names in domain code — services check permission keys, never `if (role === 'ADMIN')`.
+
+### Design rules
+
+1. Roles are rows in the `role` table (uuid v7 ids), never enums in code.
+2. System roles are seeded per tenant at tenant creation; tenants may create **custom roles** from the same permission catalog.
+3. A role grants a set of `(permission_key, scope)` pairs. The same permission may be granted with different scopes to different roles.
+4. Platform roles operate above tenant context; tenant roles always operate inside a resolved `tenant_id`.
+5. One `User` may hold different roles in different tenants via `TenantMembership` (User ↔ TenantMembership ↔ Tenant; `Member` is per-tenant).
+6. The **Team Graph is not the Referral Graph** — team-scoped permissions traverse `team_closure` only, never referral relationships.
+
+---
+
+## 2. Platform Roles
+
+Platform roles live outside any tenant. They can never read tenant business data except
+through explicitly audited support tooling.
+
+| Role               | Purpose                 | Notable powers                                                                         | Hard limits                                      |
+| ------------------ | ----------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **Platform Owner** | Root operator of AVIORA | Everything below + platform role management, billing config, kill-switches             | All actions audited; cannot bypass audit         |
+| **Super Admin**    | Platform operations     | Create/suspend/activate tenants, manage platform settings, feature flags               | No tenant member PII export; no health data ever |
+| **Support**        | Tenant support cases    | Read tenant config, impersonate _tenant admin_ with consent flag (audited, time-boxed) | No write to tenant business data; no health data |
+| **Finance**        | Platform billing        | Tenant subscription/invoice management, MRR/ARR reports                                | No member-level data access                      |
+| **Analyst**        | Platform analytics      | Aggregated, anonymized cross-tenant metrics only                                       | No row-level tenant data; no PII                 |
+
+Platform permission namespace: `platform.*`
+
+```text
+platform.tenant.view          platform.tenant.create        platform.tenant.update
+platform.tenant.suspend       platform.tenant.activate      platform.billing.view
+platform.billing.manage       platform.analytics.view       platform.support.impersonate
+platform.settings.manage      platform.role.manage          platform.audit.view
+```
+
+---
+
+## 3. Tenant Roles
+
+Seeded system roles per tenant (spec §57). All are editable copies except Tenant Owner,
+whose permission set is fixed.
+
+| Role                 | Intent                                             | Typical scope profile                                           |
+| -------------------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| **Tenant Owner**     | Legal/commercial owner; unrestricted inside tenant | `TENANT_ALL` on everything                                      |
+| **Tenant Admin**     | Day-to-day administration                          | `TENANT_ALL` on operations; no billing transfer/tenant deletion |
+| **Manager**          | Operational manager over assigned team subtrees    | `SPECIFIC_TEAMS` / `DESCENDANT_TEAMS`                           |
+| **Leader**           | Leads a team and its descendants                   | `DIRECT_TEAM` + `DESCENDANT_TEAMS`                              |
+| **Coach**            | Coaches members in assigned teams                  | `SPECIFIC_TEAMS`, read-heavy                                    |
+| **Mentor**           | 1:1 development relationships                      | `SPECIFIC_TEAMS` (mentee teams), read-only                      |
+| **Member**           | Standard participant                               | `SELF`                                                          |
+| **Customer**         | Buys/consumes; not part of team ops                | `SELF`, minimal surface                                         |
+| **Creator**          | Authors learning/knowledge content                 | Content permissions, `TENANT_ALL` on own drafts                 |
+| **Affiliate**        | Referral participant                               | `SELF` + own referral stats                                     |
+| **Finance** (tenant) | Tenant billing & membership revenue                | Membership/billing, `TENANT_ALL`; no team management            |
+| **Support** (tenant) | Tenant member support                              | Member read + notes, `TENANT_ALL`; no config, no health         |
+
+### Custom tenant roles
+
+- Created via `POST /api/v1/tenant/roles` by holders of `tenant.role.manage`.
+- Compose any `(permission_key, scope)` pairs from the catalog in §5, **except**:
+  - `health.profile.*` and `health.coach.view` can never be granted with a scope broader than what consent grants allow (see §7) — the guard enforces consent regardless of role config.
+  - `tenant.delete`, `tenant.transfer` are reserved to Tenant Owner.
+- Custom roles are tenant-scoped rows; they never leak across tenants.
+- Every role create/update/delete emits an audit event (`RoleCreated`, `RoleUpdated`, `RoleDeleted`) with `before`/`after` snapshots (spec §60 — permission changes are sensitive).
+
+---
+
+## 4. Permission Scopes
+
+Spec §19. Scope is stored alongside each role–permission grant and resolved at request
+time against the **team closure table** (`team_closure`).
+
+| Scope              | Meaning                                                                                        | Resolution                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `SELF`             | Only the caller's own records (their Member, their goals, their leads…)                        | `member_id = ctx.member_id`                                                                       |
+| `DIRECT_TEAM`      | Teams where the caller holds an active `TeamMembership`/`TeamLeadership` — direct members only | `team_id IN (caller's teams)`                                                                     |
+| `DESCENDANT_TEAMS` | Direct teams **plus** all descendants via closure table                                        | `team_id IN (SELECT descendant_team_id FROM team_closure WHERE ancestor_team_id IN caller_teams)` |
+| `SPECIFIC_TEAMS`   | An explicit allow-list of team ids attached to the grant                                       | `team_id IN (grant.team_ids)` (+ optional include-descendants flag)                               |
+| `TENANT_ALL`       | Every record in the current tenant                                                             | `tenant_id = ctx.tenant_id` (RLS still applies)                                                   |
+
+Scope ordering (for "highest wins" when multiple roles grant the same permission):
+
+```text
+SELF < DIRECT_TEAM < SPECIFIC_TEAMS < DESCENDANT_TEAMS < TENANT_ALL
+```
+
+> **Note:** `SPECIFIC_TEAMS` is ranked below `DESCENDANT_TEAMS` for comparison purposes only;
+> at evaluation time the _union_ of all applicable scopes is authorized.
+
+Non-team resources (e.g., `membership.plan.manage`, `tenant.settings.manage`) accept only
+`SELF` or `TENANT_ALL`; the guard rejects team scopes on non-team resources at role-save time.
+
+---
+
+## 5. Permission Key Catalog (MVP)
+
+Dot-notation: `domain.resource.action`. Keys are stable identifiers stored in the
+`permission` table and referenced by seed data and guards.
+
+### 5.1 `tenant.*` — tenant configuration
+
+| Key                      | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `tenant.view`            | View tenant profile & settings                        |
+| `tenant.update`          | Update tenant profile (name, logo, branding, domains) |
+| `tenant.settings.manage` | Manage tenant settings & feature flags                |
+| `tenant.role.view`       | View roles & permission grants                        |
+| `tenant.role.manage`     | Create/update/delete custom roles; assign roles       |
+| `tenant.billing.view`    | View tenant subscription & invoices                   |
+| `tenant.billing.manage`  | Change tenant plan, payment method                    |
+| `tenant.delete`          | Delete/close tenant _(Tenant Owner only)_             |
+| `tenant.transfer`        | Transfer ownership _(Tenant Owner only)_              |
+
+### 5.2 `member.*` — members & invitations
+
+| Key                   | Description                                |
+| --------------------- | ------------------------------------------ |
+| `member.view`         | View member profiles (non-health fields)   |
+| `member.create`       | Create members directly                    |
+| `member.update`       | Edit member profiles                       |
+| `member.deactivate`   | Deactivate/reactivate members              |
+| `member.invite`       | Create & manage invitations                |
+| `member.export`       | Export member lists _(sensitive; audited)_ |
+| `member.notes.view`   | View support/CRM notes on members          |
+| `member.notes.manage` | Add/edit notes                             |
+
+### 5.3 `membership.*` — plans & subscriptions
+
+| Key                             | Description                         |
+| ------------------------------- | ----------------------------------- |
+| `membership.plan.view`          | View membership plans               |
+| `membership.plan.manage`        | Create/update/archive plans         |
+| `membership.view`               | View member subscriptions/status    |
+| `membership.assign`             | Assign/change a member's membership |
+| `membership.cancel`             | Cancel a membership                 |
+| `membership.entitlement.view`   | Inspect entitlement mappings        |
+| `membership.entitlement.manage` | Edit plan → entitlement mapping     |
+
+### 5.4 `team.*` — team hierarchy & operations
+
+| Key                    | Description                                  |
+| ---------------------- | -------------------------------------------- |
+| `team.view`            | View team details & hierarchy                |
+| `team.create`          | Create teams / child teams                   |
+| `team.update`          | Edit team settings                           |
+| `team.move`            | Re-parent a team _(sensitive; audited)_      |
+| `team.archive`         | Archive a team _(history preserved)_         |
+| `team.member.view`     | View team member lists                       |
+| `team.member.manage`   | Add/remove/transfer team members             |
+| `team.leader.view`     | View leadership assignments                  |
+| `team.leader.manage`   | Assign/change leaders _(sensitive; audited)_ |
+| `team.analytics.view`  | View team dashboards & metrics               |
+| `team.goal.manage`     | Set/edit team goals                          |
+| `team.learning.assign` | Assign learning to a team                    |
+| `team.content.publish` | Publish content/announcements to a team      |
+
+### 5.5 `goal.*` — goals & dreams
+
+| Key                 | Description                         |
+| ------------------- | ----------------------------------- |
+| `goal.view`         | View goals                          |
+| `goal.manage`       | Create/update/complete/delete goals |
+| `goal.dream.view`   | View dreams / vision board          |
+| `goal.dream.manage` | Manage dreams / vision board        |
+
+### 5.6 `learning.*` — courses, lessons, progress
+
+| Key                             | Description                                    |
+| ------------------------------- | ---------------------------------------------- |
+| `learning.course.view`          | Browse/consume published courses               |
+| `learning.course.manage`        | Create/update courses & lessons                |
+| `learning.course.publish`       | Publish/unpublish courses                      |
+| `learning.progress.view`        | View learning progress of others (scope-bound) |
+| `learning.assign`               | Assign courses/paths to members or teams       |
+| `learning.certification.view`   | View certifications                            |
+| `learning.certification.manage` | Issue/revoke certifications                    |
+
+### 5.7 `crm.*` — leads, customers, follow-ups
+
+| Key                   | Description                                |
+| --------------------- | ------------------------------------------ |
+| `crm.lead.view`       | View leads                                 |
+| `crm.lead.manage`     | Create/update/convert leads                |
+| `crm.customer.view`   | View customers                             |
+| `crm.customer.manage` | Update customers                           |
+| `crm.followup.view`   | View follow-ups                            |
+| `crm.followup.manage` | Create/complete follow-ups                 |
+| `crm.pipeline.manage` | Configure pipeline stages _(tenant-level)_ |
+| `crm.export`          | Export CRM data _(sensitive; audited)_     |
+
+### 5.8 `ai.*` — AI assistant
+
+| Key                    | Description                                          |
+| ---------------------- | ---------------------------------------------------- |
+| `ai.assistant.use`     | Chat with the AI assistant _(entitlement-gated too)_ |
+| `ai.conversation.view` | View own AI conversation history (`SELF`)            |
+| `ai.usage.view`        | View AI usage & cost reporting                       |
+| `ai.settings.manage`   | Configure tenant AI settings (models, budgets)       |
+
+> AI answers are additionally constrained at **retrieval time** by the caller's team scope
+> and entitlements (spec §49–50): authorization before retrieval, never filter-after.
+
+### 5.9 `audit.*` — audit trail
+
+| Key            | Description                              |
+| -------------- | ---------------------------------------- |
+| `audit.view`   | Search/read tenant audit logs            |
+| `audit.export` | Export audit logs _(sensitive; audited)_ |
+
+### 5.10 `notification.*` — notifications
+
+| Key                            | Description                                    |
+| ------------------------------ | ---------------------------------------------- |
+| `notification.send`            | Send announcements/notifications (scope-bound) |
+| `notification.template.manage` | Manage notification templates                  |
+
+### 5.11 `dashboard.*` — analytics surfaces
+
+| Key                     | Description                                                          |
+| ----------------------- | -------------------------------------------------------------------- |
+| `dashboard.member.view` | Personal dashboard                                                   |
+| `dashboard.team.view`   | Team dashboards (scope-bound; alias of `team.analytics.view` checks) |
+| `dashboard.tenant.view` | Tenant-wide dashboard                                                |
+
+### 5.12 `health.profile.*` — **RESERVED** (Phase 2 module, MVP-enforced namespace)
+
+The Healthy Living module ships post-MVP, but the permission namespace and its consent
+semantics are reserved **now** so no MVP role accidentally acquires it via wildcard grants
+(wildcards are disallowed in role grants for the `health.*` namespace).
+
+| Key                   | Description                                       |
+| --------------------- | ------------------------------------------------- |
+| `health.profile.view` | View a member's health profile                    |
+| `health.profile.edit` | Edit a member's health profile                    |
+| `health.coach.view`   | Coach-level view of assigned members' health data |
+
+See §7 for the consent model that overrides RBAC for this namespace.
+
+---
+
+## 6. Role × Permission × Scope Matrix (MVP tenant roles)
+
+Legend: scope abbreviations — **S** = SELF, **DT** = DIRECT_TEAM, **ST** = SPECIFIC_TEAMS,
+**DE** = DESCENDANT_TEAMS, **TA** = TENANT_ALL, **—** = not granted.
+`(cfg)` = scope assigned per grant by Tenant Admin (defaults shown).
+
+| Permission                          | Owner            | Admin | Manager | Leader | Coach           | Mentor          | Member | Customer | Creator | Affiliate | Finance | Support |
+| ----------------------------------- | ---------------- | ----- | ------- | ------ | --------------- | --------------- | ------ | -------- | ------- | --------- | ------- | ------- |
+| `tenant.view`                       | TA               | TA    | TA      | TA     | TA              | TA              | TA     | TA       | TA      | TA        | TA      | TA      |
+| `tenant.update`                     | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `tenant.settings.manage`            | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `tenant.role.view`                  | TA               | TA    | TA      | —      | —               | —               | —      | —        | —       | —         | —       | TA      |
+| `tenant.role.manage`                | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `tenant.billing.view`               | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | TA      | —       |
+| `tenant.billing.manage`             | TA               | —     | —       | —      | —               | —               | —      | —        | —       | —         | TA      | —       |
+| `tenant.delete` / `tenant.transfer` | TA               | —     | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `member.view`                       | TA               | TA    | ST(cfg) | DE     | ST              | ST              | S      | S        | —       | S         | —       | TA      |
+| `member.create`                     | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `member.update`                     | TA               | TA    | ST(cfg) | —      | —               | —               | S      | S        | —       | S         | —       | —       |
+| `member.deactivate`                 | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `member.invite`                     | TA               | TA    | ST(cfg) | DE     | —               | —               | —      | —        | —       | —         | —       | —       |
+| `member.export`                     | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `member.notes.view`                 | TA               | TA    | ST      | DE     | ST              | ST              | —      | —        | —       | —         | —       | TA      |
+| `member.notes.manage`               | TA               | TA    | ST      | DE     | ST              | —               | —      | —        | —       | —         | —       | TA      |
+| `membership.plan.view`              | TA               | TA    | TA      | TA     | TA              | TA              | TA     | TA       | TA      | TA        | TA      | TA      |
+| `membership.plan.manage`            | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `membership.view`                   | TA               | TA    | ST      | DE     | —               | —               | S      | S        | —       | S         | TA      | TA      |
+| `membership.assign`                 | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | TA      | —       |
+| `membership.cancel`                 | TA               | TA    | —       | —      | —               | —               | S      | S        | —       | S         | TA      | —       |
+| `membership.entitlement.view`       | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | TA      | TA      |
+| `membership.entitlement.manage`     | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.view`                         | TA               | TA    | ST(cfg) | DE     | ST              | ST              | DT     | —        | —       | —         | —       | TA      |
+| `team.create`                       | TA               | TA    | ST(cfg) | DE     | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.update`                       | TA               | TA    | ST      | DE     | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.move`                         | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.archive`                      | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.member.view`                  | TA               | TA    | ST      | DE     | ST              | ST              | DT     | —        | —       | —         | —       | TA      |
+| `team.member.manage`                | TA               | TA    | ST      | DE     | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.leader.view`                  | TA               | TA    | ST      | DE     | ST              | ST              | DT     | —        | —       | —         | —       | TA      |
+| `team.leader.manage`                | TA               | TA    | ST(cfg) | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.analytics.view`               | TA               | TA    | ST      | DE     | ST              | ST              | DT     | —        | —       | —         | —       | —       |
+| `team.goal.manage`                  | TA               | TA    | ST      | DE     | —               | —               | —      | —        | —       | —         | —       | —       |
+| `team.learning.assign`              | TA               | TA    | ST      | DE     | ST              | —               | —      | —        | —       | —         | —       | —       |
+| `team.content.publish`              | TA               | TA    | ST      | DE     | —               | —               | —      | —        | TA      | —         | —       | —       |
+| `goal.view`                         | TA               | TA    | ST      | DE     | ST              | ST              | S      | S        | —       | S         | —       | —       |
+| `goal.manage`                       | TA               | TA    | —       | —      | —               | —               | S      | S        | —       | S         | —       | —       |
+| `goal.dream.view`                   | S                | S     | S       | S      | S               | S               | S      | S        | S       | S         | S       | S       |
+| `goal.dream.manage`                 | S                | S     | S       | S      | S               | S               | S      | S        | S       | S         | S       | S       |
+| `learning.course.view`              | TA               | TA    | TA      | TA     | TA              | TA              | TA     | TA       | TA      | TA        | TA      | TA      |
+| `learning.course.manage`            | TA               | TA    | —       | —      | —               | —               | —      | —        | TA      | —         | —       | —       |
+| `learning.course.publish`           | TA               | TA    | —       | —      | —               | —               | —      | —        | TA      | —         | —       | —       |
+| `learning.progress.view`            | TA               | TA    | ST      | DE     | ST              | ST              | S      | S        | —       | S         | —       | —       |
+| `learning.assign`                   | TA               | TA    | ST      | DE     | ST              | —               | —      | —        | —       | —         | —       | —       |
+| `learning.certification.view`       | TA               | TA    | ST      | DE     | ST              | ST              | S      | S        | —       | S         | —       | TA      |
+| `learning.certification.manage`     | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `crm.lead.view`                     | TA               | TA    | ST      | DE     | —               | —               | S      | —        | —       | S         | —       | TA      |
+| `crm.lead.manage`                   | TA               | TA    | ST      | DE     | —               | —               | S      | —        | —       | S         | —       | —       |
+| `crm.customer.view`                 | TA               | TA    | ST      | DE     | —               | —               | S      | —        | —       | S         | —       | TA      |
+| `crm.customer.manage`               | TA               | TA    | ST      | DE     | —               | —               | S      | —        | —       | S         | —       | —       |
+| `crm.followup.view`                 | TA               | TA    | ST      | DE     | —               | —               | S      | —        | —       | S         | —       | TA      |
+| `crm.followup.manage`               | TA               | TA    | ST      | DE     | —               | —               | S      | —        | —       | S         | —       | —       |
+| `crm.pipeline.manage`               | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `crm.export`                        | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `ai.assistant.use`                  | TA               | TA    | S       | S      | S               | S               | S      | S        | S       | S         | S       | S       |
+| `ai.conversation.view`              | S                | S     | S       | S      | S               | S               | S      | S        | S       | S         | S       | S       |
+| `ai.usage.view`                     | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | TA      | —       |
+| `ai.settings.manage`                | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `audit.view`                        | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | TA      |
+| `audit.export`                      | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `notification.send`                 | TA               | TA    | ST      | DE     | ST              | —               | —      | —        | TA      | —         | —       | TA      |
+| `notification.template.manage`      | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | —       | —       |
+| `dashboard.member.view`             | S                | S     | S       | S      | S               | S               | S      | S        | S       | S         | S       | S       |
+| `dashboard.team.view`               | TA               | TA    | ST      | DE     | ST              | ST              | DT     | —        | —       | —         | —       | —       |
+| `dashboard.tenant.view`             | TA               | TA    | —       | —      | —               | —               | —      | —        | —       | —         | TA      | —       |
+| `health.profile.view` _(reserved)_  | ⛔ consent-gated | ⛔    | ⛔      | ⛔     | ⛔              | ⛔              | S      | S        | ⛔      | S         | ⛔      | ⛔      |
+| `health.profile.edit` _(reserved)_  | ⛔               | ⛔    | ⛔      | ⛔     | ⛔              | ⛔              | S      | S        | ⛔      | S         | ⛔      | ⛔      |
+| `health.coach.view` _(reserved)_    | ⛔               | ⛔    | ⛔      | ⛔     | ⛔ consent only | ⛔ consent only | —      | —        | ⛔      | —         | ⛔      | ⛔      |
+
+Notes:
+
+- **Own-record rule:** every role implicitly has `SELF` on `goal.*`, `dashboard.member.view`, `ai.conversation.view`, and their own member profile — this is intrinsic, not a grant.
+- **Leader semantics:** `DE` (DESCENDANT_TEAMS) always includes the direct team; drill-down follows the closure table only.
+- **Manager `(cfg)`:** Tenant Admin attaches an explicit team allow-list when assigning Manager; the default is empty (deny).
+- **Custom roles** may only be composed of keys in this catalog with the scope rules of §4; the `health.*` rows keep their ⛔ semantics regardless of role configuration.
+
+---
+
+## 7. Health-Data Privacy Rules (spec §59)
+
+Health data gets **stronger-than-RBAC** protection. The rules below are enforced in the
+authorization guard layer, ahead of any repository call, and cannot be configured away.
+
+1. **Namespace isolation.** `health.profile.view`, `health.profile.edit`, and `health.coach.view` live in a dedicated namespace. They are excluded from every wildcard, every seeded role above `SELF`, and cannot be added to custom roles with team/tenant scopes.
+2. **Leaders never see health data by default.** No leadership role (Leader, Manager, Mentor, Coach, Tenant Admin, Tenant Owner) can read a member's health profile through role grants alone — the matrix rows are ⛔ by design.
+3. **Explicit member consent grant is the only path.** A member may grant a _named person_ (typically their Coach) access via a `HealthDataGrant`:
+
+   ```text
+   HealthDataGrant
+   ├── id (uuid v7)
+   ├── tenant_id
+   ├── member_id            -- the data subject
+   ├── grantee_member_id    -- the person receiving access
+   ├── permission_key       -- health.profile.view | health.coach.view
+   ├── granted_at (timestamptz)
+   ├── expires_at (timestamptz, nullable)
+   └── revoked_at (timestamptz, nullable)
+   ```
+
+4. **Guard order:** `RBAC pass` **AND** `active consent grant exists` — both must hold. A Coach holding `health.coach.view` (SELF-anchored) still gets 403 for member X unless member X's grant is active and unexpired.
+5. **Revocation is immediate.** Revoking a grant invalidates cached authorization (Redis key eviction) in the same request.
+6. **Everything is audited.** Grant create/revoke and every health-data read/write emits an audit event (spec §60 lists Health as a sensitive action class) with `request_id`, actor, and subject.
+7. **AI respects consent.** The AI assistant's retrieval layer treats health data as retrievable only when the _requesting_ member is the data subject or holds an active grant — enforced before retrieval (spec §50).
+8. **No aggregation leak.** Team dashboards must not surface health-derived metrics (wellness scores, weight trends) at any team scope in MVP; Phase 2 may add _opt-in, k-anonymized_ aggregates only.
+
+---
+
+## 8. Enforcement Reference
+
+| Layer           | Mechanism                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| Request context | `TenantContext` via `nestjs-cls` (AsyncLocalStorage); populated by tenant-resolution middleware    |
+| Guard chain     | `JwtAuthGuard → TenantGuard → PermissionGuard(key) → ScopeGuard → EntitlementGuard`                |
+| Decorators      | `@RequirePermission('team.member.manage')`, `@RequireScope()`, `@RequireEntitlement('ai.coach')`   |
+| Data layer      | Postgres RLS on `app.tenant_id` + Prisma client extension auto-injecting `tenant_id` filters       |
+| Cache           | Permission set per `(user_id, tenant_id)` cached in Redis, TTL 5 min, evicted on role/grant change |
+| Audit           | All role, permission, leadership, and health-grant changes are audited with `before`/`after`       |
+
+Related docs: [10-api-design.md](./10-api-design.md) · [13-security-architecture.md](./13-security-architecture.md) · [19-observability.md](./19-observability.md)

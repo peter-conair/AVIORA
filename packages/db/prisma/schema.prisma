@@ -1,0 +1,223 @@
+// AVIORA — base schema (Sprint 0: identity + tenancy + RBAC + audit + outbox)
+// Conventions (docs/08-data-model.md):
+//   snake_case tables/columns via @@map/@map · uuid v7 PKs · timestamptz(6) everywhere
+//   every tenant-owned table has tenant_id NOT NULL + tenant-leading indexes
+//   RLS policies live in migration SQL (see migrations/*/migration.sql)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("AVIORA_DATABASE_URL")
+}
+
+// ───────────────────────── Platform-scope tables (no RLS) ─────────────────────────
+
+model Tenant {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  code            String   @unique
+  name            String
+  slug            String   @unique
+  legalName       String?  @map("legal_name")
+  tenantType      String   @default("wellness_business") @map("tenant_type")
+  status          String   @default("active")
+  logoUrl         String?  @map("logo_url")
+  primaryDomain   String?  @unique @map("primary_domain")
+  customDomain    String?  @unique @map("custom_domain")
+  country         String   @default("TH")
+  timezone        String   @default("Asia/Bangkok")
+  defaultLanguage String   @default("th") @map("default_language")
+  defaultCurrency String   @default("THB") @map("default_currency")
+  branding        Json?
+  settings        Json?
+  featureFlags    Json?    @map("feature_flags")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenantSettings    TenantSetting[]
+  tenantMemberships TenantMembership[]
+  members           Member[]
+  roles             Role[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  displayName  String?   @map("display_name")
+  locale       String    @default("th")
+  // Platform-level role (nullable = regular user). Platform roles are a fixed
+  // platform-owned set; tenant roles are data-driven in `roles`.
+  platformRole String?   @map("platform_role")
+  status       String    @default("active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenantMemberships TenantMembership[]
+  members           Member[]
+
+  @@map("users")
+}
+
+// Global permission catalog — platform-owned reference data (no tenant_id).
+model Permission {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  key          String   @unique
+  description  String?
+  defaultScope String   @default("TENANT_ALL") @map("default_scope")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+// ───────────────────────── Tenant-owned tables (RLS FORCED) ─────────────────────────
+
+model TenantSetting {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  key       String
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key])
+  @@map("tenant_settings")
+}
+
+// Link between a global User and a Tenant (spec §7). Member is the richer
+// per-tenant participation record; this is the access/switcher record.
+model TenantMembership {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  status    String    @default("active")
+  joinedAt  DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt    DateTime? @map("left_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_memberships")
+}
+
+model Member {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  code        String?
+  displayName String   @map("display_name")
+  status      String   @default("active")
+  joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  memberRoles MemberRole[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, status])
+  @@map("members")
+}
+
+model Role {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  rolePermissions RolePermission[]
+  memberRoles     MemberRole[]
+
+  @@unique([tenantId, code])
+  @@map("roles")
+}
+
+model RolePermission {
+  tenantId     String   @map("tenant_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  scope        String   @default("TENANT_ALL")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@index([tenantId])
+  @@map("role_permissions")
+}
+
+model MemberRole {
+  tenantId   String   @map("tenant_id") @db.Uuid
+  memberId   String   @map("member_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  member Member @relation(fields: [memberId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@id([memberId, roleId])
+  @@index([tenantId])
+  @@map("member_roles")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String?  @map("tenant_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  memberId   String?  @map("member_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  requestId  String   @map("request_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+// Transactional outbox (docs/11). Written in the same TX as the state change;
+// relayed by the worker. Not RLS-forced: the relay is a cross-tenant system actor.
+model DomainEvent {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  eventName     String    @map("event_name")
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  actorUserId   String?   @map("actor_user_id") @db.Uuid
+  payload       Json
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  processedAt   DateTime? @map("processed_at") @db.Timestamptz(6)
+  attempts      Int       @default(0)
+  lastError     String?   @map("last_error")
+
+  @@index([processedAt, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@map("domain_events")
+}

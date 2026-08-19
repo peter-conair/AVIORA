@@ -1,0 +1,13 @@
+{
+  "name": "@aviora/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "tsconfig",
+    "prettier"
+  ],
+  "exports": {
+    "./tsconfig/base": "./tsconfig/tsconfig.base.json",
+    "./prettier": "./prettier/index.json"
+  }
+}

@@ -1,0 +1,50 @@
+name: aviora
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: aviora_db
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+      POSTGRES_DB: aviora
+      POSTGRES_USER: aviora_owner
+      POSTGRES_PASSWORD: ${AVIORA_DB_OWNER_PASSWORD:-change-me-owner}
+    ports:
+      - '5439:5432' # 5432 on this host belongs to another project's DB
+    volumes:
+      - aviora_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aviora_owner -d aviora']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: aviora_redis
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+    command: ['redis-server', '--requirepass', '${AVIORA_REDIS_PASSWORD:-change-me-redis}']
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a ${AVIORA_REDIS_PASSWORD:-change-me-redis} ping | grep PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: aviora_mailpit
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+    ports:
+      - '8025:8025' # web UI
+      - '1025:1025' # SMTP
+
+volumes:
+  # NEVER remove this volume (docker compose down -v is banned — see docs/18-deployment-architecture.md)
+  aviora_pgdata:

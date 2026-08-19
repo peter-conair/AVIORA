@@ -1,0 +1,14 @@
+{
+  "extends": "@aviora/config/tsconfig/base",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "declaration": false,
+    "outDir": "dist",
+    "baseUrl": "."
+  },
+  "include": ["src", "test", "vitest.integration.config.ts"]
+}

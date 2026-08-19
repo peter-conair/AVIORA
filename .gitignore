@@ -1,0 +1,36 @@
+# deps / build
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# env & secrets — NEVER commit real values
+.env
+.env.*
+!.env.example
+!.env.*.example
+*-service-account.json
+*credential*.json
+*.pem
+*.key
+*.p12
+*.p8
+.aws/
+gha-creds-*.json
+
+# local data / dumps
+*.dump
+*.sql.gz
+mailpit-data/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# test artifacts
+playwright-report/
+test-results/

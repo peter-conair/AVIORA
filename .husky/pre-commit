@@ -1,0 +1,12 @@
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks git --pre-commit --staged --no-banner --redact; then
+    echo "✗ gitleaks blocked this commit"
+    echo "  → false positive? add to .gitleaks.toml [[allowlists]]"
+    echo "  → real secret? ROTATE it before doing anything else"
+    exit 1
+  fi
+else
+  echo "⚠ gitleaks not installed (brew install gitleaks) — CI will still scan"
+fi
+
+pnpm lint-staged

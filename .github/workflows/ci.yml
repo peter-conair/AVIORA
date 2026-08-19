@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: scan for credentials
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  check:
+    name: lint · typecheck · unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run lint typecheck test build
+
+  integration:
+    name: integration (RLS + tenant isolation)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: aviora
+          POSTGRES_USER: aviora_owner
+          POSTGRES_PASSWORD: ci-owner-pw
+        ports:
+          - 5439:5432
+        options: >-
+          --health-cmd "pg_isready -U aviora_owner -d aviora"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      AVIORA_DATABASE_URL: postgresql://aviora_owner:ci-owner-pw@localhost:5439/aviora
+      AVIORA_APP_DATABASE_URL: postgresql://aviora_app:ci-app-pw@localhost:5439/aviora
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @aviora/shared build
+      - run: pnpm --filter @aviora/db build
+      - name: migrate
+        run: pnpm --filter @aviora/db exec prisma migrate deploy
+      - name: app role
+        run: pnpm --filter @aviora/db exec tsx prisma/setup-app-role.ts
+      - name: tenant isolation suite
+        run: pnpm --filter @aviora/api test:integration

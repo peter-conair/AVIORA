@@ -1,0 +1,35 @@
+{
+  "name": "@aviora/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "prettier --check src prisma/seed.ts",
+    "test": "vitest run --passWithNoTests",
+    "db:generate": "prisma generate",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate deploy",
+    "db:migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "db:setup-app-role": "dotenv -e ../../.env -- tsx prisma/setup-app-role.ts"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@aviora/shared": "workspace:*",
+    "@prisma/client": "^6.16.0"
+  },
+  "devDependencies": {
+    "@aviora/config": "workspace:*",
+    "@types/node": "^22.15.0",
+    "argon2": "^0.44.0",
+    "dotenv-cli": "^8.0.0",
+    "prisma": "^6.16.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

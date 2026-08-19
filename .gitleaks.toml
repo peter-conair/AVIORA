@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public-by-design values, templates, and pattern catalogs"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''\.env\..*\.example$''',
+  '''docs/.*\.md$''',
+  '''pnpm-lock\.yaml$''',
+]
+regexes = [
+  '''change-me[0-9a-zA-Z-]*''',
+]

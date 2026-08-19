@@ -1,0 +1,243 @@
+# 13 — Security Architecture
+
+> **Project:** AVIORA — Multi-Tenant Membership, Healthy Living & Growth Operating System
+> **Status:** Approved for MVP · **Last updated:** 2026-08-19
+> **Spec references:** §58 (security), §59 (health data privacy), §60 (audit), §50 (AI knowledge security)
+> **Stack:** NestJS 11 · Next.js 15 · PostgreSQL 17 + Prisma · Redis · Cloudflare R2
+
+---
+
+## 1. Threat Model Summary
+
+The single highest-priority invariant (spec §69): **Tenant A must never access Tenant B data.**
+
+| #   | Threat                                                                   | Impact                                  | Primary mitigations                                                                                                                                   |
+| --- | ------------------------------------------------------------------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Cross-tenant data leak** (IDOR, missing filter, cache bleed)           | Catastrophic — platform trust destroyed | Defense-in-depth §4: RLS + Prisma auto-filter + guard asserts; tenant-isolation test suite in CI; tenant-prefixed cache keys & storage paths          |
+| 2   | Privilege escalation within tenant (member → admin, leader beyond scope) | High                                    | RBAC + scope guards on every route (§3); permission changes audited with before/after; no client-supplied role/tenant ids trusted                     |
+| 3   | Health data exposure to leaders/staff                                    | High — legal (PDPA) + trust             | Consent-grant gate over RBAC (§6); dedicated namespace; field encryption; full audit                                                                  |
+| 4   | Credential/secret leak (API keys, DB creds in repo/logs)                 | High — historical incident class        | Secrets management §7: no plaintext in repo, gitleaks pre-commit + CI mandatory, key restrictions, rotation runbook                                   |
+| 5   | Session/token theft (XSS, replay)                                        | High                                    | HttpOnly refresh cookies, 15-min access tokens, rotation + reuse detection, Redis revocation, CSP                                                     |
+| 6   | Injection (SQLi, NoSQLi, prompt injection into AI)                       | High                                    | Prisma parameterized queries only; zod/class-validator on every endpoint; AI retrieval authorization before retrieval; AI output treated as untrusted |
+| 7   | Abuse of expensive endpoints (AI, exports) → cost blowout                | Medium                                  | Rate limiting tiers + per-tenant AI token budgets + billing alerts                                                                                    |
+| 8   | Webhook forgery (payment, LINE)                                          | Medium                                  | HMAC signature verification before any processing (§9)                                                                                                |
+| 9   | Audit trail tampering / gaps                                             | Medium                                  | Append-only audit table, no UPDATE/DELETE grants, writes in same transaction as mutation                                                              |
+| 10  | Account takeover (credential stuffing, weak passwords)                   | Medium                                  | Argon2id, login rate limits + lockout backoff, breach-password denylist, MFA (Phase 2)                                                                |
+
+---
+
+## 2. Authentication
+
+### 2.1 Password storage
+
+- **Argon2id** (`argon2` package): memory ≥ 64 MiB, iterations ≥ 3, parallelism 4; parameters stored per-hash so they can be raised over time (rehash-on-login).
+- Password policy: min 10 chars, checked against a breached-password list; no forced rotation, no composition silliness.
+- Verification is constant-time; login errors never distinguish "no such user" from "wrong password".
+
+### 2.2 Tokens & sessions
+
+| Artifact           | Properties                                                                                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Access token**   | JWT (ES256), **15 min TTL**. Claims: `sub` (user id), `tid` (tenant id), `sid` (session id), `iat`, `exp`, `jti`. No roles/permissions embedded (fetched server-side, cacheable) |
+| **Refresh token**  | Opaque 256-bit random, **rotated on every use**. Delivered only as cookie: `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`. Server stores only its SHA-256 hash              |
+| **Session record** | Redis: `session:{sid}` → user, tenant, device, ip, refresh-hash, `created_at`, `last_used_at`. TTL = refresh lifetime (30 days sliding)                                          |
+
+**Rotation & reuse detection:** each `POST /auth/refresh` invalidates the presented token
+and issues a new one. Presenting an already-rotated token = theft signal → the whole
+session family is revoked and the event is audited (`SessionReuseDetected`).
+
+**Revocation:** logout deletes `session:{sid}`; the auth guard checks `sid` liveness in
+Redis on every request (O(1)), so revocation takes effect within the current request —
+no waiting out the 15-minute JWT window for revoked sessions.
+
+### 2.3 Roadmap
+
+| Phase   | Capability                                                                     |
+| ------- | ------------------------------------------------------------------------------ |
+| MVP     | Email + password (Argon2id), invitation-token registration, session revocation |
+| Phase 2 | **MFA** (TOTP + recovery codes), **OAuth2/OIDC social login** (Google, LINE)   |
+| Phase 4 | **Enterprise SSO** (SAML / OIDC per tenant), SCIM provisioning                 |
+
+---
+
+## 3. Authorization
+
+Fixed evaluation order on every request (fail fast, fail closed):
+
+```text
+1. authn        — JWT valid, session alive (Redis)
+2. tenant       — resolve tenant (subdomain / custom domain / X-Tenant-ID / tid claim),
+                  verify active TenantMembership, set TenantContext + app.tenant_id
+3. RBAC         — @RequirePermission('team.member.view') against cached permission set
+4. scope        — SELF / DIRECT_TEAM / DESCENDANT_TEAMS / SPECIFIC_TEAMS / TENANT_ALL
+                  resolved via team_closure
+5. entitlement  — tenant plan includes the capability (e.g. ai.coach)
+```
+
+- Implemented as an ordered NestJS guard chain; controllers declare requirements via decorators, never inline checks.
+- Permission sets cached in Redis per `(user_id, tenant_id)`, TTL 5 min, **evicted synchronously** on role/grant/leadership change.
+- `user_id`, `tenant_id`, `member_id` come **only** from the verified token + server-side lookups — never from request body or query.
+- Full matrix and health-data consent semantics: [07-role-permission-matrix.md](./07-role-permission-matrix.md).
+
+---
+
+## 4. Tenant Isolation — Defense in Depth
+
+Three independent layers; any single layer failing must not produce a leak.
+
+### Layer 1 — PostgreSQL Row-Level Security
+
+```sql
+ALTER TABLE member ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON member
+  USING (tenant_id = current_setting('app.tenant_id')::uuid);
+```
+
+- Every tenant-owned table carries `tenant_id uuid NOT NULL` and the policy above.
+- The app connects as a **non-superuser role that does not own the tables** (RLS is not bypassed).
+- `app.tenant_id` is set per transaction: `SET LOCAL app.tenant_id = $1` inside the Prisma interactive transaction / `$extends` wrapper — `SET LOCAL` ensures no leakage across pooled connections.
+- Platform-level jobs use a separate role with explicit, audited `BYPASSRLS`-free policies per table (no blanket bypass).
+
+### Layer 2 — Prisma client extension (auto-filter)
+
+- A Prisma `$extends` query extension injects `where: { tenant_id: ctx.tenantId }` into every query on tenant-owned models and stamps `tenant_id` on every create.
+- `TenantContext` is carried by **nestjs-cls** (AsyncLocalStorage) — no passing tenant ids through method signatures, no ambient globals.
+- Models without `tenant_id` (e.g., `user`, `tenant` itself) are on an explicit allow-list; adding a model to that list requires code review sign-off.
+
+### Layer 3 — Guard asserts & fail-closed context
+
+- The tenant guard **asserts** `TenantContext` is populated before any handler; a request with no resolved tenant on a tenant-scoped route → `403`, never "unfiltered query".
+- Repository base class re-asserts `result.tenant_id === ctx.tenantId` on single-record reads in dev/test (canary; stripped in prod hot paths).
+- **Beyond the DB:** Redis keys are prefixed `t:{tenant_id}:…`; R2 object paths are `/tenants/{tenant_id}/…` (member-private: `/tenants/{tenant_id}/members/{member_id}/…`) with signed URLs only; AI/RAG retrieval filters by tenant + scope **before** vector search (spec §50); analytics queries go through tenant-scoped views.
+- CI runs the **tenant-isolation test suite** (two seeded tenants, every endpoint probed cross-tenant) — a red suite blocks merge.
+
+---
+
+## 5. Encryption
+
+| Surface                    | Mechanism                                                                                                                                                                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| In transit                 | TLS 1.2+ everywhere (Cloudflare edge → origin included); HSTS `max-age=63072000; includeSubDomains`; no plaintext internal hops                                                                                                                                                          |
+| At rest — DB               | Managed PostgreSQL 17 volume encryption (AES-256)                                                                                                                                                                                                                                        |
+| At rest — objects          | Cloudflare R2 server-side encryption; bucket-level access via scoped API tokens only                                                                                                                                                                                                     |
+| At rest — backups          | Encrypted snapshots; restore drills quarterly                                                                                                                                                                                                                                            |
+| **PII fields**             | Application-level **AES-256-GCM** field encryption for high-sensitivity columns (national id, phone, address, health profile fields). Random 96-bit nonce per value; ciphertext stored as `enc:v1:<key_id>:<nonce>:<ct>:<tag>`                                                           |
+| Keys                       | Data-encryption keys live in the **secret manager** (never in DB or repo); `key_id` in the ciphertext envelope enables rotation (re-encrypt lazily on write). **Fail-closed:** if the key is unavailable, reads return an error — never plaintext fallbacks, never silently empty fields |
+| Search on encrypted fields | Blind index (HMAC-SHA256 with a separate index key) for exact-match lookup only                                                                                                                                                                                                          |
+
+---
+
+## 6. Health-Data Privacy (spec §59)
+
+- Dedicated permission namespace: `health.profile.view`, `health.profile.edit`, `health.coach.view` — excluded from wildcards and from all seeded roles beyond `SELF`.
+- **Leaders, managers, admins and owners never see member health data via roles.** The only path is an explicit, revocable, expirable **`HealthDataGrant`** created by the member for a named grantee (full model in doc 07 §7).
+- Guard logic: RBAC pass **AND** active consent grant — both required; failure returns `403 HEALTH_CONSENT_REQUIRED`.
+- Health profile fields are AES-256-GCM encrypted (§5) and every read/write is audited.
+- AI assistants may use a member's health context **only** for that member's own sessions or a consented coach; enforced at retrieval, not post-filtered.
+- Team/tenant dashboards contain no health-derived metrics in MVP.
+
+---
+
+## 7. Secrets Management
+
+- **No plaintext secrets in the repository — ever.** Only `.env.example` with placeholders is committed; `.env*` is gitignored with `!.env.example` negation.
+- Runtime secrets come from the platform secret manager / encrypted environment store; local dev uses `.env.local` (gitignored).
+- **gitleaks is mandatory**: pre-commit hook (blocks commit) **and** CI job (blocks merge), with `.gitleaks.toml` at repo root. `--no-verify` bypasses are prohibited without a written reason in the commit body.
+- Every third-party API key is created **with application + API restrictions before first use**; server keys IP-restricted, browser keys referrer-restricted.
+- Rotation: server-side keys, webhook signing secrets, and JWT signing keys rotate every 90 days (JWTs use `kid`-based key sets so rotation is seamless).
+- If a secret ever touches git history: **rotate first**, restrict the new value, update the secret store, then (optionally) scrub history — in that order.
+
+---
+
+## 8. Rate Limiting & Input Validation
+
+- Rate limiting tiers (auth / read / write / expensive / tenant-global) are defined in [10-api-design.md](./10-api-design.md) §8; enforced in middleware backed by Redis token buckets, keyed `(tenant_id, user_id)` with per-IP pre-auth limits.
+- **Every endpoint validates input** with zod (shared schema package) or class-validator DTOs — no handler receives an unvalidated body, query, or param. Unknown fields are stripped (`whitelist: true`), type coercion is explicit, and validation failures return `400 VALIDATION_FAILED` with field-level `details`.
+- File uploads: content-type sniffing (magic bytes, not extension), size caps, R2-only storage, never served from the app origin.
+- Output encoding: React/Next.js default escaping; no `dangerouslySetInnerHTML` without sanitization (DOMPurify) and review.
+
+---
+
+## 9. Webhook Signature Verification
+
+All inbound webhooks (payment provider, LINE, email events) follow one pattern —
+**verify before touching business logic**:
+
+```ts
+// Nest controller — raw body preserved for this route
+@Post('webhooks/payments')
+handle(@Req() req: RawBodyRequest<Request>) {
+  const signature = req.headers['x-signature'] as string;
+  const expected = createHmac('sha256', config.webhook.paymentSecret)
+    .update(req.rawBody)            // raw bytes, not re-serialized JSON
+    .digest('hex');
+  if (!signature || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    throw new UnauthorizedException('invalid webhook signature'); // audited
+  }
+  // idempotent processing keyed by provider event id; enqueue, return 200 fast
+}
+```
+
+Rules: raw-body HMAC with `timingSafeEqual`; reject on missing/invalid signature and audit
+the attempt; process idempotently by provider event id; verify timestamp freshness
+(±5 min) where the provider supplies one; webhook secrets rotate on the 90-day schedule.
+
+---
+
+## 10. Audit Logging (spec §60)
+
+Append-only `audit_log` table (no UPDATE/DELETE privileges for the app role), written in
+the **same transaction** as the mutation it records.
+
+| Field                       | Notes                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `id`                        | uuid v7                                                                                                            |
+| `tenant_id`                 | nullable only for platform-level actions                                                                           |
+| `user_id`                   | acting authenticated user                                                                                          |
+| `member_id`                 | acting/affected member where applicable                                                                            |
+| `action`                    | verb key, e.g. `team.leader.assign`, `health.grant.revoke`                                                         |
+| `entity_type` / `entity_id` | affected record                                                                                                    |
+| `before` / `after`          | JSONB snapshots (diff-minimized; **encrypted-field values are redacted**, health values never stored in cleartext) |
+| `occurred_at`               | timestamptz                                                                                                        |
+| `ip`                        | client ip (from trusted proxy header chain)                                                                        |
+| `device`                    | user-agent fingerprint summary                                                                                     |
+| `request_id`                | correlates with logs/traces (doc 19)                                                                               |
+
+**Sensitive actions that MUST be audited** (spec §60): membership create/assign/cancel;
+team create/move/merge/archive; leader assignment changes; rank changes (Phase 3);
+compensation & payment actions (Phase 3); **all health-data access, grants and
+revocations**; role & permission changes; tenant configuration changes; auth events
+(login failure bursts, session reuse, impersonation); data exports.
+
+Retention: 2 years hot, then archived to R2 (encrypted, tenant-prefixed). Audit reads are
+exposed via `GET /audit-logs` (permission `audit.view`) — and reading audit logs is itself
+audited for export actions.
+
+---
+
+## 11. OWASP Top 10 Checklist (2021 mapping)
+
+| #   | Risk                           | AVIORA control                                                                                                                                                                            |
+| --- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A01 | Broken Access Control          | Guard chain (authn → tenant → RBAC → scope → entitlement) on every route; RLS backstop; cross-tenant test suite; deny-by-default routes                                                   |
+| A02 | Cryptographic Failures         | TLS everywhere + HSTS; Argon2id; AES-256-GCM field encryption; no home-rolled crypto; keys in secret manager                                                                              |
+| A03 | Injection                      | Prisma parameterized queries only (raw SQL requires review + params); zod/class-validator everywhere; output escaping; AI prompt/context separation                                       |
+| A04 | Insecure Design                | Threat model (§1) maintained; consent-over-RBAC for health data; fail-closed defaults; idempotency on mutations                                                                           |
+| A05 | Security Misconfiguration      | IaC-managed config; security headers (CSP, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy); prod error responses leak nothing; default-deny CORS (known origins only) |
+| A06 | Vulnerable Components          | `pnpm audit` + Renovate in CI; lockfile integrity; no postinstall from unreviewed packages                                                                                                |
+| A07 | Identification & Auth Failures | Rate-limited auth, lockout backoff, breached-password check, session rotation + reuse detection, MFA (Phase 2)                                                                            |
+| A08 | Software & Data Integrity      | Signed webhooks (§9); CI provenance; outbox events immutable; no dynamic code loading                                                                                                     |
+| A09 | Logging & Monitoring Failures  | Structured logs + audit events + alerts (doc 19); auth anomaly alerts; request_id correlation end-to-end                                                                                  |
+| A10 | SSRF                           | No user-supplied URL fetching in MVP; future fetchers use allow-listed hosts + metadata-IP blocklist + egress proxy                                                                       |
+
+---
+
+## 12. Residual Notes
+
+- **Support impersonation** (platform Support role) requires tenant-admin consent flag, is time-boxed (≤ 1 h), banner-visible, and fully audited.
+- **Data export** endpoints are permission-gated, rate-limited, watermarked with requester id, and audited.
+- **PDPA**: member data subject requests (access/erasure) handled via tenant admin tooling; erasure preserves audit integrity by pseudonymization, not row deletion.
+
+Related docs: [07-role-permission-matrix.md](./07-role-permission-matrix.md) · [10-api-design.md](./10-api-design.md) · [19-observability.md](./19-observability.md)
