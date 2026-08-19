@@ -951,3 +951,162 @@ model HealthDataGrant {
   @@index([tenantId, granteeMemberId, revokedAt])
   @@map("health_data_grants")
 }
+
+// ───────────────────────── Phase 2 — Community · Challenges · Gamification ─────────────────────────
+
+model Community {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  teamId     String?  @unique @map("team_id") @db.Uuid
+  code       String
+  name       String
+  description String?
+  visibility String   @default("team")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  posts      Post[]
+  challenges Challenge[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, teamId])
+  @@map("communities")
+}
+
+model Post {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  communityId    String    @map("community_id") @db.Uuid
+  authorMemberId String    @map("author_member_id") @db.Uuid
+  body           String
+  kind           String    @default("post")
+  pinned         Boolean   @default(false)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  community Community  @relation(fields: [communityId], references: [id])
+  comments  Comment[]
+  reactions Reaction[]
+
+  @@index([tenantId, communityId, pinned, createdAt])
+  @@map("posts")
+}
+
+model Comment {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  postId         String    @map("post_id") @db.Uuid
+  authorMemberId String    @map("author_member_id") @db.Uuid
+  body           String
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@index([tenantId, postId, createdAt])
+  @@map("comments")
+}
+
+model Reaction {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  kind      String   @default("like")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@id([postId, memberId, kind])
+  @@index([tenantId, postId])
+  @@map("reactions")
+}
+
+/// A challenge measures progress from data the platform already holds.
+/// `source` names WHERE progress comes from; nothing is tracked twice.
+model Challenge {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  communityId String?  @map("community_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  /// 'habit' | 'course' | 'goal'
+  source      String
+  /// habit code, course id, or null — interpreted per source
+  sourceRef   String?  @map("source_ref")
+  targetValue Int      @map("target_value")
+  startsOn    DateTime @map("starts_on") @db.Date
+  endsOn      DateTime @map("ends_on") @db.Date
+  status      String   @default("open")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  community    Community?             @relation(fields: [communityId], references: [id])
+  participants ChallengeParticipant[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status, endsOn])
+  @@map("challenges")
+}
+
+/// Joining is the consent step. A habit-sourced challenge derives progress from
+/// health data, so a member appears on a leaderboard only because they chose to
+/// join — and only the derived count is ever shared, never the underlying logs.
+model ChallengeParticipant {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  challengeId    String    @map("challenge_id") @db.Uuid
+  memberId       String    @map("member_id") @db.Uuid
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt         DateTime? @map("left_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+
+  @@unique([challengeId, memberId])
+  @@index([tenantId, memberId])
+  @@map("challenge_participants")
+}
+
+/// Points are configuration, not code (spec §38): a tenant decides what an
+/// event is worth, and may award none at all.
+model GamificationRule {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  eventName String   @map("event_name")
+  points    Int      @default(0)
+  badgeCode String?  @map("badge_code")
+  badgeName String?  @map("badge_name")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, eventName])
+  @@map("gamification_rules")
+}
+
+/// Append-only: the ledger explains every point a member holds.
+model PointEntry {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  memberId    String   @map("member_id") @db.Uuid
+  eventName   String   @map("event_name")
+  points      Int
+  referenceId String?  @map("reference_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, memberId, createdAt])
+  @@map("point_entries")
+}
+
+model MemberBadge {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  badgeCode String   @map("badge_code")
+  badgeName String   @map("badge_name")
+  awardedAt DateTime @default(now()) @map("awarded_at") @db.Timestamptz(6)
+
+  @@id([memberId, badgeCode])
+  @@index([tenantId, memberId])
+  @@map("member_badges")
+}

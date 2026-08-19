@@ -22,6 +22,10 @@ export const EVENTS = {
   LeadCreated: 'LeadCreated',
   LeadStageChanged: 'LeadStageChanged',
   FollowUpDue: 'FollowUpDue',
+  HabitLogged: 'HabitLogged',
+  ChallengeJoined: 'ChallengeJoined',
+  ChallengeCompleted: 'ChallengeCompleted',
+  PostPublished: 'PostPublished',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

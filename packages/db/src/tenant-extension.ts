@@ -38,6 +38,20 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'AiConversation',
   'AiMessage',
   'AiUsage',
+  'HealthProfile',
+  'Habit',
+  'HabitLog',
+  'HealthMetric',
+  'HealthDataGrant',
+  'Community',
+  'Post',
+  'Comment',
+  'Reaction',
+  'Challenge',
+  'ChallengeParticipant',
+  'GamificationRule',
+  'PointEntry',
+  'MemberBadge',
 ]);
 
 const LIST_OPS = new Set([

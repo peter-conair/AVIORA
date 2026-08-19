@@ -41,6 +41,15 @@ const TENANT_OWNED_TABLES = [
   'habit_logs',
   'health_metrics',
   'health_data_grants',
+  'communities',
+  'posts',
+  'comments',
+  'reactions',
+  'challenges',
+  'challenge_participants',
+  'gamification_rules',
+  'point_entries',
+  'member_badges',
 ];
 
 /**

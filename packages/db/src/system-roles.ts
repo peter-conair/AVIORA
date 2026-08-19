@@ -39,6 +39,8 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       // actually can. Deliberately not DESCENDANT_TEAMS — leadership confers
       // no health access on its own (spec §59).
       { key: 'health.coach.view', scope: SCOPES.SELF },
+      { key: 'community.view', scope: SCOPES.DESCENDANT_TEAMS },
+      { key: 'community.moderate', scope: SCOPES.DIRECT_TEAM },
     ],
   },
   {
@@ -60,6 +62,11 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       // OWN record; seeing anyone else's needs that member's explicit grant.
       { key: 'health.profile.view', scope: SCOPES.SELF },
       { key: 'health.profile.edit', scope: SCOPES.SELF },
+      // community and challenges are member-level participation
+      { key: 'community.view', scope: SCOPES.DIRECT_TEAM },
+      { key: 'community.post', scope: SCOPES.DIRECT_TEAM },
+      { key: 'challenge.view', scope: SCOPES.SELF },
+      { key: 'challenge.join', scope: SCOPES.SELF },
     ],
   },
 ];

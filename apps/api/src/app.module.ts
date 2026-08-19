@@ -47,6 +47,13 @@ import { HealthController } from './modules/health/health.controller';
 import { HealthService } from './modules/health/health.service';
 import { HealthAccessService } from './modules/health/health-access.service';
 import { FieldEncryptionService } from './common/crypto/field-encryption.service';
+import { CommunityController } from './modules/community/community.controller';
+import { CommunityService } from './modules/community/community.service';
+import { ChallengeController } from './modules/challenge/challenge.controller';
+import { ChallengeService } from './modules/challenge/challenge.service';
+import { GamificationController } from './modules/gamification/gamification.controller';
+import { GamificationService } from './modules/gamification/gamification.service';
+import { GamificationHandlers } from './modules/gamification/gamification.handlers';
 import { AiController } from './modules/ai/ai.controller';
 import { AiService } from './modules/ai/ai.service';
 import { AnthropicProvider } from './modules/ai/anthropic.provider';
@@ -99,6 +106,9 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
     KnowledgeController,
     AiController,
     HealthController,
+    CommunityController,
+    ChallengeController,
+    GamificationController,
   ],
   providers: [
     PrismaService,
@@ -123,6 +133,10 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
     KnowledgeService,
     HealthService,
     HealthAccessService,
+    CommunityService,
+    ChallengeService,
+    GamificationService,
+    GamificationHandlers,
     FieldEncryptionService,
     AiService,
     AnthropicProvider,

@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ERROR_CODES } from '@aviora/shared';
+import { ERROR_CODES, EVENTS } from '@aviora/shared';
+import { appendEvent } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { FieldEncryptionService } from '../../common/crypto/field-encryption.service';
@@ -174,7 +175,7 @@ export class HealthService {
           data: { value: input.value, completed: input.completed ?? true },
         });
       }
-      return tx.habitLog.create({
+      const created = await tx.habitLog.create({
         data: {
           tenantId: this.db.tenantId,
           habitId,
@@ -184,6 +185,18 @@ export class HealthService {
           completed: input.completed ?? true,
         },
       });
+      // The event says a habit was logged; it deliberately carries no value,
+      // no habit name and no metric, so subscribers (points, challenges) never
+      // receive health content (spec §59).
+      await appendEvent(tx, {
+        eventName: EVENTS.HabitLogged,
+        tenantId: this.db.tenantId,
+        aggregateType: 'habit',
+        aggregateId: habitId,
+        actorUserId: null,
+        payload: { memberId, logDate: logDate.toISOString().slice(0, 10) },
+      });
+      return created;
     });
   }
 

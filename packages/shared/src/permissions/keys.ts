@@ -52,6 +52,17 @@ export const PERMISSIONS = {
 
   CRM_PIPELINE_MANAGE: 'crm.pipeline.manage',
 
+  // community
+  COMMUNITY_VIEW: 'community.view',
+  COMMUNITY_POST: 'community.post',
+  COMMUNITY_MODERATE: 'community.moderate',
+
+  // challenges & gamification
+  CHALLENGE_VIEW: 'challenge.view',
+  CHALLENGE_JOIN: 'challenge.join',
+  CHALLENGE_MANAGE: 'challenge.manage',
+  GAMIFICATION_MANAGE: 'gamification.manage',
+
   // notifications
   NOTIFICATION_VIEW: 'notification.view',
 
