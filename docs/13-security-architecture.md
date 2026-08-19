@@ -234,6 +234,35 @@ audited for export actions.
 
 ---
 
+## Health data — the one place roles do not apply (as built)
+
+Every other domain answers "may this role, at this scope, see this record?".
+Health data answers a different question: **did this member share it?**
+
+- `health.profile.view` / `health.profile.edit` are granted at `SELF` scope
+  only. They let a member manage their own record; they never reach anyone else.
+- `health.coach.view` lets a member _ask_ to read someone else's summary. The
+  answer comes from `health_data_grants`, not from a role: a row created by the
+  subject and not revoked. No grant, no access.
+- Leadership confers nothing. A team leader with `DESCENDANT_TEAMS` on every
+  other permission still gets 403 on a member's health data.
+- **There is no admin override.** The tenant owner is refused like anyone else.
+  An override would make the promise to members untrue, so it does not exist —
+  if support ever needs it, it must be built as an explicit, audited, member-
+  visible mechanism, never as a silent role check.
+- A grant is **read-only and revocable**. Writing health data is always
+  self-only; revoking closes access on the next request.
+- Free-text health notes are encrypted at rest (AES-256-GCM, key from the
+  environment). The encryption service **fails closed**: with no key configured
+  it refuses to store rather than writing plaintext.
+- Audit records _that_ health data changed and _who was granted access_, never
+  the contents. `health.profile.update` stores a field count, not the text.
+
+Enforced by `apps/api/src/modules/health/health-access.service.ts`; proven by
+`apps/api/test/e2e/health.e2e.spec.ts`, which asserts the leader, the tenant
+owner and an unrelated member are all refused, that a grant opens read but not
+write, and that revocation closes it immediately.
+
 ## 12. Residual Notes
 
 - **Support impersonation** (platform Support role) requires tenant-admin consent flag, is time-boxed (≤ 1 h), banner-visible, and fully audited.
