@@ -41,6 +41,12 @@ import { CrmController } from './modules/crm/crm.controller';
 import { CrmService } from './modules/crm/crm.service';
 import { CrmScopeService } from './modules/crm/crm-scope.service';
 import { AuditController } from './modules/audit/audit.controller';
+import { KnowledgeController } from './modules/knowledge/knowledge.controller';
+import { KnowledgeService } from './modules/knowledge/knowledge.service';
+import { AiController } from './modules/ai/ai.controller';
+import { AiService } from './modules/ai/ai.service';
+import { AnthropicProvider } from './modules/ai/anthropic.provider';
+import { GroundedProvider } from './modules/ai/grounded.provider';
 
 @Module({
   imports: [
@@ -86,6 +92,8 @@ import { AuditController } from './modules/audit/audit.controller';
     NotificationsController,
     CrmController,
     AuditController,
+    KnowledgeController,
+    AiController,
   ],
   providers: [
     PrismaService,
@@ -107,6 +115,10 @@ import { AuditController } from './modules/audit/audit.controller';
     NotificationsService,
     CrmService,
     CrmScopeService,
+    KnowledgeService,
+    AiService,
+    AnthropicProvider,
+    GroundedProvider,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: EntitlementsGuard },

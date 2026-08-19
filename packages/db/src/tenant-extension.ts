@@ -31,6 +31,13 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'Interaction',
   'Notification',
   'NotificationPreference',
+  // AI records are strictly tenant-owned. Knowledge tables are deliberately
+  // absent: their rows may be GLOBAL (tenant_id NULL) and are gated by their
+  // own layered RLS policy, so auto-injecting tenant_id would hide global
+  // knowledge from every tenant.
+  'AiConversation',
+  'AiMessage',
+  'AiUsage',
 ]);
 
 const LIST_OPS = new Set([

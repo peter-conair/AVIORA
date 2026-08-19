@@ -623,3 +623,232 @@ model ProcessedEvent {
   @@id([eventId, handler])
   @@map("processed_events")
 }
+
+// ───────────────────────── Sprint 4 — knowledge graph · AI ─────────────────────────
+// Knowledge is layered (spec §29): tenant_id NULL = GLOBAL knowledge readable by
+// every tenant; tenant_id set = that tenant's own knowledge. RLS policies for
+// these tables therefore read `tenant_id IS NULL OR tenant_id = app.tenant_id`,
+// while writes still require a matching tenant_id.
+
+model HealthGoal {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  topics HealthGoalTopic[]
+
+  @@map("health_goals")
+}
+
+model Topic {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  summary   String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  healthGoals HealthGoalTopic[]
+  ingredients TopicIngredient[]
+  articles    ArticleTopic[]
+
+  @@map("topics")
+}
+
+model HealthGoalTopic {
+  healthGoalId String @map("health_goal_id") @db.Uuid
+  topicId      String @map("topic_id") @db.Uuid
+
+  healthGoal HealthGoal @relation(fields: [healthGoalId], references: [id])
+  topic      Topic      @relation(fields: [topicId], references: [id])
+
+  @@id([healthGoalId, topicId])
+  @@map("health_goal_topics")
+}
+
+model Ingredient {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  summary     String?
+  safetyNotes String?  @map("safety_notes")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  topics    TopicIngredient[]
+  articles  ArticleIngredient[]
+  products  ProductIngredient[]
+  evidence  EvidenceReference[]
+
+  @@map("ingredients")
+}
+
+model TopicIngredient {
+  topicId      String @map("topic_id") @db.Uuid
+  ingredientId String @map("ingredient_id") @db.Uuid
+
+  topic      Topic      @relation(fields: [topicId], references: [id])
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@id([topicId, ingredientId])
+  @@map("topic_ingredients")
+}
+
+model EvidenceReference {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  tenantId     String?   @map("tenant_id") @db.Uuid
+  ingredientId String    @map("ingredient_id") @db.Uuid
+  title        String
+  source       String?
+  url          String?
+  summary      String?
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([ingredientId])
+  @@map("evidence_references")
+}
+
+model Article {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  slug        String
+  title       String
+  summary     String?
+  body        String
+  status      String   @default("published")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  topics      ArticleTopic[]
+  ingredients ArticleIngredient[]
+
+  @@map("articles")
+}
+
+model ArticleTopic {
+  articleId String @map("article_id") @db.Uuid
+  topicId   String @map("topic_id") @db.Uuid
+
+  article Article @relation(fields: [articleId], references: [id])
+  topic   Topic   @relation(fields: [topicId], references: [id])
+
+  @@id([articleId, topicId])
+  @@map("article_topics")
+}
+
+model ArticleIngredient {
+  articleId    String @map("article_id") @db.Uuid
+  ingredientId String @map("ingredient_id") @db.Uuid
+
+  article    Article    @relation(fields: [articleId], references: [id])
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@id([articleId, ingredientId])
+  @@map("article_ingredients")
+}
+
+/// Brands are data, never code (spec §31): a second brand is rows, not a schema change.
+model Brand {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String?   @map("tenant_id") @db.Uuid
+  brandId        String    @map("brand_id") @db.Uuid
+  code           String
+  name           String
+  description    String?
+  sourceUrl      String?   @map("source_url")
+  lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(6)
+  safetyNotes    String?   @map("safety_notes")
+  status         String    @default("active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  brand       Brand               @relation(fields: [brandId], references: [id])
+  ingredients ProductIngredient[]
+
+  @@index([brandId])
+  @@map("products")
+}
+
+model ProductIngredient {
+  productId    String @map("product_id") @db.Uuid
+  ingredientId String @map("ingredient_id") @db.Uuid
+
+  product    Product    @relation(fields: [productId], references: [id])
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@id([productId, ingredientId])
+  @@map("product_ingredients")
+}
+
+// ── AI (docs/12) ──
+
+model AiConversation {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  agent     String   @default("basic-assistant")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  messages AiMessage[]
+
+  @@index([tenantId, memberId, updatedAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  role           String
+  content        String
+  citations      Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id])
+
+  @@index([tenantId, conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+model AiUsage {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  memberId     String   @map("member_id") @db.Uuid
+  usageDate    DateTime @map("usage_date") @db.Date
+  provider     String
+  model        String
+  requests     Int      @default(0)
+  inputTokens  Int      @default(0) @map("input_tokens")
+  outputTokens Int      @default(0) @map("output_tokens")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, memberId, usageDate])
+  @@index([tenantId, usageDate])
+  @@map("ai_usage")
+}

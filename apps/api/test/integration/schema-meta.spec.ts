@@ -33,6 +33,24 @@ const TENANT_OWNED_TABLES = [
   'interactions',
   'notifications',
   'notification_preferences',
+  'ai_conversations',
+  'ai_messages',
+  'ai_usage',
+];
+
+/**
+ * Knowledge tables are LAYERED, not strictly tenant-owned: tenant_id NULL means
+ * global knowledge every tenant may read. They carry the same policy name but a
+ * different USING clause, and their tenant_id is deliberately nullable.
+ */
+const LAYERED_KNOWLEDGE_TABLES = [
+  'health_goals',
+  'topics',
+  'ingredients',
+  'evidence_references',
+  'articles',
+  'brands',
+  'products',
 ];
 
 let owner: PrismaClient;
@@ -58,8 +76,10 @@ describe('schema meta', () => {
       { relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }[]
     >`
       SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class
-      WHERE relname = ANY(${TENANT_OWNED_TABLES}) AND relkind = 'r'`;
-    expect(rows.map((r) => r.relname).sort()).toEqual([...TENANT_OWNED_TABLES].sort());
+      WHERE relname = ANY(${[...TENANT_OWNED_TABLES, ...LAYERED_KNOWLEDGE_TABLES]}) AND relkind = 'r'`;
+    expect(rows.map((r) => r.relname).sort()).toEqual(
+      [...TENANT_OWNED_TABLES, ...LAYERED_KNOWLEDGE_TABLES].sort(),
+    );
     for (const r of rows) {
       expect(r.relrowsecurity, `${r.relname} must ENABLE RLS`).toBe(true);
       expect(r.relforcerowsecurity, `${r.relname} must FORCE RLS`).toBe(true);
@@ -70,7 +90,9 @@ describe('schema meta', () => {
     const rows = await owner.$queryRaw<{ tablename: string }[]>`
       SELECT tablename FROM pg_policies
       WHERE schemaname = 'public' AND policyname = 'tenant_isolation'`;
-    expect(rows.map((r) => r.tablename).sort()).toEqual([...TENANT_OWNED_TABLES].sort());
+    expect(rows.map((r) => r.tablename).sort()).toEqual(
+      [...TENANT_OWNED_TABLES, ...LAYERED_KNOWLEDGE_TABLES].sort(),
+    );
   });
 
   it('every tenant-owned table has a NOT NULL tenant_id uuid column', async () => {
@@ -84,6 +106,22 @@ describe('schema meta', () => {
     const names = rows.map((r) => r.table_name);
     for (const t of mustBeNotNull) {
       expect(names, `${t}.tenant_id must be NOT NULL uuid`).toContain(t);
+    }
+  });
+});
+
+describe('layered knowledge policies', () => {
+  it('lets every tenant read global rows but never write them', async () => {
+    const rows = await owner.$queryRaw<{ tablename: string; qual: string; withcheck: string }[]>`
+      SELECT tablename, qual, with_check AS withcheck FROM pg_policies
+      WHERE schemaname = 'public' AND policyname = 'tenant_isolation'
+        AND tablename = ANY(${LAYERED_KNOWLEDGE_TABLES})`;
+    expect(rows).toHaveLength(LAYERED_KNOWLEDGE_TABLES.length);
+    for (const r of rows) {
+      // readable when global OR owned by the caller's tenant …
+      expect(r.qual, `${r.tablename} USING`).toMatch(/tenant_id IS NULL/i);
+      // … but writes must always name the caller's tenant
+      expect(r.withcheck, `${r.tablename} WITH CHECK`).not.toMatch(/IS NULL/i);
     }
   });
 });
