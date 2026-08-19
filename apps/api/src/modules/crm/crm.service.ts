@@ -44,14 +44,21 @@ export class CrmService {
 
   /** Stages for the tenant; seeds the default pipeline on first read. */
   async stages() {
-    return this.db.tx(async (tx) => {
-      const existing = await tx.pipelineStage.findMany({ orderBy: { order: 'asc' } });
-      if (existing.length > 0) return existing;
-      await tx.pipelineStage.createMany({
-        data: DEFAULT_STAGES.map((s) => ({ ...s, tenantId: this.db.tenantId })),
-      });
-      return tx.pipelineStage.findMany({ orderBy: { order: 'asc' } });
+    return this.db.tx((tx) => this.ensureStages(tx));
+  }
+
+  /**
+   * Every CRM entry point goes through this: a tenant that has never opened
+   * the stage editor still gets a working pipeline (board, lead creation,
+   * summary) instead of an empty screen.
+   */
+  private async ensureStages(tx: Tx) {
+    const existing = await tx.pipelineStage.findMany({ orderBy: { order: 'asc' } });
+    if (existing.length > 0) return existing;
+    await tx.pipelineStage.createMany({
+      data: DEFAULT_STAGES.map((s) => ({ ...s, tenantId: this.db.tenantId })),
     });
+    return tx.pipelineStage.findMany({ orderBy: { order: 'asc' } });
   }
 
   async createStage(input: {
@@ -131,8 +138,8 @@ export class CrmService {
     const lead = await this.db.tx(async (tx) => {
       let stageId = input.stageId ?? null;
       if (!stageId) {
-        const first = await tx.pipelineStage.findFirst({ orderBy: { order: 'asc' } });
-        stageId = first?.id ?? null;
+        const stages = await this.ensureStages(tx);
+        stageId = stages[0]?.id ?? null;
       }
       const created = await tx.lead.create({
         data: {
@@ -381,7 +388,7 @@ export class CrmService {
       const owners = await this.scope.ownerMemberIds(tx, actor, PERMISSIONS.CRM_LEAD_VIEW);
       const where = this.scope.whereOwner(owners);
       const [stages, grouped, customers, openFollowUps] = await Promise.all([
-        tx.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
+        this.ensureStages(tx),
         tx.lead.groupBy({ by: ['stageId'], where: { ...where, status: 'open' }, _count: true }),
         tx.customer.count({ where }),
         tx.followUp.count({ where: { ...where, status: 'open' } }),

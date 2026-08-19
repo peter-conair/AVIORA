@@ -333,6 +333,186 @@ export interface LessonCompleteResponse {
   progress: CourseProgress;
 }
 
+// ---- CRM ----
+
+export interface CrmStage {
+  id: string;
+  code: string;
+  name: string;
+  order: number;
+  isTerminal?: boolean;
+  isWon?: boolean;
+}
+
+export interface CrmStagesResponse {
+  stages: CrmStage[];
+}
+
+export interface CrmPipelineStage {
+  id: string;
+  code: string;
+  name: string;
+  order: number;
+  openLeads: number;
+}
+
+export interface CrmPipelineResponse {
+  stages: CrmPipelineStage[];
+  customers: number;
+  openFollowUps: number;
+}
+
+export const CRM_LEAD_STATUSES = ['open', 'lost', 'converted'] as const;
+export type CrmLeadStatus = (typeof CRM_LEAD_STATUSES)[number];
+
+export const CRM_CHANNELS = ['note', 'call', 'meeting', 'email', 'line', 'chat'] as const;
+export type CrmChannel = (typeof CRM_CHANNELS)[number];
+
+export interface CrmLead {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  notes: string | null;
+  status: string;
+  stageId: string | null;
+  ownerMemberId: string | null;
+  lastContactAt: string | null;
+  convertedCustomerId: string | null;
+  createdAt: string;
+  stage: { code: string; name: string; order: number } | null;
+}
+
+export interface CrmLeadsResponse {
+  leads: CrmLead[];
+}
+
+export interface CrmLeadResponse {
+  lead: CrmLead;
+}
+
+export interface CrmFollowUp {
+  id: string;
+  title: string;
+  dueAt: string;
+  status: string;
+  notes: string | null;
+  completedAt: string | null;
+}
+
+export interface CrmInteraction {
+  id: string;
+  summary: string;
+  channel: string;
+  occurredAt: string;
+  actorMemberId: string | null;
+}
+
+export interface CrmLeadDetail extends CrmLead {
+  followUps: CrmFollowUp[];
+  interactions: CrmInteraction[];
+}
+
+export interface CrmLeadDetailResponse {
+  lead: CrmLeadDetail;
+}
+
+export interface CrmCustomer {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  convertedFromLeadId: string | null;
+  createdAt: string;
+}
+
+export interface CrmCustomersResponse {
+  customers: CrmCustomer[];
+}
+
+/** A follow-up as returned by the standalone list — carries its related record. */
+export interface CrmFollowUpEntry extends CrmFollowUp {
+  lead: { id: string; name: string } | null;
+  customer: { id: string; name: string } | null;
+}
+
+export interface CrmFollowUpsResponse {
+  followUps: CrmFollowUpEntry[];
+}
+
+/** A follow-up is overdue when it is still open and its due date has passed. */
+export function isOverdue(followUp: Pick<CrmFollowUp, 'dueAt' | 'status'>): boolean {
+  if (followUp.status.toLowerCase() === 'completed') return false;
+  const due = new Date(followUp.dueAt);
+  return !Number.isNaN(due.getTime()) && due.getTime() < Date.now();
+}
+
+// ---- Notifications ----
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: AppNotification[];
+  unreadCount: number;
+}
+
+export interface NotificationPreference {
+  id?: string;
+  type: string;
+  inApp: boolean;
+  email: boolean;
+}
+
+export interface NotificationPreferencesResponse {
+  preferences: NotificationPreference[];
+}
+
+export interface NotificationPreferenceResponse {
+  preference: NotificationPreference;
+}
+
+/** Types the settings page exposes, with their message key under `notificationSettings.types`. */
+export const NOTIFICATION_TYPES: { type: string; messageKey: string }[] = [
+  { type: 'membership.activated', messageKey: 'membershipActivated' },
+  { type: 'team.joined', messageKey: 'teamJoined' },
+  { type: 'team.leader.assigned', messageKey: 'teamLeaderAssigned' },
+  { type: 'crm.customer.converted', messageKey: 'crmCustomerConverted' },
+];
+
+// ---- Audit ----
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  userId: string | null;
+  memberId: string | null;
+  before: unknown;
+  after: unknown;
+  requestId: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogsResponse {
+  auditLogs: AuditLogEntry[];
+  nextCursor: string | null;
+}
+
+export interface AuditActionsResponse {
+  actions: { action: string; count: number }[];
+}
+
 // ---- Dashboard ----
 
 export interface DashboardResponse {

@@ -18,11 +18,130 @@
       "dashboard": "Dashboard",
       "goals": "Goals",
       "learning": "Learning",
+      "crm": "CRM",
+      "followUps": "Follow-ups",
       "teams": "Organization",
       "leader": "My organization",
       "admin": "Admin",
       "platform": "Platform"
     }
+  },
+  "notifications": {
+    "bell": "Notifications",
+    "title": "Notifications",
+    "close": "Close notifications",
+    "unreadCount": "Notifications — {count} unread",
+    "empty": "No notifications yet.",
+    "unavailable": "Notifications are outside your authorized scope.",
+    "markAllRead": "Mark all read",
+    "preferences": "Notification settings"
+  },
+  "notificationSettings": {
+    "title": "Notification settings",
+    "hint": "Choose how you want to be notified about each event.",
+    "forbidden": "Notification settings are outside your authorized scope.",
+    "inApp": "In-app",
+    "email": "Email",
+    "types": {
+      "membershipActivated": "Membership activated",
+      "teamJoined": "Added to a team",
+      "teamLeaderAssigned": "Assigned as a team leader",
+      "crmCustomerConverted": "Lead converted to customer"
+    }
+  },
+  "crm": {
+    "title": "CRM",
+    "forbidden": "CRM is outside your authorized scope.",
+    "tabs": {
+      "pipeline": "Pipeline",
+      "leads": "Leads",
+      "customers": "Customers"
+    },
+    "summary": {
+      "openLeads": "Open leads",
+      "customers": "Customers",
+      "openFollowUps": "Open follow-ups"
+    },
+    "status": {
+      "open": "Open",
+      "lost": "Lost",
+      "converted": "Converted"
+    },
+    "pipeline": {
+      "empty": "No pipeline stages yet.",
+      "noLeads": "No leads in this stage.",
+      "openLeads": "{count} open",
+      "lastContact": "Last contact {date}",
+      "noContact": "No contact yet"
+    },
+    "leads": {
+      "formTitle": "New lead",
+      "listTitle": "Leads",
+      "empty": "No leads yet. Create one with the form above.",
+      "select": "Select a lead to see its details.",
+      "close": "Close",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "source": "Source",
+      "sourcePlaceholder": "e.g. Facebook, referral",
+      "notes": "Notes",
+      "stage": "Stage",
+      "noStage": "No stage",
+      "submit": "Add lead",
+      "filterStatus": "Filter by status",
+      "statusAll": "All statuses",
+      "created": "Created {date}",
+      "convert": "Convert to customer",
+      "converted": "Converted",
+      "convertedHint": "This lead is already a customer.",
+      "markLost": "Mark lost"
+    },
+    "followUps": {
+      "title": "Follow-ups",
+      "empty": "No follow-ups for this lead yet.",
+      "titleLabel": "Title",
+      "dueAt": "Due at",
+      "submit": "Add follow-up",
+      "due": "Due {date}",
+      "overdue": "Overdue"
+    },
+    "interactions": {
+      "title": "Interactions",
+      "empty": "No interactions logged yet.",
+      "channel": "Channel",
+      "summary": "Summary",
+      "submit": "Log interaction",
+      "channels": {
+        "note": "Note",
+        "call": "Call",
+        "meeting": "Meeting",
+        "email": "Email",
+        "line": "LINE",
+        "chat": "Chat"
+      }
+    },
+    "customers": {
+      "title": "Customers",
+      "empty": "No customers yet.",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "status": "Status",
+      "created": "Created"
+    }
+  },
+  "followUpsPage": {
+    "title": "My follow-ups",
+    "empty": "No follow-ups right now. Nice work!",
+    "forbidden": "Follow-ups are outside your authorized scope.",
+    "showCompleted": "Show completed too",
+    "due": "Due {date}",
+    "overdue": "Overdue",
+    "complete": "Complete",
+    "completed": "Completed {date}",
+    "relatedLead": "Lead: {name}",
+    "relatedCustomer": "Customer: {name}"
   },
   "auth": {
     "title": "Sign in to your account",
@@ -169,7 +288,8 @@
       "plans": "Plans",
       "invitations": "Invitations",
       "teams": "Teams",
-      "members": "Members"
+      "members": "Members",
+      "audit": "Audit"
     },
     "plans": {
       "listTitle": "Membership plans",
@@ -232,6 +352,24 @@
       "roles": "Roles",
       "status": "Status",
       "joined": "Joined"
+    },
+    "audit": {
+      "title": "Audit log",
+      "forbidden": "The audit log is outside your authorized scope.",
+      "empty": "No audit entries yet.",
+      "action": "Action",
+      "allActions": "All actions",
+      "actionWithCount": "{action} ({count})",
+      "time": "Time",
+      "entityType": "Entity",
+      "entityId": "Entity ID",
+      "requestId": "Request ID",
+      "details": "Details",
+      "show": "Show",
+      "hide": "Hide",
+      "before": "Before",
+      "after": "After",
+      "loadMore": "Load more"
     }
   },
   "platform": {

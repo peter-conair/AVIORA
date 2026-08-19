@@ -16,6 +16,11 @@ export class ApiError extends Error {
   }
 }
 
+/** True when the error means "out of the caller's authorized scope". */
+export function isForbidden(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 403 || err.code === 'FORBIDDEN');
+}
+
 export function getTenantId(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(TENANT_STORAGE_KEY);

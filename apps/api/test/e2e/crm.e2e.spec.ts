@@ -174,6 +174,13 @@ afterAll(async () => {
 });
 
 describe('Sprint 3 — CRM pipeline', () => {
+  it('seeds the default pipeline from the summary endpoint too (empty-screen guard)', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/crm/pipeline', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+    expect(res.body.stages.length).toBeGreaterThanOrEqual(5);
+  });
+
   it('seeds a default pipeline on first read and allows custom stages', async () => {
     const seller = await login(`seller-${RUN}@test.local`);
     const res = await api('/api/v1/crm/stages', { token: seller, tenant: tenantId });

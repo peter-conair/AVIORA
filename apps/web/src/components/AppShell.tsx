@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { api, getTenantId, setTenantId } from '@/lib/api-client';
 import { isPlatformAdmin, type AuthUser, type MeResponse, type TenantSummary } from '@/lib/types';
+import { NotificationBell } from '@/components/NotificationBell';
 
 interface AppShellProps {
   children: ReactNode;
@@ -12,13 +13,24 @@ interface AppShellProps {
 
 interface NavItem {
   href: string;
-  key: 'dashboard' | 'goals' | 'learning' | 'teams' | 'leader' | 'admin' | 'platform';
+  key:
+    | 'dashboard'
+    | 'goals'
+    | 'learning'
+    | 'crm'
+    | 'followUps'
+    | 'teams'
+    | 'leader'
+    | 'admin'
+    | 'platform';
 }
 
 const BASE_NAV: NavItem[] = [
   { href: '/dashboard', key: 'dashboard' },
   { href: '/goals', key: 'goals' },
   { href: '/learning', key: 'learning' },
+  { href: '/crm', key: 'crm' },
+  { href: '/follow-ups', key: 'followUps' },
   { href: '/teams', key: 'teams' },
   { href: '/leader', key: 'leader' },
   { href: '/admin', key: 'admin' },
@@ -92,6 +104,7 @@ export function AppShell({ children }: AppShellProps) {
             AVIORA
           </Link>
           <div className="ml-auto flex items-center gap-2">
+            {user ? <NotificationBell /> : null}
             {tenants.length > 0 ? (
               <select
                 aria-label={t('tenant')}
