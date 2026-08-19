@@ -35,6 +35,12 @@ import { GoalsController } from './modules/goal/goals.controller';
 import { LearningController } from './modules/learning/learning.controller';
 import { DashboardController } from './modules/analytics/dashboard.controller';
 import { NotificationHandlers } from './modules/notification/notification.handlers';
+import { NotificationsController } from './modules/notification/notifications.controller';
+import { NotificationsService } from './modules/notification/notifications.service';
+import { CrmController } from './modules/crm/crm.controller';
+import { CrmService } from './modules/crm/crm.service';
+import { CrmScopeService } from './modules/crm/crm-scope.service';
+import { AuditController } from './modules/audit/audit.controller';
 
 @Module({
   imports: [
@@ -77,6 +83,9 @@ import { NotificationHandlers } from './modules/notification/notification.handle
     GoalsController,
     LearningController,
     DashboardController,
+    NotificationsController,
+    CrmController,
+    AuditController,
   ],
   providers: [
     PrismaService,
@@ -95,6 +104,9 @@ import { NotificationHandlers } from './modules/notification/notification.handle
     TeamsService,
     TeamScopeService,
     NotificationHandlers,
+    NotificationsService,
+    CrmService,
+    CrmScopeService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: EntitlementsGuard },

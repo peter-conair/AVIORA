@@ -32,6 +32,9 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'team.analytics.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'team.member.manage', scope: SCOPES.DIRECT_TEAM },
       { key: 'member.view', scope: SCOPES.DESCENDANT_TEAMS },
+      // leaders coach their org's pipeline but do not own the records
+      { key: 'crm.lead.view', scope: SCOPES.DESCENDANT_TEAMS },
+      { key: 'crm.customer.view', scope: SCOPES.DESCENDANT_TEAMS },
     ],
   },
   {
@@ -43,6 +46,12 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'learning.view', scope: SCOPES.SELF },
       { key: 'ai.assistant.use', scope: SCOPES.SELF },
       { key: 'team.view', scope: SCOPES.DIRECT_TEAM },
+      { key: 'notification.view', scope: SCOPES.SELF },
+      // CRM is a member-level tool: each member works their own book.
+      { key: 'crm.lead.view', scope: SCOPES.SELF },
+      { key: 'crm.lead.manage', scope: SCOPES.SELF },
+      { key: 'crm.customer.view', scope: SCOPES.SELF },
+      { key: 'crm.customer.manage', scope: SCOPES.SELF },
     ],
   },
 ];

@@ -26,6 +26,13 @@ const TENANT_OWNED_TABLES = [
   'courses',
   'lessons',
   'learning_progress',
+  'pipeline_stages',
+  'leads',
+  'customers',
+  'follow_ups',
+  'interactions',
+  'notifications',
+  'notification_preferences',
 ];
 
 let owner: PrismaClient;

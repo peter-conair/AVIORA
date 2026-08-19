@@ -24,6 +24,13 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'Course',
   'Lesson',
   'LearningProgress',
+  'PipelineStage',
+  'Lead',
+  'Customer',
+  'FollowUp',
+  'Interaction',
+  'Notification',
+  'NotificationPreference',
 ]);
 
 const LIST_OPS = new Set([

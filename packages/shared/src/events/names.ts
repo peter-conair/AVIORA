@@ -19,6 +19,9 @@ export const EVENTS = {
   CourseStarted: 'CourseStarted',
   CourseCompleted: 'CourseCompleted',
   CustomerConverted: 'CustomerConverted',
+  LeadCreated: 'LeadCreated',
+  LeadStageChanged: 'LeadStageChanged',
+  FollowUpDue: 'FollowUpDue',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

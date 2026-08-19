@@ -471,3 +471,143 @@ model LearningProgress {
   @@index([tenantId, memberId])
   @@map("learning_progress")
 }
+
+// ───────────────────────── Sprint 3 — CRM · notifications · audit ─────────────────────────
+
+/// Tenant-configurable CRM pipeline (spec §34) — never hard-code stages.
+model PipelineStage {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  code       String
+  name       String
+  order      Int
+  isTerminal Boolean  @default(false) @map("is_terminal")
+  isWon      Boolean  @default(false) @map("is_won")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  leads Lead[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, order])
+  @@map("pipeline_stages")
+}
+
+model Lead {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  ownerMemberId String   @map("owner_member_id") @db.Uuid
+  stageId      String?   @map("stage_id") @db.Uuid
+  name         String
+  email        String?
+  phone        String?
+  source       String?
+  notes        String?
+  status       String    @default("open")
+  convertedCustomerId String? @map("converted_customer_id") @db.Uuid
+  convertedAt  DateTime? @map("converted_at") @db.Timestamptz(6)
+  lastContactAt DateTime? @map("last_contact_at") @db.Timestamptz(6)
+  metadata     Json?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  stage         PipelineStage? @relation(fields: [stageId], references: [id])
+  followUps     FollowUp[]
+  interactions  Interaction[]
+
+  @@index([tenantId, ownerMemberId, status])
+  @@index([tenantId, stageId])
+  @@map("leads")
+}
+
+model Customer {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  ownerMemberId String   @map("owner_member_id") @db.Uuid
+  memberId      String?  @map("member_id") @db.Uuid
+  name          String
+  email         String?
+  phone         String?
+  status        String   @default("active")
+  convertedFromLeadId String? @map("converted_from_lead_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  followUps    FollowUp[]
+  interactions Interaction[]
+
+  @@index([tenantId, ownerMemberId, status])
+  @@map("customers")
+}
+
+model FollowUp {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  ownerMemberId String    @map("owner_member_id") @db.Uuid
+  leadId        String?   @map("lead_id") @db.Uuid
+  customerId    String?   @map("customer_id") @db.Uuid
+  title         String
+  notes         String?
+  dueAt         DateTime  @map("due_at") @db.Timestamptz(6)
+  status        String    @default("open")
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lead     Lead?     @relation(fields: [leadId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId, ownerMemberId, status, dueAt])
+  @@map("follow_ups")
+}
+
+model Interaction {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  actorMemberId String   @map("actor_member_id") @db.Uuid
+  leadId        String?  @map("lead_id") @db.Uuid
+  customerId    String?  @map("customer_id") @db.Uuid
+  channel       String   @default("note")
+  summary       String
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  lead     Lead?     @relation(fields: [leadId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId, leadId, occurredAt])
+  @@index([tenantId, customerId, occurredAt])
+  @@map("interactions")
+}
+
+model Notification {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  memberId  String    @map("member_id") @db.Uuid
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, memberId, readAt, createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  type      String
+  inApp     Boolean  @default(true) @map("in_app")
+  email     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([memberId, type])
+  @@index([tenantId, memberId])
+  @@map("notification_preferences")
+}

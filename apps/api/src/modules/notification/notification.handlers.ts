@@ -3,6 +3,7 @@ import { EVENTS } from '@aviora/shared';
 import { EventBus } from '../../common/events/event-bus';
 import { EmailService } from '../../common/email/email.service';
 import { PrismaService } from '../../common/db/prisma.service';
+import { NotificationsService } from './notifications.service';
 
 interface InvitedPayload {
   email: string;
@@ -25,6 +26,7 @@ export class NotificationHandlers implements OnModuleInit {
     private readonly bus: EventBus,
     private readonly email: EmailService,
     private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   onModuleInit() {
@@ -49,6 +51,57 @@ export class NotificationHandlers implements OnModuleInit {
       });
       await this.email.send(p.email, subject, html);
       this.logger.log(`welcome email sent to ${p.email}`);
+    });
+
+    // ── in-app notifications (Sprint 3 notification center) ──
+    this.bus.on(EVENTS.MembershipActivated, async (event) => {
+      const p = event.payload as ActivatedPayload;
+      if (!event.tenantId) return;
+      await this.notifications.deliver({
+        tenantId: event.tenantId,
+        memberId: p.memberId,
+        type: 'membership.activated',
+        title: `Welcome to ${await this.tenantName(event.tenantId)}`,
+        body: 'Your membership is active. Start with your goals and first course.',
+        link: '/dashboard',
+      });
+    });
+
+    this.bus.on(EVENTS.MemberJoinedTeam, async (event) => {
+      const p = event.payload as { memberId: string };
+      if (!event.tenantId) return;
+      await this.notifications.deliver({
+        tenantId: event.tenantId,
+        memberId: p.memberId,
+        type: 'team.joined',
+        title: 'You joined a team',
+        link: '/teams',
+      });
+    });
+
+    this.bus.on(EVENTS.LeaderAssigned, async (event) => {
+      const p = event.payload as { memberId: string; leadershipRole: string };
+      if (!event.tenantId) return;
+      await this.notifications.deliver({
+        tenantId: event.tenantId,
+        memberId: p.memberId,
+        type: 'team.leader.assigned',
+        title: 'You were assigned as a team leader',
+        body: p.leadershipRole,
+        link: '/leader',
+      });
+    });
+
+    this.bus.on(EVENTS.CustomerConverted, async (event) => {
+      const p = event.payload as { ownerMemberId: string; name: string };
+      if (!event.tenantId) return;
+      await this.notifications.deliver({
+        tenantId: event.tenantId,
+        memberId: p.ownerMemberId,
+        type: 'crm.customer.converted',
+        title: `${p.name} became a customer`,
+        link: '/crm',
+      });
     });
   }
 

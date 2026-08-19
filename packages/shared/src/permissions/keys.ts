@@ -50,6 +50,11 @@ export const PERMISSIONS = {
   CRM_CUSTOMER_VIEW: 'crm.customer.view',
   CRM_CUSTOMER_MANAGE: 'crm.customer.manage',
 
+  CRM_PIPELINE_MANAGE: 'crm.pipeline.manage',
+
+  // notifications
+  NOTIFICATION_VIEW: 'notification.view',
+
   // ai
   AI_ASSISTANT_USE: 'ai.assistant.use',
 
