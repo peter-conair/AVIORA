@@ -36,6 +36,11 @@ const TENANT_OWNED_TABLES = [
   'ai_conversations',
   'ai_messages',
   'ai_usage',
+  'health_profiles',
+  'habits',
+  'habit_logs',
+  'health_metrics',
+  'health_data_grants',
 ];
 
 /**

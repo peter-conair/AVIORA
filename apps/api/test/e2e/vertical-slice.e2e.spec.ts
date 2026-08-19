@@ -367,6 +367,54 @@ describe('Slice 1 — permission & entitlement gates', () => {
     expect(start.body.error.code).toBe('ENTITLEMENT_REQUIRED');
   });
 
+  it('rotates refresh tokens, and reuse of an old one kills the family', async () => {
+    // This path had no test and was broken in production: the rotation wrote a
+    // truncated hash into a uuid column, so every refresh 500'd once an access
+    // token expired.
+    const loginRes = await fetch(`${base}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: `pong-${RUN}@test.local`, password: PW }),
+    });
+    expect(loginRes.status).toBe(200);
+    const firstRefresh = loginRes.headers
+      .getSetCookie()
+      .find((c) => c.startsWith('aviora_refresh='))!
+      .split(';')[0]!
+      .split('=')[1]!;
+
+    const rotated = await fetch(`${base}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { cookie: `aviora_refresh=${firstRefresh}` },
+    });
+    expect(rotated.status).toBe(200);
+    const secondRefresh = rotated.headers
+      .getSetCookie()
+      .find((c) => c.startsWith('aviora_refresh='))!
+      .split(';')[0]!
+      .split('=')[1]!;
+    expect(secondRefresh).not.toBe(firstRefresh);
+
+    // the new one works
+    const again = await fetch(`${base}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { cookie: `aviora_refresh=${secondRefresh}` },
+    });
+    expect(again.status).toBe(200);
+
+    // replaying the first one is treated as theft: every session is revoked
+    const replay = await fetch(`${base}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { cookie: `aviora_refresh=${firstRefresh}` },
+    });
+    expect(replay.status).toBe(401);
+    const afterReuse = await fetch(`${base}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { cookie: `aviora_refresh=${secondRefresh}` },
+    });
+    expect(afterReuse.status).toBe(401);
+  });
+
   it('unauthenticated requests get 401 with the standard envelope', async () => {
     const res = await api('/api/v1/goals', { tenant: tenantId });
     expect(res.status).toBe(401);

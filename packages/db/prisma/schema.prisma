@@ -862,3 +862,92 @@ model AiUsage {
   @@index([tenantId, usageDate])
   @@map("ai_usage")
 }
+
+// ───────────────────────── Phase 2 — Healthy Living OS ─────────────────────────
+// Health data is the most sensitive data in the platform (spec §59): it is
+// SELF-scoped by default, never visible to leaders without an explicit grant
+// from the member, and free-text notes are encrypted at rest.
+
+model HealthProfile {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  memberId      String    @unique @map("member_id") @db.Uuid
+  /// Coarse, member-declared context — never a diagnosis.
+  lifestyleNotes String?  @map("lifestyle_notes")
+  focusGoalIds  Json      @default("[]") @map("focus_goal_ids")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, memberId])
+  @@map("health_profiles")
+}
+
+model Habit {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  memberId   String    @map("member_id") @db.Uuid
+  code       String
+  name       String
+  cadence    String    @default("daily")
+  targetUnit String?   @map("target_unit")
+  targetValue Decimal? @map("target_value") @db.Decimal(10, 2)
+  status     String    @default("active")
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  logs HabitLog[]
+
+  @@unique([memberId, code])
+  @@index([tenantId, memberId, status])
+  @@map("habits")
+}
+
+model HabitLog {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  habitId   String   @map("habit_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  logDate   DateTime @map("log_date") @db.Date
+  value     Decimal? @db.Decimal(10, 2)
+  completed Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  habit Habit @relation(fields: [habitId], references: [id])
+
+  @@unique([habitId, logDate])
+  @@index([tenantId, memberId, logDate])
+  @@map("habit_logs")
+}
+
+model HealthMetric {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  memberId   String   @map("member_id") @db.Uuid
+  metric     String
+  value      Decimal  @db.Decimal(10, 2)
+  unit       String
+  measuredOn DateTime @map("measured_on") @db.Date
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([memberId, metric, measuredOn])
+  @@index([tenantId, memberId, metric, measuredOn])
+  @@map("health_metrics")
+}
+
+/// An explicit, revocable permission from ONE member to ONE other member
+/// (a coach or leader) to view their health data (spec §59). Absence of a row
+/// means no access — there is no implicit leader access to health data.
+model HealthDataGrant {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  memberId       String    @map("member_id") @db.Uuid
+  granteeMemberId String   @map("grantee_member_id") @db.Uuid
+  scope          String    @default("summary")
+  grantedAt      DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  @@unique([memberId, granteeMemberId])
+  @@index([tenantId, granteeMemberId, revokedAt])
+  @@map("health_data_grants")
+}

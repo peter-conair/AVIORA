@@ -35,6 +35,10 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       // leaders coach their org's pipeline but do not own the records
       { key: 'crm.lead.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'crm.customer.view', scope: SCOPES.DESCENDANT_TEAMS },
+      // A leader may ASK to view health data; the grant decides whether they
+      // actually can. Deliberately not DESCENDANT_TEAMS — leadership confers
+      // no health access on its own (spec §59).
+      { key: 'health.coach.view', scope: SCOPES.SELF },
     ],
   },
   {
@@ -52,6 +56,10 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'crm.lead.manage', scope: SCOPES.SELF },
       { key: 'crm.customer.view', scope: SCOPES.SELF },
       { key: 'crm.customer.manage', scope: SCOPES.SELF },
+      // health data is SELF-scoped: the permission lets a member manage their
+      // OWN record; seeing anyone else's needs that member's explicit grant.
+      { key: 'health.profile.view', scope: SCOPES.SELF },
+      { key: 'health.profile.edit', scope: SCOPES.SELF },
     ],
   },
 ];

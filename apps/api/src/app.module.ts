@@ -10,7 +10,7 @@ import { TenantDb } from './common/db/tenant-db.service';
 import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
 import { TenantContextMiddleware } from './common/tenant/tenant-context.middleware';
 import { TenantContextAccessor } from './common/tenant/tenant-context.accessor';
-import { HealthController } from './common/health/health.controller';
+import { HealthController as HealthCheckController } from './common/health/health.controller';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
 import { EntitlementsGuard } from './common/auth/entitlements.guard';
@@ -43,6 +43,10 @@ import { CrmScopeService } from './modules/crm/crm-scope.service';
 import { AuditController } from './modules/audit/audit.controller';
 import { KnowledgeController } from './modules/knowledge/knowledge.controller';
 import { KnowledgeService } from './modules/knowledge/knowledge.service';
+import { HealthController } from './modules/health/health.controller';
+import { HealthService } from './modules/health/health.service';
+import { HealthAccessService } from './modules/health/health-access.service';
+import { FieldEncryptionService } from './common/crypto/field-encryption.service';
 import { AiController } from './modules/ai/ai.controller';
 import { AiService } from './modules/ai/ai.service';
 import { AnthropicProvider } from './modules/ai/anthropic.provider';
@@ -79,7 +83,7 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
     }),
   ],
   controllers: [
-    HealthController,
+    HealthCheckController,
     AuthController,
     MembersController,
     PlatformController,
@@ -94,6 +98,7 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
     AuditController,
     KnowledgeController,
     AiController,
+    HealthController,
   ],
   providers: [
     PrismaService,
@@ -116,6 +121,9 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
     CrmService,
     CrmScopeService,
     KnowledgeService,
+    HealthService,
+    HealthAccessService,
+    FieldEncryptionService,
     AiService,
     AnthropicProvider,
     GroundedProvider,

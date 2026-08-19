@@ -20,6 +20,8 @@ export interface IssuedTokens {
   accessToken: string;
   refreshToken: string; // raw — set as HttpOnly cookie, never stored raw
   refreshExpiresAt: Date;
+  /** Row id of the stored token, used to link a rotated pair. */
+  refreshTokenId: string;
 }
 
 @Injectable()
@@ -82,7 +84,7 @@ export class AuthService {
     );
     const raw = crypto.randomBytes(48).toString('base64url');
     const refreshExpiresAt = new Date(Date.now() + REFRESH_TTL_MS);
-    await this.prisma.app.refreshToken.create({
+    const row = await this.prisma.app.refreshToken.create({
       data: {
         id: newId(),
         userId: user.id,
@@ -91,8 +93,9 @@ export class AuthService {
         userAgent: meta?.userAgent?.slice(0, 300),
         ip: meta?.ip,
       },
+      select: { id: true },
     });
-    return { accessToken, refreshToken: raw, refreshExpiresAt };
+    return { accessToken, refreshToken: raw, refreshExpiresAt, refreshTokenId: row.id };
   }
 
   /** Rotate a refresh token; reuse of a revoked token revokes the whole family. */
@@ -126,9 +129,12 @@ export class AuthService {
     const userRow = await this.prisma.app.user.findUniqueOrThrow({ where: { id: row.userId } });
     const user = this.safe(userRow);
     const tokens = await this.issueTokens(user, meta);
+    // replaced_by is a uuid column: it points at the successor ROW, not at a
+    // hash. Storing a truncated hash here made every rotation fail at the
+    // database with an invalid-uuid error.
     await this.prisma.app.refreshToken.update({
       where: { id: row.id },
-      data: { revokedAt: new Date(), replacedBy: this.hash(tokens.refreshToken).slice(0, 36) },
+      data: { revokedAt: new Date(), replacedBy: tokens.refreshTokenId },
     });
     return { user, tokens };
   }
