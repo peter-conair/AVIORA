@@ -258,6 +258,24 @@ Health data answers a different question: **did this member share it?**
 - Audit records _that_ health data changed and _who was granted access_, never
   the contents. `health.profile.update` stores a field count, not the text.
 
+### Challenges that read health data
+
+A habit-sourced challenge derives its progress from health records, which would
+be an obvious way to leak them through a leaderboard. The boundary:
+
+- **Joining is the consent.** A member appears on a leaderboard only because
+  they joined; leaving removes them.
+- **Only the derived count crosses.** The leaderboard carries a number and a
+  display name — never a habit id, a log date, or a metric value.
+- **Non-participants are absent, not zero.** A member who logs the same habit
+  but never joined does not appear at all; a zero row would itself disclose
+  that the platform holds their data.
+- **A leaderboard is not an access grant.** A leader who can read the board
+  still gets 403 on that member's health summary.
+- The `HabitLogged` event that drives points and challenge progress carries a
+  member id and a date only — no value, no habit name, no metric — so
+  subscribers never receive health content.
+
 Enforced by `apps/api/src/modules/health/health-access.service.ts`; proven by
 `apps/api/test/e2e/health.e2e.spec.ts`, which asserts the leader, the tenant
 owner and an unrelated member are all refused, that a grant opens read but not

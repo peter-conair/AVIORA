@@ -11,15 +11,16 @@
 The roadmap below is the plan; this table is what actually exists, so the two
 never drift silently.
 
-| Sprint | Scope                                                                                                                                      | State |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
-| 0      | Monorepo, compose stack, CI + gitleaks, base schema, RLS + non-owner role, TenantContext, error envelope, idempotent seed                  | done  |
-| 1      | Vertical Slice 1 — auth, tenant provisioning, plans + entitlements, invitations, teams, goals, learning, dashboard, audit, outbox + email  | done  |
-| 2      | Vertical Slice 2 — recursive teams, scoped permissions, subtree move, direct vs organization rollups, leader dashboard                     | done  |
-| 3      | CRM (configurable pipeline, conversion, follow-ups), notification centre, audit viewer                                                     | done  |
-| 4      | Vertical Slice 3 — knowledge graph, brand-neutral journey, knowledge-first search, AI Lite with quotas and citations; content i18n (th/en) | done  |
-| 5      | MVP hardening — route-registry isolation sweep, ESLint module boundaries, multi-tenant-user proof, Playwright at a phone viewport          | done  |
-| 6      | **Phase 2 begins:** Healthy Living OS — habits, metrics, 30-day summary, consent-gated health privacy, PII field encryption                | done  |
+| Sprint | Scope                                                                                                                                                                             | State |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 0      | Monorepo, compose stack, CI + gitleaks, base schema, RLS + non-owner role, TenantContext, error envelope, idempotent seed                                                         | done  |
+| 1      | Vertical Slice 1 — auth, tenant provisioning, plans + entitlements, invitations, teams, goals, learning, dashboard, audit, outbox + email                                         | done  |
+| 2      | Vertical Slice 2 — recursive teams, scoped permissions, subtree move, direct vs organization rollups, leader dashboard                                                            | done  |
+| 3      | CRM (configurable pipeline, conversion, follow-ups), notification centre, audit viewer                                                                                            | done  |
+| 4      | Vertical Slice 3 — knowledge graph, brand-neutral journey, knowledge-first search, AI Lite with quotas and citations; content i18n (th/en)                                        | done  |
+| 5      | MVP hardening — route-registry isolation sweep, ESLint module boundaries, multi-tenant-user proof, Playwright at a phone viewport                                                 | done  |
+| 6      | **Phase 2 begins:** Healthy Living OS — habits, metrics, 30-day summary, consent-gated health privacy, PII field encryption                                                       | done  |
+| 7      | Community (team spaces, posts, comments, reactions), Challenge engine (progress derived from habits/courses/goals), Gamification (configurable point rules, badges, leaderboards) | done  |
 
 Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
 "Known gaps" section below.
