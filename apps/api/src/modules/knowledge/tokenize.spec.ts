@@ -10,8 +10,18 @@ describe('tokenize', () => {
     expect(tokenize('magnesium MAGNESIUM in my tea')).toEqual(['magnesium', 'tea']);
   });
 
-  it('keeps Thai runs, which have no word spacing', () => {
-    expect(tokenize('การนอนหลับ')).toEqual(['การนอนหลับ']);
+  it('keeps the whole Thai run and adds n-grams from it', () => {
+    const terms = tokenize('การนอน');
+    expect(terms[0]).toBe('การนอน');
+    expect(terms.every((t) => 'การนอน'.includes(t))).toBe(true);
+  });
+
+  it('cuts a long Thai run into overlapping n-grams', () => {
+    // Thai has no word spacing, so a full sentence must still produce terms
+    // that appear inside the content.
+    const terms = tokenize('ฉันควรทำอย่างไรให้การนอนดีขึ้น');
+    expect(terms.length).toBeGreaterThan(1);
+    expect(terms.some((t) => 'สุขอนามัยการนอน'.includes(t))).toBe(true);
   });
 
   it('falls back to the raw query when everything was a stop word', () => {

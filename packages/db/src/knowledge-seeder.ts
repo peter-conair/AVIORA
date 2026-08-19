@@ -17,6 +17,21 @@ async function upsertGlobal<T extends { id: string }>(
 }
 
 /** Global knowledge (tenant_id NULL) — idempotent by code/slug. */
+
+/**
+ * Everything searchable about a row, in every language it has. Retrieval hits
+ * this one column so a Thai question matches Thai content without needing a
+ * per-locale index or a language guess at query time.
+ */
+function buildSearchText(base: Array<string | undefined>, translations?: object): string {
+  const fromTranslations = translations
+    ? Object.values(translations as Record<string, Record<string, string>>).flatMap((t) =>
+        Object.values(t ?? {}),
+      )
+    : [];
+  return [...base, ...fromTranslations].filter(Boolean).join(' \n ');
+}
+
 /**
  * Seeds the GLOBAL knowledge graph. Exported so the seed script and the tests
  * share one definition — a test-local copy drifted once already (missing
@@ -37,12 +52,25 @@ export async function seedGlobalKnowledge(
       () => prisma.healthGoal.findFirst({ where: { tenantId: null, code: g.code } }),
       () =>
         prisma.healthGoal.create({
-          data: { code: g.code, name: g.name, description: g.description, order: g.order },
+          data: {
+            code: g.code,
+            name: g.name,
+            description: g.description,
+            order: g.order,
+            translations: g.translations,
+            searchText: buildSearchText([g.name, g.description], g.translations),
+          },
         }),
       (id) =>
         prisma.healthGoal.update({
           where: { id },
-          data: { name: g.name, description: g.description, order: g.order },
+          data: {
+            name: g.name,
+            description: g.description,
+            order: g.order,
+            translations: g.translations,
+            searchText: buildSearchText([g.name, g.description], g.translations),
+          },
         }),
     );
     goalId.set(g.code, row.id);
@@ -51,8 +79,26 @@ export async function seedGlobalKnowledge(
   for (const t of k.topics) {
     const row = await upsertGlobal(
       () => prisma.topic.findFirst({ where: { tenantId: null, code: t.code } }),
-      () => prisma.topic.create({ data: { code: t.code, name: t.name, summary: t.summary } }),
-      (id) => prisma.topic.update({ where: { id }, data: { name: t.name, summary: t.summary } }),
+      () =>
+        prisma.topic.create({
+          data: {
+            code: t.code,
+            name: t.name,
+            summary: t.summary,
+            translations: t.translations,
+            searchText: buildSearchText([t.name, t.summary], t.translations),
+          },
+        }),
+      (id) =>
+        prisma.topic.update({
+          where: { id },
+          data: {
+            name: t.name,
+            summary: t.summary,
+            translations: t.translations,
+            searchText: buildSearchText([t.name, t.summary], t.translations),
+          },
+        }),
     );
     topicId.set(t.code, row.id);
     nodes++;
@@ -71,12 +117,25 @@ export async function seedGlobalKnowledge(
       () => prisma.ingredient.findFirst({ where: { tenantId: null, code: i.code } }),
       () =>
         prisma.ingredient.create({
-          data: { code: i.code, name: i.name, summary: i.summary, safetyNotes: i.safetyNotes },
+          data: {
+            code: i.code,
+            name: i.name,
+            summary: i.summary,
+            safetyNotes: i.safetyNotes,
+            translations: i.translations,
+            searchText: buildSearchText([i.name, i.summary], i.translations),
+          },
         }),
       (id) =>
         prisma.ingredient.update({
           where: { id },
-          data: { name: i.name, summary: i.summary, safetyNotes: i.safetyNotes },
+          data: {
+            name: i.name,
+            summary: i.summary,
+            safetyNotes: i.safetyNotes,
+            translations: i.translations,
+            searchText: buildSearchText([i.name, i.summary], i.translations),
+          },
         }),
     );
     ingredientId.set(i.code, row.id);
@@ -96,12 +155,25 @@ export async function seedGlobalKnowledge(
       () => prisma.article.findFirst({ where: { tenantId: null, slug: a.slug } }),
       () =>
         prisma.article.create({
-          data: { slug: a.slug, title: a.title, summary: a.summary, body: a.body },
+          data: {
+            slug: a.slug,
+            title: a.title,
+            summary: a.summary,
+            body: a.body,
+            translations: a.translations,
+            searchText: buildSearchText([a.title, a.summary, a.body], a.translations),
+          },
         }),
       (id) =>
         prisma.article.update({
           where: { id },
-          data: { title: a.title, summary: a.summary, body: a.body },
+          data: {
+            title: a.title,
+            summary: a.summary,
+            body: a.body,
+            translations: a.translations,
+            searchText: buildSearchText([a.title, a.summary, a.body], a.translations),
+          },
         }),
     );
     nodes++;
@@ -167,12 +239,18 @@ export async function seedGlobalKnowledge(
             sourceUrl: p.sourceUrl,
             safetyNotes: p.safetyNotes,
             lastVerifiedAt: new Date(),
+            searchText: buildSearchText([p.name, p.description]),
           },
         }),
       (id) =>
         prisma.product.update({
           where: { id },
-          data: { name: p.name, description: p.description, safetyNotes: p.safetyNotes },
+          data: {
+            name: p.name,
+            description: p.description,
+            safetyNotes: p.safetyNotes,
+            searchText: buildSearchText([p.name, p.description]),
+          },
         }),
     );
     products++;

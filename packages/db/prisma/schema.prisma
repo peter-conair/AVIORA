@@ -637,6 +637,8 @@ model HealthGoal {
   name        String
   description String?
   order       Int      @default(0)
+  translations Json?
+  searchText   String   @default("") @map("search_text")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -651,6 +653,8 @@ model Topic {
   code      String
   name      String
   summary   String?
+  translations Json?
+  searchText   String   @default("") @map("search_text")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -679,6 +683,8 @@ model Ingredient {
   name        String
   summary     String?
   safetyNotes String?  @map("safety_notes")
+  translations Json?
+  searchText   String   @default("") @map("search_text")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -726,6 +732,8 @@ model Article {
   summary     String?
   body        String
   status      String   @default("published")
+  translations Json?
+  searchText   String   @default("") @map("search_text")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -782,6 +790,8 @@ model Product {
   lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(6)
   safetyNotes    String?   @map("safety_notes")
   status         String    @default("active")
+  translations Json?
+  searchText   String   @default("") @map("search_text")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

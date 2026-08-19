@@ -53,11 +53,22 @@ interface FetchOptions {
   body?: unknown;
 }
 
+/** The locale segment of the current URL (/th/..., /en/...) — '' on the server. */
+function currentLocale(): string {
+  if (typeof window === 'undefined') return '';
+  const segment = window.location.pathname.split('/')[1] ?? '';
+  return segment === 'th' || segment === 'en' ? segment : '';
+}
+
 async function rawRequest(path: string, options: FetchOptions): Promise<Response> {
   const headers: Record<string, string> = {};
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   const tenantId = getTenantId();
   if (tenantId) headers['X-Tenant-ID'] = tenantId;
+  // Server-side content (knowledge, AI answers) is localised by the API, so the
+  // active UI locale has to travel with every request.
+  const locale = currentLocale();
+  if (locale) headers['Accept-Language'] = locale;
 
   return fetch(`${API_URL}${path}`, {
     method: options.method ?? 'GET',

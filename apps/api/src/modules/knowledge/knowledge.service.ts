@@ -10,25 +10,60 @@ import { TenantDb } from '../../common/db/tenant-db.service';
  * 2. Search ranks knowledge ABOVE products (§33), and products are returned
  *    brand-neutrally: ordering never considers the brand.
  */
+
+/** A row's per-locale overrides, as stored in the `translations` JSONB column. */
+type Translations = Record<string, Record<string, string>> | null;
+
+/**
+ * Returns the field in the requested locale, falling back to the base value.
+ * Content is authored in one base language with translations layered on top,
+ * so a partially translated row degrades field by field rather than all at once.
+ */
+function localized<T extends { translations?: unknown }>(
+  row: T,
+  locale: string,
+  fields: Record<string, string | null>,
+): Record<string, string | null> {
+  const t = (row.translations as Translations)?.[locale];
+  const out: Record<string, string | null> = {};
+  for (const [key, base] of Object.entries(fields)) {
+    out[key] = t?.[key] ?? base;
+  }
+  return out;
+}
+
 @Injectable()
 export class KnowledgeService {
   constructor(private readonly db: TenantDb) {}
 
   /** Global + this tenant's knowledge; RLS already limits it to those two. */
-  healthGoals() {
-    return this.db.tx((tx) =>
+  async healthGoals(locale: string) {
+    const rows = await this.db.tx((tx) =>
       tx.healthGoal.findMany({
         orderBy: [{ order: 'asc' }, { name: 'asc' }],
-        select: { id: true, code: true, name: true, description: true, tenantId: true },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          description: true,
+          tenantId: true,
+          translations: true,
+        },
       }),
     );
+    return rows.map((g) => ({
+      id: g.id,
+      code: g.code,
+      tenantId: g.tenantId,
+      ...localized(g, locale, { name: g.name, description: g.description }),
+    }));
   }
 
   /**
    * The §74 journey for one health goal:
    *   goal → topics → articles → ingredients → (evidence) → products
    */
-  async journey(goalCode: string) {
+  async journey(goalCode: string, locale: string) {
     return this.db.tx(async (tx) => {
       const goal = await tx.healthGoal.findFirst({ where: { code: goalCode } });
       if (!goal) {
@@ -45,7 +80,7 @@ export class KnowledgeService {
       const topics = await tx.topic.findMany({
         where: { id: { in: topicIds } },
         orderBy: { name: 'asc' },
-        select: { id: true, code: true, name: true, summary: true },
+        select: { id: true, code: true, name: true, summary: true, translations: true },
       });
 
       const [topicIngredients, articleTopics] = await Promise.all([
@@ -66,12 +101,19 @@ export class KnowledgeService {
         tx.ingredient.findMany({
           where: { id: { in: ingredientIds } },
           orderBy: { name: 'asc' },
-          select: { id: true, code: true, name: true, summary: true, safetyNotes: true },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            summary: true,
+            safetyNotes: true,
+            translations: true,
+          },
         }),
         tx.article.findMany({
           where: { id: { in: articleIds }, status: 'published' },
           orderBy: { title: 'asc' },
-          select: { id: true, slug: true, title: true, summary: true },
+          select: { id: true, slug: true, title: true, summary: true, translations: true },
         }),
         tx.evidenceReference.findMany({
           where: { ingredientId: { in: ingredientIds } },
@@ -119,11 +161,29 @@ export class KnowledgeService {
       }
 
       return {
-        goal: { id: goal.id, code: goal.code, name: goal.name, description: goal.description },
-        topics,
-        articles,
+        goal: {
+          id: goal.id,
+          code: goal.code,
+          ...localized(goal, locale, { name: goal.name, description: goal.description }),
+        },
+        topics: topics.map((t) => ({
+          id: t.id,
+          code: t.code,
+          ...localized(t, locale, { name: t.name, summary: t.summary }),
+        })),
+        articles: articles.map((a) => ({
+          id: a.id,
+          slug: a.slug,
+          ...localized(a, locale, { title: a.title, summary: a.summary }),
+        })),
         ingredients: ingredients.map((i) => ({
-          ...i,
+          id: i.id,
+          code: i.code,
+          ...localized(i, locale, {
+            name: i.name,
+            summary: i.summary,
+            safetyNotes: i.safetyNotes,
+          }),
           evidence: evidenceByIngredient.get(i.id) ?? [],
           productIds: productsByIngredient.get(i.id) ?? [],
         })),
@@ -134,11 +194,19 @@ export class KnowledgeService {
     });
   }
 
-  async article(slug: string) {
+  async article(slug: string, locale: string) {
     return this.db.tx(async (tx) => {
       const article = await tx.article.findFirst({
         where: { slug, status: 'published' },
-        select: { id: true, slug: true, title: true, summary: true, body: true, updatedAt: true },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          summary: true,
+          body: true,
+          updatedAt: true,
+          translations: true,
+        },
       });
       if (!article) {
         throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Article not found' });
@@ -156,22 +224,48 @@ export class KnowledgeService {
       const [topics, ingredients] = await Promise.all([
         tx.topic.findMany({
           where: { id: { in: topicLinks.map((t) => t.topicId) } },
-          select: { id: true, code: true, name: true },
+          select: { id: true, code: true, name: true, translations: true },
         }),
         tx.ingredient.findMany({
           where: { id: { in: ingredientLinks.map((i) => i.ingredientId) } },
-          select: { id: true, code: true, name: true, summary: true },
+          select: { id: true, code: true, name: true, summary: true, translations: true },
         }),
       ]);
-      return { ...article, topics, ingredients };
+      return {
+        id: article.id,
+        slug: article.slug,
+        updatedAt: article.updatedAt,
+        ...localized(article, locale, {
+          title: article.title,
+          summary: article.summary,
+          body: article.body,
+        }),
+        topics: topics.map((t) => ({
+          id: t.id,
+          code: t.code,
+          ...localized(t, locale, { name: t.name }),
+        })),
+        ingredients: ingredients.map((i) => ({
+          id: i.id,
+          code: i.code,
+          ...localized(i, locale, { name: i.name, summary: i.summary }),
+        })),
+      };
     });
   }
 
-  async ingredient(code: string) {
+  async ingredient(code: string, locale: string) {
     return this.db.tx(async (tx) => {
       const ingredient = await tx.ingredient.findFirst({
         where: { code },
-        select: { id: true, code: true, name: true, summary: true, safetyNotes: true },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          summary: true,
+          safetyNotes: true,
+          translations: true,
+        },
       });
       if (!ingredient) {
         throw new NotFoundException({
@@ -202,7 +296,17 @@ export class KnowledgeService {
           brand: { select: { code: true, name: true } },
         },
       });
-      return { ...ingredient, evidence, products };
+      return {
+        id: ingredient.id,
+        code: ingredient.code,
+        ...localized(ingredient, locale, {
+          name: ingredient.name,
+          summary: ingredient.summary,
+          safetyNotes: ingredient.safetyNotes,
+        }),
+        evidence,
+        products,
+      };
     });
   }
 
@@ -211,72 +315,84 @@ export class KnowledgeService {
    * ingredients are returned above products, and products carry the ingredient
    * that led to them so the UI can keep the journey visible.
    */
-  async search(query: string) {
+  async search(query: string, locale = 'en') {
     const q = query.trim();
     if (q.length < 2) return { query: q, knowledge: [], products: [] };
 
     // Members (and the assistant) ask in sentences — "how can I sleep better?"
     // — so match on meaningful terms rather than the phrase as a whole.
     const terms = tokenize(q);
-    const anyTerm = (fields: string[]) => ({
-      OR: terms.flatMap((term) =>
-        fields.map((field) => ({ [field]: { contains: term, mode: 'insensitive' as const } })),
-      ),
+    // One searchable column per row holds every language's text, so a Thai
+    // question matches Thai content without guessing the query's language.
+    const anyTerm = () => ({
+      OR: terms.map((term) => ({ searchText: { contains: term, mode: 'insensitive' as const } })),
     });
 
     return this.db.tx(async (tx) => {
       const [goals, topics, articles, ingredients] = await Promise.all([
         tx.healthGoal.findMany({
-          where: anyTerm(['name', 'description']),
+          where: anyTerm(),
           take: 10,
-          select: { id: true, code: true, name: true, description: true },
+          select: { id: true, code: true, name: true, description: true, translations: true },
         }),
         tx.topic.findMany({
-          where: anyTerm(['name', 'summary']),
+          where: anyTerm(),
           take: 10,
-          select: { id: true, code: true, name: true, summary: true },
+          select: { id: true, code: true, name: true, summary: true, translations: true },
         }),
         tx.article.findMany({
-          where: { status: 'published', ...anyTerm(['title', 'summary', 'body']) },
+          where: { status: 'published', ...anyTerm() },
           take: 10,
-          select: { id: true, slug: true, title: true, summary: true },
+          select: { id: true, slug: true, title: true, summary: true, translations: true },
         }),
         tx.ingredient.findMany({
-          where: anyTerm(['name', 'summary']),
+          where: anyTerm(),
           take: 10,
-          select: { id: true, code: true, name: true, summary: true },
+          select: { id: true, code: true, name: true, summary: true, translations: true },
         }),
       ]);
 
       const unranked = [
-        ...goals.map((g) => ({
-          kind: 'health_goal' as const,
-          id: g.id,
-          code: g.code,
-          title: g.name,
-          summary: g.description,
-        })),
-        ...topics.map((t) => ({
-          kind: 'topic' as const,
-          id: t.id,
-          code: t.code,
-          title: t.name,
-          summary: t.summary,
-        })),
-        ...articles.map((a) => ({
-          kind: 'article' as const,
-          id: a.id,
-          code: a.slug,
-          title: a.title,
-          summary: a.summary,
-        })),
-        ...ingredients.map((i) => ({
-          kind: 'ingredient' as const,
-          id: i.id,
-          code: i.code,
-          title: i.name,
-          summary: i.summary,
-        })),
+        ...goals.map((g) => {
+          const l = localized(g, locale, { name: g.name, description: g.description });
+          return {
+            kind: 'health_goal' as const,
+            id: g.id,
+            code: g.code,
+            title: l.name!,
+            summary: l.description,
+          };
+        }),
+        ...topics.map((t) => {
+          const l = localized(t, locale, { name: t.name, summary: t.summary });
+          return {
+            kind: 'topic' as const,
+            id: t.id,
+            code: t.code,
+            title: l.name!,
+            summary: l.summary,
+          };
+        }),
+        ...articles.map((a) => {
+          const l = localized(a, locale, { title: a.title, summary: a.summary });
+          return {
+            kind: 'article' as const,
+            id: a.id,
+            code: a.slug,
+            title: l.title!,
+            summary: l.summary,
+          };
+        }),
+        ...ingredients.map((i) => {
+          const l = localized(i, locale, { name: i.name, summary: i.summary });
+          return {
+            kind: 'ingredient' as const,
+            id: i.id,
+            code: i.code,
+            title: l.name!,
+            summary: l.summary,
+          };
+        }),
       ];
 
       // most terms matched first; ties keep the goal → topic → article →
@@ -295,7 +411,7 @@ export class KnowledgeService {
           })
         : [];
       const directMatches = await tx.product.findMany({
-        where: { status: 'active', ...anyTerm(['name', 'description']) },
+        where: { status: 'active', ...anyTerm() },
         take: 10,
         select: { id: true },
       });
@@ -391,26 +507,42 @@ const STOP_WORDS = new Set([
   'do',
 ]);
 
+/** Scripts written without spaces between words (Thai, CJK). */
+const UNSPACED_SCRIPT = /[\u0E00-\u0E7F\u4E00-\u9FFF]/;
+const NGRAM = 4;
+
 /**
- * Splits a question into retrieval terms. Latin words shorter than three
- * characters and stop words are dropped; Thai text has no spaces between words,
- * so any CJK/Thai run is kept whole and matched as a substring.
+ * Splits a question into retrieval terms.
+ *
+ * Latin text splits on spaces, minus stop words. Thai and CJK put no spaces
+ * between words, so a whole sentence would arrive as one token that matches
+ * nothing; those runs are additionally cut into overlapping n-grams, which is
+ * enough for substring retrieval without shipping a dictionary segmenter.
  */
 export function tokenize(query: string): string[] {
-  const terms = query
+  const raw = query
     .toLowerCase()
     // \p{M} matters: Thai vowels and tone marks are combining marks, and
     // splitting on them would slice words like การนอนหลับ mid-syllable.
     .split(/[^\p{L}\p{M}\p{N}-]+/u)
     .map((t) => t.trim())
-    .filter(Boolean)
-    .filter((t) => {
-      if (/[฀-๿一-鿿]/.test(t)) return t.length >= 2; // Thai / CJK
-      return t.length >= 3 && !STOP_WORDS.has(t);
-    });
+    .filter(Boolean);
+
+  const terms: string[] = [];
+  for (const token of raw) {
+    if (UNSPACED_SCRIPT.test(token)) {
+      terms.push(token); // the full run still matches an exact phrase
+      for (let i = 0; i + NGRAM <= token.length; i += 2) {
+        terms.push(token.slice(i, i + NGRAM));
+      }
+    } else if (token.length >= 3 && !STOP_WORDS.has(token)) {
+      terms.push(token);
+    }
+  }
+
   const unique = [...new Set(terms)];
   // fall back to the raw query when the question was only stop words
-  return unique.length ? unique.slice(0, 8) : [query.trim().toLowerCase()];
+  return unique.length ? unique.slice(0, 16) : [query.trim().toLowerCase()];
 }
 
 /** How many distinct terms appear in the text — the ranking signal. */

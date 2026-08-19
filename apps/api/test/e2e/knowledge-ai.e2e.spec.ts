@@ -227,6 +227,53 @@ describe('Slice 3 — knowledge journey', () => {
     expect(res.body.knowledge.some((k: { kind: string }) => k.kind === 'ingredient')).toBe(true);
   });
 
+  it('serves Thai content to a Thai client and matches Thai queries', async () => {
+    const seeker = await login(`seeker-${RUN}@test.local`);
+    const goals = await api('/api/v1/knowledge/health-goals?locale=th', {
+      token: seeker,
+      tenant: tenantId,
+    });
+    const sleep = goals.body.healthGoals.find((g: { code: string }) => g.code === 'better-sleep');
+    expect(sleep.name).toBe('นอนหลับดีขึ้น');
+
+    // a Thai question must find Thai content — the English-only search this
+    // replaced returned nothing for every Thai query
+    const search = await api(
+      `/api/v1/knowledge/search?locale=th&q=${encodeURIComponent('การนอน')}`,
+      {
+        token: seeker,
+        tenant: tenantId,
+      },
+    );
+    expect(search.body.knowledge.length).toBeGreaterThan(0);
+    expect(search.body.knowledge.map((k: { title: string }) => k.title)).toContain(
+      'สุขอนามัยการนอน',
+    );
+
+    // Accept-Language works as well as the explicit query parameter
+    const viaHeader = await fetch(`${base}/api/v1/knowledge/health-goals`, {
+      headers: {
+        authorization: `Bearer ${seeker}`,
+        'x-tenant-id': tenantId,
+        'accept-language': 'th-TH,th;q=0.9',
+      },
+    });
+    const body = (await viaHeader.json()) as { healthGoals: Array<{ code: string; name: string }> };
+    expect(body.healthGoals.find((g) => g.code === 'better-sleep')?.name).toBe('นอนหลับดีขึ้น');
+  });
+
+  it('falls back to the base language when a locale has no translation', async () => {
+    const seeker = await login(`seeker-${RUN}@test.local`);
+    const res = await api('/api/v1/knowledge/journey/better-sleep?locale=en', {
+      token: seeker,
+      tenant: tenantId,
+    });
+    expect(res.body.goal.name).toBe('Better Sleep');
+    // products carry no translations yet — they must still render, not vanish
+    expect(res.body.products.length).toBeGreaterThan(0);
+    expect(res.body.products[0].name).toBeTruthy();
+  });
+
   it('serves an article with its topics and ingredients', async () => {
     const seeker = await login(`seeker-${RUN}@test.local`);
     const res = await api('/api/v1/knowledge/articles/winding-down-an-evening-routine-that-works', {

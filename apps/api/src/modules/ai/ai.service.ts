@@ -24,6 +24,7 @@ const SYSTEM_RULES = [
   'You are not a clinician. Never diagnose, never claim a product treats, cures, or prevents any disease, and never tell someone to start, stop, or change a medication.',
   'When a question touches health, include a short reminder that this is general wellness information and that a qualified healthcare professional should be consulted.',
   'Present products neutrally: mention them only after the underlying knowledge, and never rank one brand above another.',
+  'Reply in the language named by REPLY_LANGUAGE below.',
 ].join(' ');
 
 @Injectable()
@@ -113,7 +114,10 @@ export class AiService {
    * quota check → authorised retrieval → prompt assembly → provider call →
    * persist messages + usage.
    */
-  async ask(memberId: string | null, input: { question: string; conversationId?: string }) {
+  async ask(
+    memberId: string | null,
+    input: { question: string; conversationId?: string; locale?: string },
+  ) {
     const owner = this.requireMember(memberId);
     const cap = await this.dailyCap();
     const used = await this.db.tx((tx) =>
@@ -128,7 +132,10 @@ export class AiService {
 
     // Retrieval runs through the tenant-scoped knowledge service, so RLS has
     // already excluded anything this tenant may not read.
-    const found = await this.knowledge.search(input.question);
+    // retrieval in the member's own language — the knowledge base stores every
+    // locale's text in one searchable column
+    const locale = input.locale ?? 'en';
+    const found = await this.knowledge.search(input.question, locale);
     const context = [
       ...found.knowledge.slice(0, 6).map((k) => `${k.title}: ${k.summary ?? ''}`.trim()),
       ...found.products
@@ -141,7 +148,14 @@ export class AiService {
       title: k.title,
     }));
 
-    const system = `${SYSTEM_RULES}\n\nCONTEXT:\n${context.map((c) => `- ${c}`).join('\n')}`;
+    const system = [
+      SYSTEM_RULES,
+      '',
+      `REPLY_LANGUAGE: ${locale === 'th' ? 'Thai' : 'English'}`,
+      '',
+      'CONTEXT:',
+      ...context.map((c) => `- ${c}`),
+    ].join('\n');
 
     const conversationId = await this.ensureConversation(owner, input);
     const history = await this.db.tx((tx) =>
@@ -164,6 +178,7 @@ export class AiService {
       system,
       messages,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
+      locale,
     });
 
     await this.db.tx(async (tx) => {

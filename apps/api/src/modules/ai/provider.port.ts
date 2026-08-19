@@ -7,6 +7,8 @@ export interface AiCompletionRequest {
   system: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   maxOutputTokens: number;
+  /** The member's UI language; providers answer in it. */
+  locale: string;
 }
 
 export interface AiCompletionResult {

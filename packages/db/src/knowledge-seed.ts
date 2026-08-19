@@ -6,15 +6,41 @@
  * one is rows, not a schema change (spec §31), and nothing downstream ranks or
  * branches on a specific brand.
  */
+/** Per-locale overrides; the base English fields are the fallback. */
+export type Translations = Record<
+  string,
+  {
+    name?: string;
+    summary?: string;
+    title?: string;
+    description?: string;
+    body?: string;
+    safetyNotes?: string;
+  }
+>;
+
 export interface KnowledgeSeed {
-  healthGoals: Array<{ code: string; name: string; description: string; order: number }>;
-  topics: Array<{ code: string; name: string; summary: string; goals: string[] }>;
+  healthGoals: Array<{
+    code: string;
+    name: string;
+    description: string;
+    order: number;
+    translations?: Translations;
+  }>;
+  topics: Array<{
+    code: string;
+    name: string;
+    summary: string;
+    goals: string[];
+    translations?: Translations;
+  }>;
   ingredients: Array<{
     code: string;
     name: string;
     summary: string;
     safetyNotes: string;
     topics: string[];
+    translations?: Translations;
   }>;
   articles: Array<{
     slug: string;
@@ -23,6 +49,7 @@ export interface KnowledgeSeed {
     body: string;
     topics: string[];
     ingredients: string[];
+    translations?: Translations;
   }>;
   evidence: Array<{
     ingredient: string;
@@ -50,12 +77,24 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
       name: 'Better Sleep',
       description: 'Fall asleep more easily and wake up rested.',
       order: 1,
+      translations: {
+        th: {
+          name: 'นอนหลับดีขึ้น',
+          description: 'หลับง่ายขึ้นและตื่นมาสดชื่น',
+        },
+      },
     },
     {
       code: 'daily-energy',
       name: 'Daily Energy',
       description: 'Steadier energy through the day without relying on stimulants.',
       order: 2,
+      translations: {
+        th: {
+          name: 'พลังงานระหว่างวัน',
+          description: 'มีพลังงานสม่ำเสมอตลอดวันโดยไม่ต้องพึ่งสารกระตุ้น',
+        },
+      },
     },
   ],
   topics: [
@@ -64,12 +103,24 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
       name: 'Sleep Hygiene',
       summary: 'The daily habits and environment that make good sleep likely.',
       goals: ['better-sleep'],
+      translations: {
+        th: {
+          name: 'สุขอนามัยการนอน',
+          summary: 'นิสัยประจำวันและสภาพแวดล้อมที่ทำให้การนอนหลับมีคุณภาพ',
+        },
+      },
     },
     {
       code: 'evening-nutrition',
       name: 'Evening Nutrition',
       summary: 'How the timing and content of evening meals affects sleep quality.',
       goals: ['better-sleep', 'daily-energy'],
+      translations: {
+        th: {
+          name: 'โภชนาการมื้อเย็น',
+          summary: 'เวลาและสิ่งที่กินในมื้อเย็นส่งผลต่อคุณภาพการนอนอย่างไร',
+        },
+      },
     },
   ],
   ingredients: [
@@ -81,6 +132,15 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
       safetyNotes:
         'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
       topics: ['sleep-hygiene', 'evening-nutrition'],
+      translations: {
+        th: {
+          name: 'แมกนีเซียม',
+          summary:
+            'แร่ธาตุที่เกี่ยวข้องกับการคลายตัวของกล้ามเนื้อและการทำงานปกติของระบบประสาท พบได้ในผักใบเขียว ถั่ว เมล็ดพืช และธัญพืชไม่ขัดสี',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
     },
     {
       code: 'l-theanine',
@@ -90,6 +150,15 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
       safetyNotes:
         'General wellness information only. Not a treatment for any condition. Consult a qualified healthcare professional before use if pregnant, nursing, or taking medication.',
       topics: ['sleep-hygiene'],
+      translations: {
+        th: {
+          name: 'แอล-ธีอะนีน',
+          summary:
+            'กรดอะมิโนที่พบตามธรรมชาติในใบชา มักถูกพูดถึงในบริบทของการผ่อนคลายโดยไม่ทำให้ง่วงซึม',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ควรปรึกษาบุคลากรทางการแพทย์ก่อนใช้หากตั้งครรภ์ ให้นมบุตร หรือใช้ยาประจำ',
+        },
+      },
     },
   ],
   articles: [
@@ -111,6 +180,24 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
       ].join('\n'),
       topics: ['sleep-hygiene', 'evening-nutrition'],
       ingredients: ['magnesium', 'l-theanine'],
+      translations: {
+        th: {
+          title: 'ผ่อนคลายก่อนนอน: กิจวัตรตอนเย็นที่ได้ผลจริง',
+          summary:
+            'กิจวัตรสองชั่วโมงก่อนเข้านอนที่ทำได้จริงโดยไม่ต้องพึ่งสินค้า และโภชนาการเข้ามาเกี่ยวข้องตรงไหน',
+          body: [
+            'การนอนหลับที่ดีถูกสร้างขึ้นระหว่างวัน ไม่ใช่ในสิบนาทีสุดท้ายก่อนเข้านอน',
+            '',
+            'เริ่มจากแสง: หรี่ไฟและเลี่ยงหน้าจอสว่างประมาณหนึ่งชั่วโมงก่อนเวลานอน ทำให้ห้องนอนเย็นและมืด และรักษาเวลาตื่นให้สม่ำเสมอแม้ในวันหยุด เพราะเวลาตื่นคือหมุดยึดของนาฬิกาชีวิต',
+            '',
+            'โภชนาการมื้อเย็นสำคัญกว่าที่หลายคนคิด มื้อหนักดึก แอลกอฮอล์ และคาเฟอีนหลังบ่ายล้วนทำให้การนอนขาดช่วง มื้อเย็นที่เบากว่าและห่างจากเวลานอนสองสามชั่วโมงช่วยให้ระบบย่อยได้พัก',
+            '',
+            'สารอาหารหลายชนิดถูกพูดถึงในบริบทของการผ่อนคลายและการนอน เช่น แมกนีเซียมและแอล-ธีอะนีน แหล่งจากอาหารมาก่อนเสมอ ได้แก่ ผักใบเขียว ถั่ว เมล็ดพืช ธัญพืชไม่ขัดสี และชา ส่วนการเสริมอาหารเป็นการตัดสินใจส่วนบุคคลที่ควรปรึกษาบุคลากรทางการแพทย์ โดยเฉพาะเมื่อใช้ร่วมกับยา',
+            '',
+            'ทั้งหมดนี้ไม่ใช่การรักษาโรคเกี่ยวกับการนอน หากมีปัญหาการนอนเรื้อรัง ควรปรึกษาแพทย์',
+          ].join('\n'),
+        },
+      },
     },
   ],
   evidence: [

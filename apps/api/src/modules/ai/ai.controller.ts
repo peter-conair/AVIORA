@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { ENTITLEMENTS, PERMISSIONS } from '@aviora/shared';
@@ -45,7 +45,14 @@ export class AiController {
   @Post('ask')
   @RequirePermissions(PERMISSIONS.AI_ASSISTANT_USE)
   @RequireEntitlements(ENTITLEMENTS.AI_COACH)
-  async ask(@Body(new ZodPipe(askSchema)) body: z.infer<typeof askSchema>) {
-    return await this.ai.ask(this.memberId(), body);
+  async ask(
+    @Body(new ZodPipe(askSchema)) body: z.infer<typeof askSchema>,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    const locale = acceptLanguage?.split(',')[0]?.trim().slice(0, 2).toLowerCase();
+    return await this.ai.ask(this.memberId(), {
+      ...body,
+      locale: locale === 'th' ? 'th' : 'en',
+    });
   }
 }
