@@ -142,7 +142,10 @@ export class AuthService {
 
   async me(userId: string) {
     const user = await this.prisma.app.user.findUniqueOrThrow({ where: { id: userId } });
-    const memberships = await this.prisma.app.tenantMembership.findMany({
+    // tenant_memberships is RLS-forced and this endpoint runs BEFORE a tenant
+    // is selected — the user's own membership list is a legitimate cross-tenant
+    // auth query (rule: auth lookups must work cross-tenant), so read as owner.
+    const memberships = await this.prisma.owner.tenantMembership.findMany({
       where: { userId, status: 'active' },
       select: {
         tenantId: true,

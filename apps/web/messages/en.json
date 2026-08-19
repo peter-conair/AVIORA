@@ -1,6 +1,198 @@
 {
   "home": {
     "tagline": "The Operating System for Membership-Driven Healthy Living Communities",
-    "sprintZero": "Sprint 0 — foundation is ready"
+    "sprintZero": "Sprint 0 — foundation is ready",
+    "signIn": "Sign in"
+  },
+  "common": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "errorGeneric": "Something went wrong. Please try again."
+  },
+  "shell": {
+    "loading": "Loading…",
+    "tenant": "Workspace",
+    "language": "Language",
+    "signOut": "Sign out",
+    "nav": {
+      "dashboard": "Dashboard",
+      "goals": "Goals",
+      "learning": "Learning",
+      "admin": "Admin",
+      "platform": "Platform"
+    }
+  },
+  "auth": {
+    "title": "Sign in to your account",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "signingIn": "Signing in…",
+    "invalidCredentials": "Invalid email or password.",
+    "pickTenant": "Choose a workspace",
+    "pickTenantHint": "Your account belongs to more than one workspace. Choose one to continue.",
+    "noTenants": "Your account is not a member of any workspace yet.",
+    "acceptedBanner": "Invitation accepted! Sign in with your new credentials."
+  },
+  "invite": {
+    "title": "Join {tenant}",
+    "loading": "Checking your invitation…",
+    "invalid": "This invitation is invalid or has expired.",
+    "plan": "Membership plan",
+    "trial": "Free trial",
+    "trialDays": "{days} days",
+    "expires": "Invitation expires",
+    "email": "Email",
+    "displayName": "Display name",
+    "password": "Password",
+    "passwordHint": "At least 10 characters",
+    "passwordTooShort": "Password must be at least 10 characters.",
+    "submit": "Accept invitation",
+    "submitting": "Joining…"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "membership": {
+      "title": "Membership",
+      "plan": "Plan",
+      "status": "Status",
+      "trialEnds": "Trial ends {date}",
+      "none": "No active membership yet."
+    },
+    "goals": {
+      "title": "Recent goals",
+      "empty": "No goals yet — create your first goal.",
+      "viewAll": "View all goals"
+    },
+    "learning": {
+      "title": "Learning progress",
+      "empty": "You haven't started any course yet.",
+      "lessons": "{completed}/{total} lessons"
+    },
+    "teams": {
+      "title": "My teams",
+      "empty": "You're not in any team yet.",
+      "joined": "Joined {date}"
+    }
+  },
+  "goals": {
+    "title": "Goals",
+    "empty": "No goals yet. Create your first goal above.",
+    "form": {
+      "title": "New goal",
+      "titleLabel": "Title",
+      "category": "Category",
+      "targetDate": "Target date",
+      "submit": "Add goal",
+      "submitting": "Adding…"
+    },
+    "categories": {
+      "health": "Health",
+      "fitness": "Fitness",
+      "nutrition": "Nutrition",
+      "mindfulness": "Mindfulness",
+      "learning": "Learning",
+      "other": "Other"
+    },
+    "markCompleted": "Mark completed",
+    "completing": "Saving…",
+    "target": "Target: {date}"
+  },
+  "learning": {
+    "title": "Learning",
+    "empty": "No courses available yet.",
+    "start": "Start course",
+    "starting": "Starting…",
+    "completeLesson": "Complete",
+    "completedLesson": "Done",
+    "lessons": "{count} lessons",
+    "progress": "{completed}/{total} lessons completed",
+    "courseCompleted": "Course completed",
+    "notEntitled": "Your current plan doesn't include courses. Please contact your workspace admin to upgrade."
+  },
+  "admin": {
+    "title": "Admin",
+    "tabs": {
+      "plans": "Plans",
+      "invitations": "Invitations",
+      "teams": "Teams",
+      "members": "Members"
+    },
+    "plans": {
+      "listTitle": "Membership plans",
+      "empty": "No plans yet. Create one below.",
+      "summary": "Trial {trialDays} days · Price {price} · {cycle}",
+      "code": "Code",
+      "name": "Name",
+      "trialDays": "Trial days",
+      "price": "Price",
+      "billingCycle": "Billing cycle",
+      "billingCyclePlaceholder": "e.g. monthly",
+      "entitlements": "Entitlements",
+      "noEntitlements": "No entitlements in the catalog.",
+      "formTitle": "Create plan",
+      "created": "Plan created.",
+      "submit": "Create plan"
+    },
+    "invitations": {
+      "formTitle": "Invite a member",
+      "created": "Invitation created for {email}.",
+      "email": "Email",
+      "plan": "Plan",
+      "submit": "Send invitation",
+      "listTitle": "Invitations",
+      "empty": "No invitations yet.",
+      "status": "Status",
+      "expires": "Expires"
+    },
+    "teams": {
+      "formTitle": "Create team",
+      "code": "Code",
+      "name": "Name",
+      "description": "Description",
+      "parent": "Parent team",
+      "noParent": "No parent",
+      "submit": "Create team",
+      "listTitle": "Teams",
+      "empty": "No teams yet.",
+      "detail": "View detail",
+      "close": "Close",
+      "memberCount": "{count} members",
+      "leaders": "Leaders",
+      "noLeaders": "No leaders assigned yet.",
+      "membersTitle": "Members",
+      "noMembers": "No members in this team yet.",
+      "assignLeader": "Assign leader",
+      "addMember": "Add member",
+      "selectMember": "Select a member",
+      "add": "Add"
+    },
+    "members": {
+      "title": "Members",
+      "empty": "No members yet.",
+      "name": "Name",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "joined": "Joined"
+    }
+  },
+  "platform": {
+    "title": "Platform console",
+    "checking": "Checking access…",
+    "tenantsTitle": "Tenants",
+    "empty": "No tenants yet.",
+    "code": "Code",
+    "name": "Name",
+    "slug": "Slug",
+    "formTitle": "Create tenant",
+    "adminEmail": "Admin email",
+    "adminDisplayName": "Admin display name",
+    "adminPassword": "Admin password",
+    "defaultLanguage": "Default language",
+    "languageTh": "Thai",
+    "languageEn": "English",
+    "submit": "Create tenant",
+    "created": "Tenant \"{name}\" created. Admin user ID: {id}"
   }
 }

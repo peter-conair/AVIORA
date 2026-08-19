@@ -118,6 +118,19 @@ describe('Slice 1 — the §72 journey', () => {
     expect(tenantId).toBeTruthy();
   });
 
+  it("Nok's /auth/me lists Wellness One (cross-tenant auth query, pre-selection)", async () => {
+    const nok = await login(`nok-${RUN}@test.local`, PW);
+    const res = await api('/api/v1/auth/me', { token: nok });
+    expect(res.status).toBe(200);
+    expect(res.body.tenants.map((t: { tenantId: string }) => t.tenantId)).toContain(tenantId);
+  });
+
+  it('healthz and readyz are public', async () => {
+    const [h, r] = await Promise.all([api('/healthz'), api('/readyz')]);
+    expect(h.status).toBe(200);
+    expect(r.status).toBe(200);
+  });
+
   it('a non-platform user cannot create tenants', async () => {
     const nok = await login(`nok-${RUN}@test.local`, PW);
     const res = await api('/api/v1/platform/tenants', {
