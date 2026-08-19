@@ -288,6 +288,18 @@ describe('Slice 3 — AI assistant', () => {
     expect(res.body.conversationId).toBeTruthy();
   });
 
+  it('answers a natural-language question, not just keywords', async () => {
+    const seeker = await login(`seeker-${RUN}@test.local`);
+    const res = await api('/api/v1/ai/ask', {
+      method: 'POST',
+      token: seeker,
+      tenant: tenantId,
+      body: JSON.stringify({ question: 'How can I sleep better in the evening?' }),
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.citations.map((c: { title: string }) => c.title)).toContain('Sleep Hygiene');
+  });
+
   it('says so plainly when the knowledge base has nothing', async () => {
     const seeker = await login(`seeker-${RUN}@test.local`);
     const res = await api('/api/v1/ai/ask', {
@@ -344,16 +356,16 @@ describe('Slice 3 — AI assistant', () => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       await tx.tenantSetting.upsert({
         where: { tenantId_key: { tenantId, key: 'ai.dailyRequestCap' } },
-        create: { tenantId, key: 'ai.dailyRequestCap', value: 2 },
-        update: { value: 2 },
+        create: { tenantId, key: 'ai.dailyRequestCap', value: 3 },
+        update: { value: 3 },
       });
     });
     expect(adminA).toBeTruthy();
 
     const seeker = await login(`seeker-${RUN}@test.local`);
     const usage = await api('/api/v1/ai/usage', { token: seeker, tenant: tenantId });
-    expect(usage.body.dailyRequestCap).toBe(2);
-    expect(usage.body.requests).toBe(2); // the two asks above
+    expect(usage.body.dailyRequestCap).toBe(3);
+    expect(usage.body.requests).toBe(3); // the three asks above
     expect(usage.body.remaining).toBe(0);
 
     const blocked = await api('/api/v1/ai/ask', {

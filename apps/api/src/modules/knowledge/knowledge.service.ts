@@ -214,36 +214,41 @@ export class KnowledgeService {
   async search(query: string) {
     const q = query.trim();
     if (q.length < 2) return { query: q, knowledge: [], products: [] };
-    const contains = { contains: q, mode: 'insensitive' as const };
+
+    // Members (and the assistant) ask in sentences — "how can I sleep better?"
+    // — so match on meaningful terms rather than the phrase as a whole.
+    const terms = tokenize(q);
+    const anyTerm = (fields: string[]) => ({
+      OR: terms.flatMap((term) =>
+        fields.map((field) => ({ [field]: { contains: term, mode: 'insensitive' as const } })),
+      ),
+    });
 
     return this.db.tx(async (tx) => {
       const [goals, topics, articles, ingredients] = await Promise.all([
         tx.healthGoal.findMany({
-          where: { OR: [{ name: contains }, { description: contains }] },
+          where: anyTerm(['name', 'description']),
           take: 10,
           select: { id: true, code: true, name: true, description: true },
         }),
         tx.topic.findMany({
-          where: { OR: [{ name: contains }, { summary: contains }] },
+          where: anyTerm(['name', 'summary']),
           take: 10,
           select: { id: true, code: true, name: true, summary: true },
         }),
         tx.article.findMany({
-          where: {
-            status: 'published',
-            OR: [{ title: contains }, { summary: contains }, { body: contains }],
-          },
+          where: { status: 'published', ...anyTerm(['title', 'summary', 'body']) },
           take: 10,
           select: { id: true, slug: true, title: true, summary: true },
         }),
         tx.ingredient.findMany({
-          where: { OR: [{ name: contains }, { summary: contains }] },
+          where: anyTerm(['name', 'summary']),
           take: 10,
           select: { id: true, code: true, name: true, summary: true },
         }),
       ]);
 
-      const knowledge = [
+      const unranked = [
         ...goals.map((g) => ({
           kind: 'health_goal' as const,
           id: g.id,
@@ -274,6 +279,13 @@ export class KnowledgeService {
         })),
       ];
 
+      // most terms matched first; ties keep the goal → topic → article →
+      // ingredient order, which is the journey order the spec asks for
+      const knowledge = unranked
+        .map((item) => ({ item, score: scoreTerms(terms, `${item.title} ${item.summary ?? ''}`) }))
+        .sort((a, b) => b.score - a.score)
+        .map((r) => r.item);
+
       // products come last and only through their ingredients
       const ingredientIds = ingredients.map((i) => i.id);
       const links = ingredientIds.length
@@ -283,7 +295,7 @@ export class KnowledgeService {
           })
         : [];
       const directMatches = await tx.product.findMany({
-        where: { status: 'active', OR: [{ name: contains }, { description: contains }] },
+        where: { status: 'active', ...anyTerm(['name', 'description']) },
         take: 10,
         select: { id: true },
       });
@@ -308,4 +320,101 @@ export class KnowledgeService {
       return { query: q, knowledge, products };
     });
   }
+}
+
+/** Words that carry no retrieval signal in a question. */
+const STOP_WORDS = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'that',
+  'this',
+  'you',
+  'your',
+  'are',
+  'was',
+  'can',
+  'could',
+  'how',
+  'what',
+  'why',
+  'when',
+  'who',
+  'which',
+  'have',
+  'has',
+  'from',
+  'about',
+  'into',
+  'more',
+  'most',
+  'some',
+  'any',
+  'get',
+  'got',
+  'make',
+  'made',
+  'does',
+  'did',
+  'not',
+  'but',
+  'all',
+  'out',
+  'use',
+  'using',
+  'help',
+  'helps',
+  'better',
+  'best',
+  'good',
+  'way',
+  'ways',
+  'tip',
+  'tips',
+  'should',
+  'would',
+  'will',
+  'need',
+  'want',
+  'my',
+  'me',
+  'i',
+  'a',
+  'an',
+  'of',
+  'to',
+  'in',
+  'on',
+  'is',
+  'it',
+  'do',
+]);
+
+/**
+ * Splits a question into retrieval terms. Latin words shorter than three
+ * characters and stop words are dropped; Thai text has no spaces between words,
+ * so any CJK/Thai run is kept whole and matched as a substring.
+ */
+export function tokenize(query: string): string[] {
+  const terms = query
+    .toLowerCase()
+    // \p{M} matters: Thai vowels and tone marks are combining marks, and
+    // splitting on them would slice words like การนอนหลับ mid-syllable.
+    .split(/[^\p{L}\p{M}\p{N}-]+/u)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .filter((t) => {
+      if (/[฀-๿一-鿿]/.test(t)) return t.length >= 2; // Thai / CJK
+      return t.length >= 3 && !STOP_WORDS.has(t);
+    });
+  const unique = [...new Set(terms)];
+  // fall back to the raw query when the question was only stop words
+  return unique.length ? unique.slice(0, 8) : [query.trim().toLowerCase()];
+}
+
+/** How many distinct terms appear in the text — the ranking signal. */
+function scoreTerms(terms: string[], text: string): number {
+  const haystack = text.toLowerCase();
+  return terms.reduce((n, term) => (haystack.includes(term) ? n + 1 : n), 0);
 }
