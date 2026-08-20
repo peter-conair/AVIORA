@@ -52,6 +52,16 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'GamificationRule',
   'PointEntry',
   'MemberBadge',
+  'Offering',
+  'OfferingPlanPrice',
+  'Coupon',
+  'Cart',
+  'CartItem',
+  'Order',
+  'OrderItem',
+  'Payment',
+  'Subscription',
+  'SubscriptionRun',
 ]);
 
 const LIST_OPS = new Set([

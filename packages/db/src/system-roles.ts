@@ -41,6 +41,7 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'health.coach.view', scope: SCOPES.SELF },
       { key: 'community.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'community.moderate', scope: SCOPES.DIRECT_TEAM },
+      { key: 'commerce.catalog.view', scope: SCOPES.TENANT_ALL },
     ],
   },
   {
@@ -67,6 +68,11 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'community.post', scope: SCOPES.DIRECT_TEAM },
       { key: 'challenge.view', scope: SCOPES.SELF },
       { key: 'challenge.join', scope: SCOPES.SELF },
+      // the catalogue is tenant-wide; what a member buys and subscribes to is
+      // their own business, so orders and subscriptions stay SELF
+      { key: 'commerce.catalog.view', scope: SCOPES.TENANT_ALL },
+      { key: 'commerce.order.view', scope: SCOPES.SELF },
+      { key: 'commerce.subscription.manage', scope: SCOPES.SELF },
     ],
   },
 ];

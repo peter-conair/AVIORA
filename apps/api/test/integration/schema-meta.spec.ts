@@ -50,6 +50,16 @@ const TENANT_OWNED_TABLES = [
   'gamification_rules',
   'point_entries',
   'member_badges',
+  'offerings',
+  'offering_plan_prices',
+  'coupons',
+  'carts',
+  'cart_items',
+  'orders',
+  'order_items',
+  'payments',
+  'subscriptions',
+  'subscription_runs',
 ];
 
 /**

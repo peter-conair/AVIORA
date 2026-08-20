@@ -63,6 +63,13 @@ export const PERMISSIONS = {
   CHALLENGE_MANAGE: 'challenge.manage',
   GAMIFICATION_MANAGE: 'gamification.manage',
 
+  // commerce (docs/16 Phase 2 — commerce supports the journey, spec §39/§40)
+  COMMERCE_CATALOG_VIEW: 'commerce.catalog.view',
+  COMMERCE_CATALOG_MANAGE: 'commerce.catalog.manage',
+  COMMERCE_ORDER_VIEW: 'commerce.order.view',
+  COMMERCE_ORDER_MANAGE: 'commerce.order.manage',
+  COMMERCE_SUBSCRIPTION_MANAGE: 'commerce.subscription.manage',
+
   // notifications
   NOTIFICATION_VIEW: 'notification.view',
 
@@ -94,6 +101,8 @@ export const ENTITLEMENTS = {
   TEAM_MANAGE: 'team.manage',
   ANALYTICS_TEAM: 'analytics.team',
   MENTOR_ACCESS: 'mentor.access',
+  /** A tenant that does not sell anything simply never grants this. */
+  COMMERCE: 'commerce.enabled',
 } as const;
 
 export type EntitlementKey = (typeof ENTITLEMENTS)[keyof typeof ENTITLEMENTS];

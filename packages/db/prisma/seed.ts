@@ -25,6 +25,8 @@ const SCOPED_DEFAULTS: Record<string, PermissionScope> = {
   [PERMISSIONS.TEAM_MEMBER_VIEW]: PermissionScope.DIRECT_TEAM,
   [PERMISSIONS.TEAM_MEMBER_MANAGE]: PermissionScope.DIRECT_TEAM,
   [PERMISSIONS.TEAM_ANALYTICS_VIEW]: PermissionScope.DIRECT_TEAM,
+  [PERMISSIONS.COMMERCE_ORDER_VIEW]: PermissionScope.SELF,
+  [PERMISSIONS.COMMERCE_SUBSCRIPTION_MANAGE]: PermissionScope.SELF,
 };
 
 async function seedPermissions(): Promise<number> {

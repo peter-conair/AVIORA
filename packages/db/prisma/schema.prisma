@@ -126,9 +126,12 @@ model Member {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  user        User         @relation(fields: [userId], references: [id])
-  memberRoles MemberRole[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  memberRoles   MemberRole[]
+  carts         Cart[]
+  orders        Order[]
+  subscriptions Subscription[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
@@ -274,6 +277,7 @@ model MembershipPlan {
 
   planEntitlements PlanEntitlement[]
   memberships      Membership[]
+  offeringPrices   OfferingPlanPrice[]
 
   @@unique([tenantId, code])
   @@map("membership_plans")
@@ -494,26 +498,26 @@ model PipelineStage {
 }
 
 model Lead {
-  id           String    @id @default(uuid(7)) @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  ownerMemberId String   @map("owner_member_id") @db.Uuid
-  stageId      String?   @map("stage_id") @db.Uuid
-  name         String
-  email        String?
-  phone        String?
-  source       String?
-  notes        String?
-  status       String    @default("open")
-  convertedCustomerId String? @map("converted_customer_id") @db.Uuid
-  convertedAt  DateTime? @map("converted_at") @db.Timestamptz(6)
-  lastContactAt DateTime? @map("last_contact_at") @db.Timestamptz(6)
-  metadata     Json?
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String    @id @default(uuid(7)) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  ownerMemberId       String    @map("owner_member_id") @db.Uuid
+  stageId             String?   @map("stage_id") @db.Uuid
+  name                String
+  email               String?
+  phone               String?
+  source              String?
+  notes               String?
+  status              String    @default("open")
+  convertedCustomerId String?   @map("converted_customer_id") @db.Uuid
+  convertedAt         DateTime? @map("converted_at") @db.Timestamptz(6)
+  lastContactAt       DateTime? @map("last_contact_at") @db.Timestamptz(6)
+  metadata            Json?
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  stage         PipelineStage? @relation(fields: [stageId], references: [id])
-  followUps     FollowUp[]
-  interactions  Interaction[]
+  stage        PipelineStage? @relation(fields: [stageId], references: [id])
+  followUps    FollowUp[]
+  interactions Interaction[]
 
   @@index([tenantId, ownerMemberId, status])
   @@index([tenantId, stageId])
@@ -521,18 +525,18 @@ model Lead {
 }
 
 model Customer {
-  id            String   @id @default(uuid(7)) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
-  ownerMemberId String   @map("owner_member_id") @db.Uuid
-  memberId      String?  @map("member_id") @db.Uuid
-  name          String
-  email         String?
-  phone         String?
-  status        String   @default("active")
-  convertedFromLeadId String? @map("converted_from_lead_id") @db.Uuid
-  metadata      Json?
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String   @id @default(uuid(7)) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  ownerMemberId       String   @map("owner_member_id") @db.Uuid
+  memberId            String?  @map("member_id") @db.Uuid
+  name                String
+  email               String?
+  phone               String?
+  status              String   @default("active")
+  convertedFromLeadId String?  @map("converted_from_lead_id") @db.Uuid
+  metadata            Json?
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   followUps    FollowUp[]
   interactions Interaction[]
@@ -631,16 +635,16 @@ model ProcessedEvent {
 // while writes still require a matching tenant_id.
 
 model HealthGoal {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  tenantId    String?  @map("tenant_id") @db.Uuid
-  code        String
-  name        String
-  description String?
-  order       Int      @default(0)
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  description  String?
+  order        Int      @default(0)
   translations Json?
   searchText   String   @default("") @map("search_text")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   topics HealthGoalTopic[]
 
@@ -648,15 +652,15 @@ model HealthGoal {
 }
 
 model Topic {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  tenantId  String?  @map("tenant_id") @db.Uuid
-  code      String
-  name      String
-  summary   String?
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  summary      String?
   translations Json?
   searchText   String   @default("") @map("search_text")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   healthGoals HealthGoalTopic[]
   ingredients TopicIngredient[]
@@ -677,21 +681,21 @@ model HealthGoalTopic {
 }
 
 model Ingredient {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  tenantId    String?  @map("tenant_id") @db.Uuid
-  code        String
-  name        String
-  summary     String?
-  safetyNotes String?  @map("safety_notes")
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  summary      String?
+  safetyNotes  String?  @map("safety_notes")
   translations Json?
   searchText   String   @default("") @map("search_text")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  topics    TopicIngredient[]
-  articles  ArticleIngredient[]
-  products  ProductIngredient[]
-  evidence  EvidenceReference[]
+  topics   TopicIngredient[]
+  articles ArticleIngredient[]
+  products ProductIngredient[]
+  evidence EvidenceReference[]
 
   @@map("ingredients")
 }
@@ -725,17 +729,17 @@ model EvidenceReference {
 }
 
 model Article {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  tenantId    String?  @map("tenant_id") @db.Uuid
-  slug        String
-  title       String
-  summary     String?
-  body        String
-  status      String   @default("published")
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  slug         String
+  title        String
+  summary      String?
+  body         String
+  status       String   @default("published")
   translations Json?
   searchText   String   @default("") @map("search_text")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   topics      ArticleTopic[]
   ingredients ArticleIngredient[]
@@ -790,8 +794,8 @@ model Product {
   lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(6)
   safetyNotes    String?   @map("safety_notes")
   status         String    @default("active")
-  translations Json?
-  searchText   String   @default("") @map("search_text")
+  translations   Json?
+  searchText     String    @default("") @map("search_text")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -872,32 +876,32 @@ model AiUsage {
 // from the member, and free-text notes are encrypted at rest.
 
 model HealthProfile {
-  id            String    @id @default(uuid(7)) @db.Uuid
-  tenantId      String    @map("tenant_id") @db.Uuid
-  memberId      String    @unique @map("member_id") @db.Uuid
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  memberId       String   @unique @map("member_id") @db.Uuid
   /// Coarse, member-declared context — never a diagnosis.
   lifestyleNotes String?  @map("lifestyle_notes")
-  focusGoalIds  Json      @default("[]") @map("focus_goal_ids")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  focusGoalIds   Json     @default("[]") @map("focus_goal_ids")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId, memberId])
   @@map("health_profiles")
 }
 
 model Habit {
-  id         String    @id @default(uuid(7)) @db.Uuid
-  tenantId   String    @map("tenant_id") @db.Uuid
-  memberId   String    @map("member_id") @db.Uuid
-  code       String
-  name       String
-  cadence    String    @default("daily")
-  targetUnit String?   @map("target_unit")
-  targetValue Decimal? @map("target_value") @db.Decimal(10, 2)
-  status     String    @default("active")
-  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
+  code        String
+  name        String
+  cadence     String    @default("daily")
+  targetUnit  String?   @map("target_unit")
+  targetValue Decimal?  @map("target_value") @db.Decimal(10, 2)
+  status      String    @default("active")
+  archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   logs HabitLog[]
 
@@ -942,13 +946,13 @@ model HealthMetric {
 /// (a coach or leader) to view their health data (spec §59). Absence of a row
 /// means no access — there is no implicit leader access to health data.
 model HealthDataGrant {
-  id             String    @id @default(uuid(7)) @db.Uuid
-  tenantId       String    @map("tenant_id") @db.Uuid
-  memberId       String    @map("member_id") @db.Uuid
-  granteeMemberId String   @map("grantee_member_id") @db.Uuid
-  scope          String    @default("summary")
-  grantedAt      DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
-  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid(7)) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  memberId        String    @map("member_id") @db.Uuid
+  granteeMemberId String    @map("grantee_member_id") @db.Uuid
+  scope           String    @default("summary")
+  grantedAt       DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
 
   @@unique([memberId, granteeMemberId])
   @@index([tenantId, granteeMemberId, revokedAt])
@@ -958,15 +962,15 @@ model HealthDataGrant {
 // ───────────────────────── Phase 2 — Community · Challenges · Gamification ─────────────────────────
 
 model Community {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  tenantId   String   @map("tenant_id") @db.Uuid
-  teamId     String?  @unique @map("team_id") @db.Uuid
-  code       String
-  name       String
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  teamId      String?  @unique @map("team_id") @db.Uuid
+  code        String
+  name        String
   description String?
-  visibility String   @default("team")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  visibility  String   @default("team")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   posts      Post[]
   challenges Challenge[]
@@ -1057,13 +1061,13 @@ model Challenge {
 /// health data, so a member appears on a leaderboard only because they chose to
 /// join — and only the derived count is ever shared, never the underlying logs.
 model ChallengeParticipant {
-  id             String    @id @default(uuid(7)) @db.Uuid
-  tenantId       String    @map("tenant_id") @db.Uuid
-  challengeId    String    @map("challenge_id") @db.Uuid
-  memberId       String    @map("member_id") @db.Uuid
-  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
-  leftAt         DateTime? @map("left_at") @db.Timestamptz(6)
-  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  challengeId String    @map("challenge_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
+  joinedAt    DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt      DateTime? @map("left_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
 
   challenge Challenge @relation(fields: [challengeId], references: [id])
 
@@ -1112,4 +1116,241 @@ model MemberBadge {
   @@id([memberId, badgeCode])
   @@index([tenantId, memberId])
   @@map("member_badges")
+}
+
+// ── Commerce (docs/16 Phase 2, spec §39–§40) ──
+//
+// Money is stored as an integer in the currency's minor unit plus an ISO-4217
+// code. No floats, and no assumption that a tenant sells in any one currency.
+//
+// Knowledge Products stay brand-neutral and may be global; what a TENANT sells
+// is an Offering. An Offering may point at a knowledge Product, or stand alone
+// (a coaching package, an event seat), which is why the link is optional.
+
+model Offering {
+  id            String  @id @default(uuid(7)) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  description   String?
+  /// Optional link to the brand-neutral knowledge product this sells.
+  productId     String? @map("product_id") @db.Uuid
+  /// 'one_time' | 'subscription'
+  kind          String  @default("one_time")
+  currency      String  @db.VarChar(3)
+  priceMinor    Int     @map("price_minor")
+  status        String  @default("active")
+  /// Subscription defaults; any interval, not a fixed enum of billing periods.
+  intervalUnit  String? @map("interval_unit")
+  intervalCount Int?    @map("interval_count")
+  translations  Json?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  planPrices    OfferingPlanPrice[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  subscriptions Subscription[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@map("offerings")
+}
+
+/// Membership pricing: a plan pays a different price. Configuration, so no
+/// code ever branches on a plan's name.
+model OfferingPlanPrice {
+  id         String @id @default(uuid(7)) @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  offeringId String @map("offering_id") @db.Uuid
+  planId     String @map("plan_id") @db.Uuid
+  priceMinor Int    @map("price_minor")
+
+  offering Offering       @relation(fields: [offeringId], references: [id])
+  plan     MembershipPlan @relation(fields: [planId], references: [id])
+
+  @@unique([offeringId, planId])
+  @@index([tenantId])
+  @@map("offering_plan_prices")
+}
+
+model Coupon {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  code             String
+  /// 'percent' | 'fixed'
+  kind             String
+  /// percent: 1–100. fixed: minor units of `currency`.
+  value            Int
+  currency         String?   @db.VarChar(3)
+  minSubtotalMinor Int?      @map("min_subtotal_minor")
+  startsAt         DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt           DateTime? @map("ends_at") @db.Timestamptz(6)
+  maxRedemptions   Int?      @map("max_redemptions")
+  redeemedCount    Int       @default(0) @map("redeemed_count")
+  status           String    @default("active")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  carts  Cart[]
+  orders Order[]
+
+  @@unique([tenantId, code])
+  @@map("coupons")
+}
+
+model Cart {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  /// 'open' | 'ordered' | 'abandoned'
+  status    String   @default("open")
+  couponId  String?  @map("coupon_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  member Member     @relation(fields: [memberId], references: [id])
+  coupon Coupon?    @relation(fields: [couponId], references: [id])
+  items  CartItem[]
+
+  @@index([tenantId, memberId, status])
+  @@map("carts")
+}
+
+model CartItem {
+  id             String @id @default(uuid(7)) @db.Uuid
+  tenantId       String @map("tenant_id") @db.Uuid
+  cartId         String @map("cart_id") @db.Uuid
+  offeringId     String @map("offering_id") @db.Uuid
+  quantity       Int    @default(1)
+  /// Snapshot of the resolved price, so a catalogue edit cannot silently
+  /// change what the member was looking at.
+  unitPriceMinor Int    @map("unit_price_minor")
+
+  cart     Cart     @relation(fields: [cartId], references: [id])
+  offering Offering @relation(fields: [offeringId], references: [id])
+
+  @@unique([cartId, offeringId])
+  @@index([tenantId])
+  @@map("cart_items")
+}
+
+model Order {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  memberId       String    @map("member_id") @db.Uuid
+  number         String
+  /// 'pending' | 'paid' | 'cancelled' | 'refunded'
+  status         String    @default("pending")
+  currency       String    @db.VarChar(3)
+  subtotalMinor  Int       @map("subtotal_minor")
+  discountMinor  Int       @default(0) @map("discount_minor")
+  totalMinor     Int       @map("total_minor")
+  couponId       String?   @map("coupon_id") @db.Uuid
+  subscriptionId String?   @map("subscription_id") @db.Uuid
+  placedAt       DateTime  @default(now()) @map("placed_at") @db.Timestamptz(6)
+  paidAt         DateTime? @map("paid_at") @db.Timestamptz(6)
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  member       Member        @relation(fields: [memberId], references: [id])
+  coupon       Coupon?       @relation(fields: [couponId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  items        OrderItem[]
+  payments     Payment[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, memberId, placedAt])
+  @@index([tenantId, status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String @id @default(uuid(7)) @db.Uuid
+  tenantId       String @map("tenant_id") @db.Uuid
+  orderId        String @map("order_id") @db.Uuid
+  offeringId     String @map("offering_id") @db.Uuid
+  /// Name at purchase time — an order must still read correctly after the
+  /// catalogue is renamed.
+  name           String
+  quantity       Int
+  unitPriceMinor Int    @map("unit_price_minor")
+  lineTotalMinor Int    @map("line_total_minor")
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  offering Offering @relation(fields: [offeringId], references: [id])
+
+  @@index([tenantId, orderId])
+  @@map("order_items")
+}
+
+/// Provider-agnostic payment record. The only adapter shipped is 'manual'
+/// (recorded offline/bank transfer); a PSP becomes another provider value.
+model Payment {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  orderId     String    @map("order_id") @db.Uuid
+  provider    String    @default("manual")
+  providerRef String?   @map("provider_ref")
+  amountMinor Int       @map("amount_minor")
+  currency    String    @db.VarChar(3)
+  /// 'pending' | 'succeeded' | 'failed'
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  settledAt   DateTime? @map("settled_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([tenantId, orderId])
+  @@map("payments")
+}
+
+model Subscription {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  memberId      String    @map("member_id") @db.Uuid
+  offeringId    String    @map("offering_id") @db.Uuid
+  /// 'active' | 'paused' | 'cancelled'
+  status        String    @default("active")
+  /// Any interval: ('day'|'week'|'month') × count. Monthly, quarterly and
+  /// custom intervals are all the same code path.
+  intervalUnit  String    @map("interval_unit")
+  intervalCount Int       @map("interval_count")
+  quantity      Int       @default(1)
+  currency      String    @db.VarChar(3)
+  priceMinor    Int       @map("price_minor")
+  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  /// Date (not instant) the next order is due — billing days are calendar days
+  /// in the tenant's own reckoning.
+  nextRunOn     DateTime  @map("next_run_on") @db.Date
+  pausedAt      DateTime? @map("paused_at") @db.Timestamptz(6)
+  cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  autoRenew     Boolean   @default(true) @map("auto_renew")
+
+  member   Member            @relation(fields: [memberId], references: [id])
+  offering Offering          @relation(fields: [offeringId], references: [id])
+  orders   Order[]
+  runs     SubscriptionRun[]
+
+  @@index([tenantId, memberId])
+  @@index([tenantId, status, nextRunOn])
+  @@map("subscriptions")
+}
+
+/// One row per scheduled cycle. The unique key is what makes renewal safe to
+/// retry: a run that already produced an order can never produce a second one.
+model SubscriptionRun {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  scheduledFor   DateTime @map("scheduled_for") @db.Date
+  /// 'ordered' | 'skipped'
+  outcome        String
+  orderId        String?  @map("order_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@unique([subscriptionId, scheduledFor])
+  @@index([tenantId])
+  @@map("subscription_runs")
 }

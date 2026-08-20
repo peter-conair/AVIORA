@@ -5,8 +5,7 @@ import { ClsMiddleware, ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
 import { newId } from '@aviora/shared';
 
-import { PrismaService } from './common/db/prisma.service';
-import { TenantDb } from './common/db/tenant-db.service';
+import { CoreModule } from './common/core.module';
 import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
 import { TenantContextMiddleware } from './common/tenant/tenant-context.middleware';
 import { TenantContextAccessor } from './common/tenant/tenant-context.accessor';
@@ -14,7 +13,6 @@ import { HealthController as HealthCheckController } from './common/health/healt
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
 import { EntitlementsGuard } from './common/auth/entitlements.guard';
-import { AuditService } from './common/audit/audit.service';
 import { EventBus } from './common/events/event-bus';
 import { OutboxRelayService } from './common/events/outbox-relay.service';
 import { EmailService } from './common/email/email.service';
@@ -58,9 +56,11 @@ import { AiController } from './modules/ai/ai.controller';
 import { AiService } from './modules/ai/ai.service';
 import { AnthropicProvider } from './modules/ai/anthropic.provider';
 import { GroundedProvider } from './modules/ai/grounded.provider';
+import { CommerceModule } from './modules/commerce/commerce.module';
 
 @Module({
   imports: [
+    CoreModule,
     ClsModule.forRoot({
       global: true,
       middleware: {
@@ -88,6 +88,7 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
         },
       }),
     }),
+    CommerceModule,
   ],
   controllers: [
     HealthCheckController,
@@ -111,12 +112,9 @@ import { GroundedProvider } from './modules/ai/grounded.provider';
     GamificationController,
   ],
   providers: [
-    PrismaService,
-    TenantDb,
     AllExceptionsFilter,
     TenantContextMiddleware,
     TenantContextAccessor,
-    AuditService,
     EventBus,
     OutboxRelayService,
     EmailService,

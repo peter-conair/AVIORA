@@ -26,6 +26,13 @@ export const EVENTS = {
   ChallengeJoined: 'ChallengeJoined',
   ChallengeCompleted: 'ChallengeCompleted',
   PostPublished: 'PostPublished',
+  OrderPlaced: 'OrderPlaced',
+  OrderCompleted: 'OrderCompleted',
+  SubscriptionCreated: 'SubscriptionCreated',
+  SubscriptionRenewed: 'SubscriptionRenewed',
+  SubscriptionPaused: 'SubscriptionPaused',
+  SubscriptionResumed: 'SubscriptionResumed',
+  SubscriptionCancelled: 'SubscriptionCancelled',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
