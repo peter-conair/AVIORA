@@ -181,6 +181,26 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('the growth page tells a member what is still missing', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/growth');
+    await expect(page.getByRole('heading', { name: 'เส้นทางการเติบโต' })).toBeVisible();
+    // The referral graph is not the team graph, and a member is told so on the
+    // screen rather than in a document nobody opens.
+    await expect(
+      page.getByText('สายการแนะนำเป็นคนละเรื่องกับทีมที่คุณสังกัด ย้ายทีมแล้วผู้แนะนำไม่เปลี่ยน'),
+    ).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('the ranks tab is where a tenant defines its ladder', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'ระดับและการแนะนำ' }).click();
+    await expect(page.getByText('ลำดับระดับ').first()).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('the gamification tab explains that points are configuration', async ({ page }) => {
     await signIn(page);
     await page.goto('/th/admin');

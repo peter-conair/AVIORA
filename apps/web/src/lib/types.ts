@@ -1192,3 +1192,179 @@ export function intervalUnitKey(unit: string): string | null {
   if (!(INTERVAL_UNITS as readonly string[]).includes(unit)) return null;
   return `unit${unit.charAt(0).toUpperCase()}${unit.slice(1)}`;
 }
+
+// ---- Growth: ranks & referrals (docs/25) ----
+
+export const RANK_METRICS = [
+  'personal_volume',
+  'referral_downline_volume',
+  'direct_referrals',
+  'qualified_legs',
+  'courses_completed',
+] as const;
+export type RankMetric = (typeof RANK_METRICS)[number];
+
+export const RANK_WINDOWS = ['lifetime', 'rolling_30', 'rolling_90', 'calendar_month'] as const;
+export type RankWindow = (typeof RANK_WINDOWS)[number];
+
+export const RANK_COMPARATORS = ['gte', 'gt', 'lte', 'lt', 'eq'] as const;
+export type RankComparator = (typeof RANK_COMPARATORS)[number];
+
+export const REFERRAL_TYPES = [
+  'referral',
+  'sponsor',
+  'introducer',
+  'affiliate',
+  'mentor_referral',
+] as const;
+export type ReferralType = (typeof REFERRAL_TYPES)[number];
+
+/**
+ * The two metrics whose values are integer MINOR units of money. Everything
+ * else is a plain count and must never be divided — a member with 3 direct
+ * referrals has 3, not 0.03.
+ */
+const MONEY_METRICS: readonly string[] = ['personal_volume', 'referral_downline_volume'];
+
+export function isMoneyMetric(metric: string): boolean {
+  return MONEY_METRICS.includes(metric);
+}
+
+/**
+ * The growth routes carry amounts without a currency code, and no route exposes
+ * the tenant's default. This matches the API's own default so a rank threshold
+ * is at least formatted consistently; the shop's own currency, when the
+ * catalogue has one, is preferred over it.
+ */
+export const FALLBACK_CURRENCY = 'THB';
+
+const RANK_METRIC_KEYS: Record<string, string> = {
+  personal_volume: 'metricPersonalVolume',
+  referral_downline_volume: 'metricDownlineVolume',
+  direct_referrals: 'metricDirectReferrals',
+  qualified_legs: 'metricQualifiedLegs',
+  courses_completed: 'metricCoursesCompleted',
+};
+
+const RANK_WINDOW_KEYS: Record<string, string> = {
+  lifetime: 'windowLifetime',
+  rolling_30: 'windowRolling30',
+  rolling_90: 'windowRolling90',
+  calendar_month: 'windowCalendarMonth',
+};
+
+const REFERRAL_TYPE_KEYS: Record<string, string> = {
+  referral: 'typeReferral',
+  sponsor: 'typeSponsor',
+  introducer: 'typeIntroducer',
+  affiliate: 'typeAffiliate',
+  mentor_referral: 'typeMentorReferral',
+};
+
+/** `growth.*` message key, or null when this build has no wording for the value. */
+export function rankMetricKey(metric: string): string | null {
+  return RANK_METRIC_KEYS[metric] ?? null;
+}
+
+export function rankWindowKey(window: string): string | null {
+  return RANK_WINDOW_KEYS[window] ?? null;
+}
+
+export function referralTypeKey(type: string): string | null {
+  return REFERRAL_TYPE_KEYS[type] ?? null;
+}
+
+export interface RankQualification {
+  id?: string;
+  metric: string;
+  comparator: string;
+  threshold: number;
+  window: string;
+  params?: Record<string, unknown> | null;
+}
+
+export interface RankDefinition {
+  id: string;
+  code: string;
+  name: string;
+  level: number;
+  status?: string;
+  requalifyWindowDays?: number | null;
+  qualifications: RankQualification[];
+}
+
+export interface RanksResponse {
+  ranks: RankDefinition[];
+}
+
+export interface RankResponse {
+  rank: RankDefinition;
+}
+
+export interface RankRef {
+  id: string;
+  code: string;
+  name: string;
+  level: number;
+}
+
+/** The rank qualified RIGHT NOW, with the moment that was last decided. */
+export interface CurrentRank extends RankRef {
+  evaluatedAt: string | null;
+}
+
+/**
+ * One unmet rule: what is measured, over what window, what it must reach, and
+ * where the member stands. `remaining` is already the difference — it is not
+ * recomputed here.
+ */
+export interface RankRequirementGap {
+  metric: string;
+  comparator: string;
+  window: string;
+  threshold: number;
+  current: number;
+  remaining: number;
+  met?: boolean;
+}
+
+/**
+ * `current` is qualification, `highest` is recognition. They answer different
+ * questions and are never merged into one number (docs/25 §3).
+ */
+export interface RankMeResponse {
+  memberId: string;
+  current: CurrentRank | null;
+  highest: RankRef | null;
+  next: RankRef | null;
+  missing: RankRequirementGap[];
+}
+
+export interface ReferralEdge {
+  id: string;
+  referrerMemberId?: string;
+  referredMemberId?: string;
+  relationshipType: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  displayName?: string | null;
+}
+
+export interface ReferralMeResponse {
+  memberId: string;
+  /** The sponsor edge — the one answer to "who referred me". */
+  referrer: ReferralEdge | null;
+  /** Every active edge, since a member can have a sponsor and a mentor at once. */
+  referrers: ReferralEdge[];
+  directReferrals: ReferralEdge[];
+}
+
+export interface ReferralResponse {
+  referral: ReferralEdge;
+}
+
+export interface RankEvaluateResponse {
+  asOf: string;
+  evaluated: number;
+  changed: number;
+}

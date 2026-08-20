@@ -276,6 +276,34 @@ export class ReferralService {
   }
 
   /** Who referred the caller, and whom the caller referred directly. */
+  /**
+   * Every edge in the tenant, for the people who administer the graph. The
+   * member-facing views are SELF-scoped and entitlement-gated, and a tenant
+   * owner holds no membership plan — without this they could create edges and
+   * never see them again.
+   */
+  list(input: { includeEnded?: boolean; relationshipType?: string; limit?: number }) {
+    return this.db.tx(async (tx) => {
+      const rows = await tx.referralRelationship.findMany({
+        where: {
+          ...(input.includeEnded ? {} : { effectiveTo: null }),
+          ...(input.relationshipType ? { relationshipType: input.relationshipType } : {}),
+        },
+        orderBy: { effectiveFrom: 'desc' },
+        take: Math.min(Math.max(input.limit ?? 200, 1), 500),
+      });
+      const names = await this.displayNames(tx, [
+        ...rows.map((r) => r.referrerMemberId),
+        ...rows.map((r) => r.referredMemberId),
+      ]);
+      return rows.map((r) => ({
+        ...r,
+        referrerDisplayName: names.get(r.referrerMemberId) ?? null,
+        referredDisplayName: names.get(r.referredMemberId) ?? null,
+      }));
+    });
+  }
+
   me(memberId: string) {
     return this.db.tx(async (tx) => {
       const [referrers, directReferrals] = await Promise.all([

@@ -2,8 +2,9 @@ import { ConflictException } from '@nestjs/common';
 import { ERROR_CODES } from '@aviora/shared';
 import type { Tx } from '@aviora/db';
 
-/** Only the seed tenant makes this the fallback — nothing in code depends on it. */
-export const DEFAULT_CURRENCY = 'THB';
+// A tenant has one currency, resolved in one place (common/money) so commerce
+// and the rank engine cannot disagree about it.
+export { DEFAULT_CURRENCY, tenantCurrency } from '../../common/money/currency';
 
 export const OFFERING_KINDS = ['one_time', 'subscription'] as const;
 export const COUPON_KINDS = ['percent', 'fixed'] as const;
@@ -44,13 +45,6 @@ export async function priceResolver(tx: Tx, memberId: string | null): Promise<Pr
     });
     return planPrice?.priceMinor ?? offering.priceMinor;
   };
-}
-
-/** Tenant setting `commerce.currency`, ISO-4217. */
-export async function tenantCurrency(tx: Tx): Promise<string> {
-  const setting = await tx.tenantSetting.findFirst({ where: { key: 'commerce.currency' } });
-  const value = setting?.value;
-  return typeof value === 'string' && /^[A-Z]{3}$/.test(value) ? value : DEFAULT_CURRENCY;
 }
 
 export interface CouponRules {

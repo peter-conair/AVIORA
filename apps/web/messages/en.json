@@ -31,7 +31,8 @@
       "teams": "Organization",
       "leader": "My organization",
       "admin": "Admin",
-      "platform": "Platform"
+      "platform": "Platform",
+      "growth": "Growth"
     }
   },
   "notifications": {
@@ -551,7 +552,8 @@
       "members": "Members",
       "gamification": "Points & challenges",
       "commerce": "Shop",
-      "audit": "Audit"
+      "audit": "Audit",
+      "growth": "Ranks & referrals"
     },
     "plans": {
       "listTitle": "Membership plans",
@@ -723,6 +725,60 @@
       "submitCoupon": "Create coupon",
       "couponCreated": "Created {code}.",
       "priceMinorInput": "Price (minor units)"
+    },
+    "growth": {
+      "forbidden": "This area is outside your permissions.",
+      "ladderTitle": "Rank ladder",
+      "ladderHint": "A rank is data: metric, comparator, threshold and window. A new rule is a row, never a release.",
+      "ladderEmpty": "No ranks defined yet.",
+      "level": "Level {level}",
+      "noQualifications": "No qualifications — every member reaches this rank.",
+      "rule": "{metric} {comparator} {threshold} · {window}",
+      "formTitle": "Add a rank",
+      "code": "Code",
+      "codeHint": "Lowercase letters, numbers and hyphens.",
+      "name": "Name",
+      "levelInput": "Level",
+      "levelHint": "Higher wins: evaluation takes the highest level whose rules all pass.",
+      "requalifyWindowDays": "Requalify window (days)",
+      "requalifyHint": "Optional.",
+      "qualificationsTitle": "Qualifications",
+      "qualificationsEmpty": "No rules yet — everyone would reach this rank.",
+      "addQualification": "Add a rule",
+      "removeQualification": "Remove",
+      "metric": "Metric",
+      "comparator": "Comparator",
+      "threshold": "Threshold",
+      "thresholdHint": "Money metrics take minor units. Count metrics take a plain count.",
+      "window": "Window",
+      "legVolumeMinor": "Leg volume (minor units)",
+      "legVolumeHint": "A qualifying-lines rule needs this — what one line must reach to count.",
+      "submitRank": "Create rank",
+      "rankCreated": "Created {name}.",
+      "comparators": {
+        "gte": "at least",
+        "gt": "more than",
+        "lte": "at most",
+        "lt": "less than",
+        "eq": "exactly"
+      },
+      "evaluateTitle": "Run evaluation",
+      "evaluateHint": "Recomputes every active member from the source data. A rank goes down when the data stops supporting it.",
+      "evaluate": "Evaluate the whole workspace",
+      "evaluateDone": "Evaluated {evaluated}, changed {changed}.",
+      "referralsTitle": "Referral edges",
+      "referralsHint": "The referral graph is not the team graph: writing here never moves anyone between teams, and moving a team never writes here.",
+      "referralsEmpty": "No edges created here yet.",
+      "referralsListNote": "The API has no workspace-wide list of edges, so only the ones created on this screen are shown.",
+      "referrer": "Referrer",
+      "referred": "Referred member",
+      "relationshipType": "Relationship",
+      "choose": "Choose…",
+      "submitReferral": "Create edge",
+      "referralCreated": "Edge created.",
+      "endReferral": "End",
+      "referralEnded": "Ended",
+      "membersUnavailable": "No members to link yet."
     }
   },
   "platform": {
@@ -822,6 +878,18 @@
     "referralsTitle": "People you referred",
     "referralsEmpty": "You have not referred anyone yet.",
     "ladderTitle": "The ladder",
-    "graphNote": "Who referred you is separate from which team you are in — changing team does not change your referrer."
+    "graphNote": "Who referred you is separate from which team you are in — changing team does not change your referrer.",
+    "highestEver": "Best rank you have held",
+    "highestEverNote": "Your current rank is what qualifies today. This is the highest you have ever reached, and it does not change what you qualify for now.",
+    "remaining": "{amount} to go",
+    "evaluatedAt": "Last checked {date}",
+    "youAreHere": "You are here",
+    "since": "since {date}",
+    "ladderEmpty": "This workspace has no ranks yet.",
+    "typeReferral": "Referral",
+    "typeSponsor": "Sponsor",
+    "typeIntroducer": "Introducer",
+    "typeAffiliate": "Affiliate",
+    "typeMentorReferral": "Mentor referral"
   }
 }

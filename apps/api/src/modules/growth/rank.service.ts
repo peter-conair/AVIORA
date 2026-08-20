@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { ERROR_CODES, EVENTS } from '@aviora/shared';
 import { appendEvent, type Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { tenantCurrency } from '../../common/money/currency';
 import { AuditService } from '../../common/audit/audit.service';
 import { MAX_REFERRAL_DEPTH } from './referral.service';
 import {
@@ -144,13 +145,16 @@ export class RankService {
    */
   me(memberId: string, asOf = new Date()) {
     return this.db.tx(async (tx) => {
-      const [progress, definitions, everHeld] = await Promise.all([
+      const [progress, definitions, everHeld, currency] = await Promise.all([
         tx.rankProgress.findFirst({ where: { memberId } }),
         this.activeDefinitions(tx),
         // Recognition: the best rank ever held, which survives a demotion.
         // Kept apart from `current` so the number a commission would pay on
         // is never the number a certificate on the wall says.
         tx.rankHistory.findMany({ where: { memberId }, select: { rankId: true } }),
+        // money thresholds are minor units; without the code the reader has to
+        // guess which currency they are in
+        tenantCurrency(tx),
       ]);
       const heldIds = new Set(everHeld.map((h) => h.rankId));
       const highest =
@@ -167,6 +171,7 @@ export class RankService {
       if (!next) {
         return {
           memberId,
+          currency,
           current: currentView(current, progress?.evaluatedAt ?? null),
           highest: highest
             ? { id: highest.id, code: highest.code, name: highest.name, level: highest.level }
@@ -197,6 +202,7 @@ export class RankService {
 
       return {
         memberId,
+        currency,
         current: currentView(current, progress?.evaluatedAt ?? null),
         highest: highest
           ? { id: highest.id, code: highest.code, name: highest.name, level: highest.level }

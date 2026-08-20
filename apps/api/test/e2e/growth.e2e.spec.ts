@@ -1212,6 +1212,35 @@ describe('Isolation and entitlement', () => {
     expect(referral.body.error.code).toBe('ENTITLEMENT_REQUIRED');
   });
 
+  it('an administrator can list the whole graph, including ended edges', async () => {
+    // the member views are SELF-scoped and entitlement-gated, and the owner
+    // holds no plan — without a tenant-wide list they could create edges and
+    // never see them again
+    const admin = await login(`admin-a-${RUN}@test.local`);
+    const active = await api('/api/v1/referrals', { token: admin, tenant: tenantId });
+    expect(active.status).toBe(200);
+    const activeIds = active.body.referrals.map((r: { id: string }) => r.id);
+    expect(activeIds).toContain(edge.veraWren);
+    expect(activeIds).not.toContain(edge.veraOtto); // ended earlier in this file
+
+    const withEnded = await api('/api/v1/referrals?includeEnded=true', {
+      token: admin,
+      tenant: tenantId,
+    });
+    expect(withEnded.body.referrals.map((r: { id: string }) => r.id)).toContain(edge.veraOtto);
+
+    // it is an administrator's view, not a member's
+    const wren = await login(`wren-${RUN}@test.local`);
+    const denied = await api('/api/v1/referrals', { token: wren, tenant: tenantId });
+    expect(denied.status).toBe(403);
+  });
+
+  it('the money thresholds say which currency they are in', async () => {
+    const wren = await login(`wren-${RUN}@test.local`);
+    const me = await api('/api/v1/ranks/me', { token: wren, tenant: tenantId });
+    expect(me.body.currency).toMatch(/^[A-Z]{3}$/);
+  });
+
   it('the owner, who holds no plan at all, still administers ranks and referrals', async () => {
     const admin = await login(`admin-a-${RUN}@test.local`);
     // the premise: this tenant owner has no membership, so no entitlement

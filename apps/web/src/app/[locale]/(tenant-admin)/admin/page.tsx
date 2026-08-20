@@ -9,6 +9,7 @@ import { MembersTab } from '@/components/admin/MembersTab';
 import { AuditTab } from '@/components/admin/AuditTab';
 import { GamificationTab } from '@/components/admin/GamificationTab';
 import { CommerceTab } from '@/components/admin/CommerceTab';
+import { RanksTab } from '@/components/admin/RanksTab';
 
 const TABS = [
   'plans',
@@ -17,6 +18,7 @@ const TABS = [
   'members',
   'gamification',
   'commerce',
+  'growth',
   'audit',
 ] as const;
 type Tab = (typeof TABS)[number];
@@ -48,6 +50,7 @@ export default function AdminPage() {
       {tab === 'members' ? <MembersTab /> : null}
       {tab === 'gamification' ? <GamificationTab /> : null}
       {tab === 'commerce' ? <CommerceTab /> : null}
+      {tab === 'growth' ? <RanksTab /> : null}
       {tab === 'audit' ? <AuditTab /> : null}
     </div>
   );

@@ -58,6 +58,23 @@ export class ReferralController {
     return id;
   }
 
+  @Get()
+  @RequirePermissions(PERMISSIONS.REFERRAL_MANAGE)
+  async list(
+    @Query('includeEnded') includeEnded?: string,
+    @Query('type') type?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = Number.parseInt(limit ?? '', 10);
+    return {
+      referrals: await this.referrals.list({
+        includeEnded: includeEnded === 'true',
+        relationshipType: type ? referralType(type) : undefined,
+        limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+      }),
+    };
+  }
+
   @Get('me')
   @RequirePermissions(PERMISSIONS.REFERRAL_VIEW)
   @RequireEntitlements(ENTITLEMENTS.RANKS)
