@@ -126,16 +126,19 @@ model Member {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant            Tenant                 @relation(fields: [tenantId], references: [id])
-  user              User                   @relation(fields: [userId], references: [id])
+  tenant            Tenant                     @relation(fields: [tenantId], references: [id])
+  user              User                       @relation(fields: [userId], references: [id])
   memberRoles       MemberRole[]
   carts             Cart[]
   orders            Order[]
   subscriptions     Subscription[]
-  referralsGiven    ReferralRelationship[] @relation("referralsGiven")
-  referralsReceived ReferralRelationship[] @relation("referralsReceived")
+  referralsGiven    ReferralRelationship[]     @relation("referralsGiven")
+  referralsReceived ReferralRelationship[]     @relation("referralsReceived")
   rankProgress      RankProgress[]
   rankHistory       RankHistory[]
+  compUpline        CompensationRelationship[] @relation("compUpline")
+  compDownline      CompensationRelationship[] @relation("compDownline")
+  commissionEntries CommissionEntry[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
@@ -1461,4 +1464,123 @@ model RankHistory {
 
   @@index([tenantId, memberId, achievedAt])
   @@map("rank_history")
+}
+
+// ── Compensation (docs/26, spec §42–§43) ──
+//
+// Spec §42: "Compensation must be optional and tenant configurable. Never
+// hard-code one network plan." The eleven bonus types in §43 are all the same
+// sentence — IF conditions THEN payout — so `bonusType` is a reporting label,
+// not a code path.
+
+/// The THIRD graph (spec §17). A member may be referred by one person and paid
+/// under another; this table says who they are paid under, and it reads
+/// neither team_closure nor referral_relationships.
+model CompensationRelationship {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  uplineMemberId   String    @map("upline_member_id") @db.Uuid
+  downlineMemberId String    @map("downline_member_id") @db.Uuid
+  effectiveFrom    DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo      DateTime? @map("effective_to") @db.Timestamptz(6)
+  metadata         Json?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  upline   Member @relation("compUpline", fields: [uplineMemberId], references: [id])
+  downline Member @relation("compDownline", fields: [downlineMemberId], references: [id])
+
+  @@index([tenantId, uplineMemberId])
+  @@index([tenantId, downlineMemberId])
+  @@map("compensation_relationships")
+}
+
+model CompensationPlan {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  description   String?
+  currency      String    @db.VarChar(3)
+  status        String    @default("active")
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rules CompensationRule[]
+  runs  CommissionRun[]
+
+  @@unique([tenantId, code])
+  @@map("compensation_plans")
+}
+
+model CompensationRule {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  planId     String   @map("plan_id") @db.Uuid
+  code       String
+  name       String
+  /// Reporting label only — fixed_cash, rank, matching, referral, … Nothing
+  /// branches on it (docs/26 §1).
+  bonusType  String   @map("bonus_type")
+  /// [{ metric, comparator, threshold, window, params, graph }]
+  conditions Json
+  /// { kind: 'fixed' | 'percent', amountMinor? , percent?, basis?, capMinor? }
+  payout     Json
+  priority   Int      @default(100)
+  status     String   @default("active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  plan    CompensationPlan  @relation(fields: [planId], references: [id])
+  entries CommissionEntry[]
+
+  @@unique([tenantId, planId, code])
+  @@index([tenantId, planId, priority])
+  @@map("compensation_rules")
+}
+
+/// A snapshot of one period. The unique key on the period is what stops a
+/// second run — and a second payout — for the same window.
+model CommissionRun {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  planId      String    @map("plan_id") @db.Uuid
+  periodStart DateTime  @map("period_start") @db.Timestamptz(6)
+  periodEnd   DateTime  @map("period_end") @db.Timestamptz(6)
+  /// draft | approved
+  status      String    @default("draft")
+  currency    String    @db.VarChar(3)
+  totalMinor  Int       @default(0) @map("total_minor")
+  entryCount  Int       @default(0) @map("entry_count")
+  computedAt  DateTime  @default(now()) @map("computed_at") @db.Timestamptz(6)
+  approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
+
+  plan    CompensationPlan  @relation(fields: [planId], references: [id])
+  entries CommissionEntry[]
+
+  @@unique([tenantId, planId, periodStart, periodEnd])
+  @@index([tenantId, status])
+  @@map("commission_runs")
+}
+
+model CommissionEntry {
+  id          String @id @default(uuid(7)) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  runId       String @map("run_id") @db.Uuid
+  memberId    String @map("member_id") @db.Uuid
+  ruleId      String @map("rule_id") @db.Uuid
+  bonusType   String @map("bonus_type")
+  amountMinor Int    @map("amount_minor")
+  currency    String @db.VarChar(3)
+  /// The exact numbers that produced the amount, so an entry can be explained
+  /// a year later without re-running anything.
+  basis       Json
+
+  run    CommissionRun    @relation(fields: [runId], references: [id])
+  rule   CompensationRule @relation(fields: [ruleId], references: [id])
+  member Member           @relation(fields: [memberId], references: [id])
+
+  @@unique([runId, memberId, ruleId])
+  @@index([tenantId, memberId])
+  @@map("commission_entries")
 }

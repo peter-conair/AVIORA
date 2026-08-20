@@ -37,6 +37,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 23  | [Sprint Plan](./23-sprint-plan.md)                             | Sprint 0 + Sprint 1 (Vertical Slice 1)                    |
 | 24  | [Commerce Contract](./24-commerce-contract.md)                 | Sprint 8 — commerce + subscription routes and rules       |
 | 25  | [Growth Contract](./25-growth-contract.md)                     | Sprint 9 — referral graph + rank engine                   |
+| 26  | [Compensation Contract](./26-compensation-contract.md)         | Sprint 10 — compensation graph, rules, commission runs    |
 
 ## Canonical stack (see ADRs)
 

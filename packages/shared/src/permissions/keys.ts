@@ -75,6 +75,8 @@ export const PERMISSIONS = {
   REFERRAL_MANAGE: 'referral.manage',
   RANK_VIEW: 'rank.view',
   RANK_MANAGE: 'rank.manage',
+  COMPENSATION_VIEW: 'compensation.view',
+  COMPENSATION_MANAGE: 'compensation.manage',
 
   // notifications
   NOTIFICATION_VIEW: 'notification.view',
@@ -111,6 +113,8 @@ export const ENTITLEMENTS = {
   COMMERCE: 'commerce.enabled',
   /** Ranks and the referral graph are optional; most tenants never run them. */
   RANKS: 'growth.ranks',
+  /** Compensation is optional by spec §42 and off unless a tenant configures it. */
+  COMPENSATION: 'growth.compensation',
 } as const;
 
 export type EntitlementKey = (typeof ENTITLEMENTS)[keyof typeof ENTITLEMENTS];

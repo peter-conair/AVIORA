@@ -58,6 +58,7 @@ import { AnthropicProvider } from './modules/ai/anthropic.provider';
 import { GroundedProvider } from './modules/ai/grounded.provider';
 import { CommerceModule } from './modules/commerce/commerce.module';
 import { GrowthModule } from './modules/growth/growth.module';
+import { CompensationModule } from './modules/compensation/compensation.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { GrowthModule } from './modules/growth/growth.module';
     }),
     CommerceModule,
     GrowthModule,
+    CompensationModule,
   ],
   controllers: [
     HealthCheckController,

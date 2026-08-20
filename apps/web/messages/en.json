@@ -891,5 +891,24 @@
     "typeIntroducer": "Introducer",
     "typeAffiliate": "Affiliate",
     "typeMentorReferral": "Mentor referral"
+  },
+  "earnings": {
+    "title": "Compensation earnings",
+    "intro": "Approved entries, with the numbers behind each one.",
+    "forbidden": "This area is outside your permissions.",
+    "unavailable": "Your plan does not include compensation.",
+    "empty": "Nothing approved yet.",
+    "draftNote": "Only approved entries appear here — anything not yet signed off is not shown.",
+    "period": "Period {start} – {end}",
+    "total": "Total",
+    "basisTitle": "How this was calculated",
+    "basisRow": "{metric}: {value}",
+    "bonusFixedCash": "Cash bonus",
+    "bonusPercentage": "Percentage bonus",
+    "bonusRank": "Rank bonus",
+    "bonusReferral": "Referral bonus",
+    "bonusMilestone": "Milestone bonus",
+    "bonusTeam": "Team bonus",
+    "bonusOther": "Bonus"
   }
 }

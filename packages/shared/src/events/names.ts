@@ -37,6 +37,11 @@ export const EVENTS = {
   ReferralEnded: 'ReferralEnded',
   RankAchieved: 'RankAchieved',
   RankLost: 'RankLost',
+  CompensationPlacementCreated: 'CompensationPlacementCreated',
+  CompensationPlacementEnded: 'CompensationPlacementEnded',
+  CommissionRunCreated: 'CommissionRunCreated',
+  CommissionRunApproved: 'CommissionRunApproved',
+  CommissionEarned: 'CommissionEarned',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

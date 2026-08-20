@@ -78,6 +78,7 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       // growth: a member sees their own rank and who referred them
       { key: 'rank.view', scope: SCOPES.SELF },
       { key: 'referral.view', scope: SCOPES.SELF },
+      { key: 'compensation.view', scope: SCOPES.SELF },
     ],
   },
 ];

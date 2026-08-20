@@ -1,19 +1,31 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { newId, type DomainEventEnvelope, type EventName } from '@aviora/shared';
+import { tenantExtension } from './tenant-extension';
 
 export type Tx = Prisma.TransactionClient;
 
 /**
- * Runs `fn` inside a transaction with `app.tenant_id` set via SET LOCAL,
- * so RLS policies apply for the duration of the transaction only (docs/03 §4.1).
- * Use with the app-role client for all tenant-scoped work.
+ * Runs `fn` inside a transaction scoped to one tenant, two ways at once:
+ *
+ * 1. `SET LOCAL app.tenant_id`, so RLS policies apply for the transaction
+ *    (docs/03 §4.1), and
+ * 2. the tenant extension, which filters and stamps tenant-owned models in the
+ *    client itself.
+ *
+ * The second is not redundant. RLS is enforced by the DATABASE ROLE, and the
+ * owner role — which seeds, scripts and tests use — bypasses it. Without the
+ * extension, `withTenant(ownerClient, …)` reads every tenant's rows while
+ * looking exactly like scoped code. That has already produced one cross-tenant
+ * row in dev data and one wrong test result; the name promises scoping, so the
+ * function has to deliver it whichever role is connected.
  */
 export async function withTenant<T>(
   prisma: PrismaClient,
   tenantId: string,
   fn: (tx: Tx) => Promise<T>,
 ): Promise<T> {
-  return prisma.$transaction(async (tx) => {
+  const scoped = prisma.$extends(tenantExtension(() => tenantId)) as unknown as PrismaClient;
+  return scoped.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
     return fn(tx);
   });

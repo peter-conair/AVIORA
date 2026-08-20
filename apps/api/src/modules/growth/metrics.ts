@@ -8,10 +8,19 @@ import { DEFAULT_REFERRAL_TYPE, referralDownline } from './referral.service';
  *
  * `referral_downline_volume` deliberately says REFERRAL downline. Calling it
  * team volume would re-couple the two graphs spec §17 keeps apart, and the
- * name is the only thing stopping that.
+ * name is the only thing stopping that. Which line it actually walks is the
+ * requirement's `graph` (docs/26 §2) — the shell is shared, the graph is not.
  */
 export const RANK_METRICS = [
   'personal_volume',
+  /**
+   * The line below the member on whichever graph the requirement names.
+   * `referral_downline_volume` is the Sprint 9 spelling and survives as an
+   * alias pinned to the referral graph: a metric whose NAME fixes a graph
+   * leaves the graph parameter nothing to do, so new rules should say
+   * `downline_volume` and name their graph.
+   */
+  'downline_volume',
   'referral_downline_volume',
   'direct_referrals',
   'qualified_legs',
@@ -19,16 +28,58 @@ export const RANK_METRICS = [
 ] as const;
 export type RankMetric = (typeof RANK_METRICS)[number];
 
-export const RANK_WINDOWS = ['lifetime', 'rolling_30', 'rolling_90', 'calendar_month'] as const;
+export const RANK_WINDOWS = [
+  'lifetime',
+  'rolling_30',
+  'rolling_90',
+  'calendar_month',
+  /** Resolved from the caller's period; see windowRange. */
+  'period',
+] as const;
 export type RankWindow = (typeof RANK_WINDOWS)[number];
 
 export const RANK_COMPARATORS = ['gte', 'gt', 'lte', 'lt', 'eq'] as const;
 export type RankComparator = (typeof RANK_COMPARATORS)[number];
 
+/**
+ * Which graph a metric walks. Sprint 9 had one; the compensation engine
+ * (docs/26 §2) reuses this calculator over its own placement graph. So the
+ * graph is a property of the REQUIREMENT, not of the metric — a rank rule and
+ * a bonus rule that both say "personal volume ≥ 50,000" must compute the same
+ * number, and one that says "downline volume" must be able to mean a different
+ * line without a second calculator existing to disagree with this one.
+ */
+export const METRIC_GRAPHS = ['referral', 'compensation'] as const;
+export type MetricGraph = (typeof METRIC_GRAPHS)[number];
+
+/** Rank qualifications carry no graph of their own and keep walking this one. */
+export const DEFAULT_METRIC_GRAPH: MetricGraph = 'referral';
+
 export interface MetricRequirement {
   metric: string;
   window: string;
   params: Record<string, unknown> | null;
+  graph?: string;
+}
+
+export type GraphParams = Record<string, unknown> | null;
+
+/**
+ * The two questions a metric asks of a graph. The shell knows nothing about
+ * either graph's table: the compensation module hands its own adapter in
+ * through `MetricScope.graphs` rather than this file importing it, so neither
+ * graph can reach the other's rows even by accident (spec §17).
+ */
+export interface MetricGraphAdapter {
+  /** Everyone below `memberId`, depth-capped, as the graph stood at `asOf`. */
+  downline(scope: MetricScope, memberId: string, params: GraphParams): Promise<string[]>;
+  /** One edge below `memberId`; `window`, when given, bounds when it STARTED. */
+  directs(
+    scope: MetricScope,
+    memberId: string,
+    params: GraphParams,
+    window?: string,
+  ): Promise<string[]>;
 }
 
 export interface MetricScope {
@@ -36,19 +87,24 @@ export interface MetricScope {
   tenantId: string;
   memberId: string;
   asOf: Date;
+  /** Start of the period being computed, when the caller has one (a run). */
+  periodStart?: Date;
   maxDepth: number;
+  /** Adapters beyond the built-in referral graph, keyed by graph name. */
+  graphs?: Record<string, MetricGraphAdapter>;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Stable identity for a (metric, window, params) triple, so each is queried once. */
+/** Stable identity for a (metric, window, graph, params) tuple, so each is queried once. */
 export function requirementKey(requirement: MetricRequirement): string {
   const params = requirement.params ?? {};
   const stable = Object.keys(params)
     .sort()
     .map((k) => `${k}=${JSON.stringify(params[k])}`)
     .join(',');
-  return `${requirement.metric}|${requirement.window}|${stable}`;
+  const graph = requirement.graph ?? DEFAULT_METRIC_GRAPH;
+  return `${requirement.metric}|${requirement.window}|${graph}|${stable}`;
 }
 
 export function passes(comparator: string, value: number, threshold: number): boolean {
@@ -72,8 +128,18 @@ export function passes(comparator: string, value: number, threshold: number): bo
  * happened since and quietly produce a different rank — the opposite of the
  * reproducibility a later commission run depends on.
  */
-export function windowRange(window: string, asOf: Date): { gte?: Date; lte: Date } {
+export function windowRange(
+  window: string,
+  asOf: Date,
+  periodStart?: Date,
+): { gte?: Date; lte: Date } {
   switch (window) {
+    // The window a commission run is FOR. Without it, "5% of downline volume"
+    // pays 5% of all-time volume in every period — the same money, again, for
+    // ever. Only a caller that has a period (a run) can resolve it; anywhere
+    // else it degrades to lifetime, which is the harmless direction.
+    case 'period':
+      return periodStart ? { gte: periodStart, lte: asOf } : { lte: asOf };
     case 'rolling_30':
       return { gte: new Date(asOf.getTime() - 30 * DAY_MS), lte: asOf };
     case 'rolling_90':
@@ -102,66 +168,38 @@ export async function computeMetrics(
 }
 
 async function computeMetric(scope: MetricScope, requirement: MetricRequirement): Promise<number> {
-  const type = referralType(requirement.params);
+  const params = requirement.params ?? null;
   switch (requirement.metric) {
     case 'personal_volume':
       return paidVolume(scope, [scope.memberId], requirement.window);
 
+    case 'downline_volume':
     case 'referral_downline_volume': {
-      const nodes = await referralDownline(
-        scope.tx,
-        scope.tenantId,
-        scope.memberId,
-        type,
-        scope.maxDepth,
-        scope.asOf,
-      );
-      return paidVolume(
-        scope,
-        nodes.map((n) => n.memberId),
-        requirement.window,
-      );
+      const ids = await resolveGraph(scope, requirement).downline(scope, scope.memberId, params);
+      return paidVolume(scope, ids, requirement.window);
     }
 
-    case 'direct_referrals':
-      return scope.tx.referralRelationship.count({
-        where: {
-          referrerMemberId: scope.memberId,
-          relationshipType: type,
-          // live AT asOf, so a replay counts the edges that existed then
-          OR: [{ effectiveTo: null }, { effectiveTo: { gt: scope.asOf } }],
-          effectiveFrom: windowRange(requirement.window, scope.asOf),
-        },
-      });
+    case 'direct_referrals': {
+      const directs = await resolveGraph(scope, requirement).directs(
+        scope,
+        scope.memberId,
+        params,
+        requirement.window,
+      );
+      return directs.length;
+    }
 
     case 'qualified_legs': {
-      const legVolumeMinor = numeric(requirement.params?.legVolumeMinor);
-      const directs = await scope.tx.referralRelationship.findMany({
-        where: {
-          referrerMemberId: scope.memberId,
-          relationshipType: type,
-          OR: [{ effectiveTo: null }, { effectiveTo: { gt: scope.asOf } }],
-        },
-        select: { referredMemberId: true },
-      });
+      const graph = resolveGraph(scope, requirement);
+      const legVolumeMinor = numeric(params?.legVolumeMinor);
+      const directs = await graph.directs(scope, scope.memberId, params);
       let qualified = 0;
       for (const direct of directs) {
-        const nodes = await referralDownline(
-          scope.tx,
-          scope.tenantId,
-          direct.referredMemberId,
-          type,
-          scope.maxDepth,
-          scope.asOf,
-        );
+        const ids = await graph.downline(scope, direct, params);
         // A leg is the line INCLUDING the person at its head: the member who
         // was referred is part of the line they lead. Excluding them would score
         // an active direct referral with no downline as a dead leg.
-        const volume = await paidVolume(
-          scope,
-          [direct.referredMemberId, ...nodes.map((n) => n.memberId)],
-          requirement.window,
-        );
+        const volume = await paidVolume(scope, [direct, ...ids], requirement.window);
         if (volume >= legVolumeMinor) qualified += 1;
       }
       return qualified;
@@ -172,7 +210,7 @@ async function computeMetric(scope: MetricScope, requirement: MetricRequirement)
         where: {
           memberId: scope.memberId,
           status: 'completed',
-          completedAt: windowRange(requirement.window, scope.asOf),
+          completedAt: windowRange(requirement.window, scope.asOf, scope.periodStart),
         },
       });
 
@@ -192,11 +230,54 @@ async function paidVolume(
     where: {
       memberId: { in: memberIds },
       status: 'paid',
-      paidAt: windowRange(window, scope.asOf),
+      paidAt: windowRange(window, scope.asOf, scope.periodStart),
     },
     _sum: { totalMinor: true },
   });
   return totals._sum.totalMinor ?? 0;
+}
+
+/** The referral graph, the one this calculator was born walking. */
+const referralGraph: MetricGraphAdapter = {
+  async downline(scope, memberId, params) {
+    const nodes = await referralDownline(
+      scope.tx,
+      scope.tenantId,
+      memberId,
+      referralType(params),
+      scope.maxDepth,
+      scope.asOf,
+    );
+    return nodes.map((n) => n.memberId);
+  },
+  async directs(scope, memberId, params, window) {
+    const rows = await scope.tx.referralRelationship.findMany({
+      where: {
+        referrerMemberId: memberId,
+        relationshipType: referralType(params),
+        // live AT asOf, so a replay counts the edges that existed then
+        OR: [{ effectiveTo: null }, { effectiveTo: { gt: scope.asOf } }],
+        ...(window ? { effectiveFrom: windowRange(window, scope.asOf, scope.periodStart) } : {}),
+      },
+      select: { referredMemberId: true },
+    });
+    return rows.map((r) => r.referredMemberId);
+  },
+};
+
+function resolveGraph(scope: MetricScope, requirement: MetricRequirement): MetricGraphAdapter {
+  // The legacy spelling names its graph in the metric itself, so it cannot be
+  // pointed at another one — that is the whole reason the neutral name exists.
+  const name =
+    requirement.metric === 'referral_downline_volume'
+      ? DEFAULT_METRIC_GRAPH
+      : (requirement.graph ?? DEFAULT_METRIC_GRAPH);
+  const adapter = name === DEFAULT_METRIC_GRAPH ? referralGraph : scope.graphs?.[name];
+  // Quietly falling back to the referral graph would pay a compensation rule
+  // off referral edges — the precise coupling spec §17 forbids. Rules are
+  // validated at creation, so reaching this is a wiring bug, not tenant data.
+  if (!adapter) throw new Error(`No adapter is registered for the '${name}' graph`);
+  return adapter;
 }
 
 function referralType(params: Record<string, unknown> | null | undefined): string {

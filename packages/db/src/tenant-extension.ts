@@ -67,6 +67,11 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'RankQualification',
   'RankProgress',
   'RankHistory',
+  'CompensationRelationship',
+  'CompensationPlan',
+  'CompensationRule',
+  'CommissionRun',
+  'CommissionEntry',
 ]);
 
 const LIST_OPS = new Set([
@@ -87,6 +92,26 @@ const LIST_OPS = new Set([
  * - unique ops (findUnique/update/delete/upsert): left to the RLS backstop, which
  *   returns no row for foreign tenants when running inside `withTenant()`.
  */
+/**
+ * Stamps the scoped tenant onto a row. A row that already names a DIFFERENT
+ * tenant is REFUSED rather than rewritten: quietly correcting it would hide the
+ * bug (or the forged input) that produced it, and the caller would go on
+ * believing it wrote where it asked to.
+ */
+function stamp(
+  model: string,
+  data: Record<string, unknown> | undefined,
+  tenantId: string,
+): Record<string, unknown> {
+  const given = data?.['tenantId'];
+  if (typeof given === 'string' && given !== tenantId) {
+    throw new Error(
+      `Cross-tenant write denied: ${model}.tenantId does not match the current tenant scope`,
+    );
+  }
+  return { ...(data ?? {}), tenantId };
+}
+
 export function tenantExtension(getTenantId: () => string | null) {
   return Prisma.defineExtension({
     name: 'aviora-tenant-guard',
@@ -106,11 +131,11 @@ export function tenantExtension(getTenantId: () => string | null) {
           if (LIST_OPS.has(operation)) {
             a['where'] = { AND: [{ tenantId }, (a['where'] as object) ?? {}] };
           } else if (operation === 'create') {
-            a['data'] = { ...(a['data'] as object), tenantId };
+            a['data'] = stamp(model, a['data'] as Record<string, unknown>, tenantId);
           } else if (operation === 'createMany') {
             const data = a['data'];
             if (Array.isArray(data)) {
-              a['data'] = data.map((d: object) => ({ ...d, tenantId }));
+              a['data'] = data.map((d: Record<string, unknown>) => stamp(model, d, tenantId));
             }
           }
           return query(a as never);

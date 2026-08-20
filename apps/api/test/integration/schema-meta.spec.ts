@@ -65,6 +65,11 @@ const TENANT_OWNED_TABLES = [
   'rank_qualifications',
   'rank_progress',
   'rank_history',
+  'compensation_relationships',
+  'compensation_plans',
+  'compensation_rules',
+  'commission_runs',
+  'commission_entries',
 ];
 
 /**
