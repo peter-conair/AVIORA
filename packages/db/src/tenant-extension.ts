@@ -62,6 +62,11 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'Payment',
   'Subscription',
   'SubscriptionRun',
+  'ReferralRelationship',
+  'RankDefinition',
+  'RankQualification',
+  'RankProgress',
+  'RankHistory',
 ]);
 
 const LIST_OPS = new Set([

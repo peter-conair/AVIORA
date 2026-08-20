@@ -126,12 +126,16 @@ model Member {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  user          User           @relation(fields: [userId], references: [id])
-  memberRoles   MemberRole[]
-  carts         Cart[]
-  orders        Order[]
-  subscriptions Subscription[]
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id])
+  user              User                   @relation(fields: [userId], references: [id])
+  memberRoles       MemberRole[]
+  carts             Cart[]
+  orders            Order[]
+  subscriptions     Subscription[]
+  referralsGiven    ReferralRelationship[] @relation("referralsGiven")
+  referralsReceived ReferralRelationship[] @relation("referralsReceived")
+  rankProgress      RankProgress[]
+  rankHistory       RankHistory[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
@@ -1353,4 +1357,108 @@ model SubscriptionRun {
   @@unique([subscriptionId, scheduledFor])
   @@index([tenantId])
   @@map("subscription_runs")
+}
+
+// ── Growth: referral graph + ranks (docs/25, spec §17–§18, §44) ──
+//
+// Spec §17 is mandatory: the referral graph is NOT the team graph. It has its
+// own table and its own traversal, and shares nothing with team_closure. A
+// member may be referred by one person and report to a different leader.
+
+model ReferralRelationship {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  referrerMemberId String    @map("referrer_member_id") @db.Uuid
+  referredMemberId String    @map("referred_member_id") @db.Uuid
+  /// referral | sponsor | introducer | affiliate | mentor_referral
+  relationshipType String    @map("relationship_type")
+  effectiveFrom    DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  /// null = active. Ending an edge stamps this instead of deleting the row.
+  effectiveTo      DateTime? @map("effective_to") @db.Timestamptz(6)
+  metadata         Json?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  referrer Member @relation("referralsGiven", fields: [referrerMemberId], references: [id])
+  referred Member @relation("referralsReceived", fields: [referredMemberId], references: [id])
+
+  @@index([tenantId, referrerMemberId, relationshipType])
+  @@index([tenantId, referredMemberId, relationshipType])
+  @@map("referral_relationships")
+}
+
+model RankDefinition {
+  id                  String   @id @default(uuid(7)) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  code                String
+  name                String
+  /// Ordering of the ladder. The highest level whose rules all pass wins.
+  level               Int
+  status              String   @default("active")
+  /// Null = the rank is kept once earned. Otherwise it must still qualify.
+  requalifyWindowDays Int?     @map("requalify_window_days")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  qualifications RankQualification[]
+  progress       RankProgress[]
+  history        RankHistory[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, level])
+  @@map("rank_definitions")
+}
+
+/// A qualification is DATA: metric, comparator, threshold, window. Adding a
+/// rank rule is a row, never a branch in code.
+model RankQualification {
+  id         String @id @default(uuid(7)) @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  rankId     String @map("rank_id") @db.Uuid
+  metric     String
+  comparator String @default("gte")
+  threshold  Int
+  /// lifetime | rolling_30 | rolling_90 | calendar_month
+  window     String @default("lifetime")
+  /// Metric-specific configuration, e.g. { "legVolumeMinor": 500000 }.
+  params     Json?
+
+  rank RankDefinition @relation(fields: [rankId], references: [id])
+
+  @@index([tenantId, rankId])
+  @@map("rank_qualifications")
+}
+
+/// Current state per member: the rank, and the metric snapshot that justified
+/// it. Kept so a later commission run can show its working.
+model RankProgress {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  memberId    String   @map("member_id") @db.Uuid
+  rankId      String?  @map("rank_id") @db.Uuid
+  evaluatedAt DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  metrics     Json
+
+  member Member          @relation(fields: [memberId], references: [id])
+  rank   RankDefinition? @relation(fields: [rankId], references: [id])
+
+  @@unique([tenantId, memberId])
+  @@map("rank_progress")
+}
+
+/// Append-only. A rank is never deleted from history, only closed.
+model RankHistory {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  memberId   String    @map("member_id") @db.Uuid
+  rankId     String    @map("rank_id") @db.Uuid
+  achievedAt DateTime  @default(now()) @map("achieved_at") @db.Timestamptz(6)
+  lostAt     DateTime? @map("lost_at") @db.Timestamptz(6)
+  /// achieved | requalified | lost
+  reason     String
+
+  member Member         @relation(fields: [memberId], references: [id])
+  rank   RankDefinition @relation(fields: [rankId], references: [id])
+
+  @@index([tenantId, memberId, achievedAt])
+  @@map("rank_history")
 }

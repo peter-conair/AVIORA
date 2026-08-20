@@ -70,6 +70,12 @@ export const PERMISSIONS = {
   COMMERCE_ORDER_MANAGE: 'commerce.order.manage',
   COMMERCE_SUBSCRIPTION_MANAGE: 'commerce.subscription.manage',
 
+  // growth: referral graph + ranks (docs/25, Phase 3 — optional layer)
+  REFERRAL_VIEW: 'referral.view',
+  REFERRAL_MANAGE: 'referral.manage',
+  RANK_VIEW: 'rank.view',
+  RANK_MANAGE: 'rank.manage',
+
   // notifications
   NOTIFICATION_VIEW: 'notification.view',
 
@@ -103,6 +109,8 @@ export const ENTITLEMENTS = {
   MENTOR_ACCESS: 'mentor.access',
   /** A tenant that does not sell anything simply never grants this. */
   COMMERCE: 'commerce.enabled',
+  /** Ranks and the referral graph are optional; most tenants never run them. */
+  RANKS: 'growth.ranks',
 } as const;
 
 export type EntitlementKey = (typeof ENTITLEMENTS)[keyof typeof ENTITLEMENTS];

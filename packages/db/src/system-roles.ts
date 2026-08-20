@@ -42,6 +42,8 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'community.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'community.moderate', scope: SCOPES.DIRECT_TEAM },
       { key: 'commerce.catalog.view', scope: SCOPES.TENANT_ALL },
+      { key: 'rank.view', scope: SCOPES.SELF },
+      { key: 'referral.view', scope: SCOPES.SELF },
     ],
   },
   {
@@ -73,6 +75,9 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'commerce.catalog.view', scope: SCOPES.TENANT_ALL },
       { key: 'commerce.order.view', scope: SCOPES.SELF },
       { key: 'commerce.subscription.manage', scope: SCOPES.SELF },
+      // growth: a member sees their own rank and who referred them
+      { key: 'rank.view', scope: SCOPES.SELF },
+      { key: 'referral.view', scope: SCOPES.SELF },
     ],
   },
 ];

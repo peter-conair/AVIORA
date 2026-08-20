@@ -795,5 +795,33 @@
     "paused": "Paused",
     "cancelled": "Cancelled",
     "pauseNote": "While paused nothing is billed, and resuming starts from the next cycle — a pause never piles up missed orders."
+  },
+  "growth": {
+    "title": "Your growth path",
+    "intro": "Your rank, what is still missing, and the people you referred.",
+    "forbidden": "This area is outside your permissions.",
+    "unavailable": "Your plan does not include ranks and referrals.",
+    "currentRank": "Current rank",
+    "noRank": "No rank reached yet",
+    "nextRank": "Next rank",
+    "highestRank": "You are at the top of the ladder.",
+    "missingTitle": "What is still missing",
+    "missingNone": "Every requirement is met.",
+    "requirement": "{metric} — {current} of {threshold}",
+    "metricPersonalVolume": "Your own purchases",
+    "metricDownlineVolume": "Purchases in the line you referred",
+    "metricDirectReferrals": "People you referred directly",
+    "metricQualifiedLegs": "Lines that qualify",
+    "metricCoursesCompleted": "Courses completed",
+    "windowLifetime": "all time",
+    "windowRolling30": "last 30 days",
+    "windowRolling90": "last 90 days",
+    "windowCalendarMonth": "this month",
+    "referrerTitle": "Who referred you",
+    "referrerNone": "No referrer on record",
+    "referralsTitle": "People you referred",
+    "referralsEmpty": "You have not referred anyone yet.",
+    "ladderTitle": "The ladder",
+    "graphNote": "Who referred you is separate from which team you are in — changing team does not change your referrer."
   }
 }

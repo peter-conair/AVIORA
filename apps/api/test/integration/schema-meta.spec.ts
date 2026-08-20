@@ -60,6 +60,11 @@ const TENANT_OWNED_TABLES = [
   'payments',
   'subscriptions',
   'subscription_runs',
+  'referral_relationships',
+  'rank_definitions',
+  'rank_qualifications',
+  'rank_progress',
+  'rank_history',
 ];
 
 /**

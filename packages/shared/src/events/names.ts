@@ -33,6 +33,10 @@ export const EVENTS = {
   SubscriptionPaused: 'SubscriptionPaused',
   SubscriptionResumed: 'SubscriptionResumed',
   SubscriptionCancelled: 'SubscriptionCancelled',
+  ReferralCreated: 'ReferralCreated',
+  ReferralEnded: 'ReferralEnded',
+  RankAchieved: 'RankAchieved',
+  RankLost: 'RankLost',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
