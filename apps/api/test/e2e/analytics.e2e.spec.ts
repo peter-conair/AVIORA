@@ -397,6 +397,26 @@ function windowBounds(body: any): { from: string; to: string } {
   return { from, to };
 }
 
+/**
+ * The zone the response says it resolved its window in. A month boundary is
+ * only meaningful relative to somebody's midnight, and it is the TENANT's —
+ * never the machine running the tests, which is how this assertion used to
+ * pass in Bangkok and fail on a UTC runner.
+ */
+function windowZone(body: any): string {
+  const w = pick(body, ['window', 'resolvedWindow']) as any;
+  const zone = w?.timezone ?? w?.timeZone ?? body?.timezone;
+  expect(typeof zone, `window states no timezone in ${preview(body)}`).toBe('string');
+  return zone as string;
+}
+
+/** Day of month for an instant, read in a named zone. */
+function dayOfMonthIn(instant: Date, zone: string): number {
+  return Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric' }).format(instant),
+  );
+}
+
 function teamsOf(body: any): any[] {
   const teams = body?.teams ?? body?.teamMetrics ?? body?.data?.teams ?? body?.scope?.teams;
   expect(Array.isArray(teams), `no teams array in ${preview(body)}`).toBe(true);
@@ -1028,7 +1048,10 @@ describe('Analytics — windows disagree over the same data (docs/28 §3, §5)',
     const { from } = windowBounds(res.body);
     const start = new Date(from);
     const now = new Date();
-    expect(start.getUTCDate() <= 1 || start.getDate() === 1).toBe(true);
+    // The first of the month in the TENANT's zone — which is a different
+    // instant from the first of the month in UTC, and the whole reason the
+    // tenant carries a timezone at all.
+    expect(dayOfMonthIn(start, windowZone(res.body))).toBe(1);
     expect(start.getTime()).toBeLessThanOrEqual(now.getTime());
 
     // Same fixture, third answer: the members whose joinedAt lands inside the
