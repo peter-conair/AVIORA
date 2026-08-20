@@ -52,6 +52,29 @@ interface Settlement {
  * nobody a second time — the same defence commission runs, subscription
  * renewals and automation all rest on.
  */
+/**
+ * What actually went wrong on the wire.
+ *
+ * `fetch` reports every transport failure as the same three words — "fetch
+ * failed" — and hides the reason one level down in `cause`. Recording the outer
+ * message means an operator reads "it didn't work", which docs/30 §1 says is
+ * not a support answer. DNS failures, refused connections and TLS mismatches
+ * all look identical until the cause is unwrapped.
+ */
+export function describeTransportFailure(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  const parts: string[] = [e.message];
+  let cause: unknown = (e as { cause?: unknown }).cause;
+  const seen = new Set<unknown>([e]);
+  while (cause instanceof Error && !seen.has(cause)) {
+    seen.add(cause);
+    const code = (cause as { code?: string }).code;
+    parts.push(code ? `${code}: ${cause.message}` : cause.message);
+    cause = (cause as { cause?: unknown }).cause;
+  }
+  return parts.join(' — ');
+}
+
 @Injectable()
 export class WebhookDispatcher implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WebhookDispatcher.name);
@@ -262,8 +285,7 @@ export class WebhookDispatcher implements OnModuleInit, OnModuleDestroy {
         responseCode: res.status,
       };
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return this.give(row, message.slice(0, 900));
+      return this.give(row, describeTransportFailure(e).slice(0, 900));
     }
   }
 
