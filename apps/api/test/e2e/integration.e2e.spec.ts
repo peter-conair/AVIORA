@@ -1333,6 +1333,21 @@ describe('A receiver that fails is retried, then recorded as failed (docs/30 §1
   });
 });
 
+describe('A screen can tell what its user may do', () => {
+  it('reports the caller’s own permissions, so a scope picker offers only what will be accepted', async () => {
+    // A picker that offers scopes the server refuses teaches people to expect
+    // refusals. This is what a screen reads to be right the first time — and
+    // it decides nothing: the guard still refuses on its own reckoning.
+    const admin = await login(`admin-a-${RUN}@test.local`);
+    const res = await api('/api/v1/auth/me', { token: admin, tenant: beacon });
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.permissions)).toBe(true);
+    expect(res.body.permissions).toContain(PERMISSIONS.INTEGRATION_MANAGE);
+    // …and never a permission the caller does not hold
+    expect(res.body.permissions).not.toContain(PERMISSIONS.PLATFORM_TENANT_MANAGE);
+  });
+});
+
 describe('A key is shown once, scoped, and bound to one tenant (docs/30 §3)', () => {
   it('refuses a key carrying a scope its creator does not hold, and names the scope', async () => {
     // A tenant owner holds every TENANT-scope permission and no platform one

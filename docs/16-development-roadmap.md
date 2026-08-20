@@ -28,6 +28,7 @@ never drift silently.
 | 12     | Analytics OS at four scopes + AI Team Coach answering from the same scoped numbers; health excluded from every shared dashboard (docs/28) — **Phase 3 complete**                                                                                   | done        |
 | 13     | **Phase 4 begins:** White label (branding as data, hiding ≠ access control) + multi-country (country, currency, timezone, legal versions, one tax rate) — docs/29                                                                                  | done        |
 | 14     | Public API + webhooks on the existing outbox, scoped API keys, branded PWA manifest — docs/30                                                                                                                                                      | in progress |
+| 15     | Enterprise SSO (OIDC, authentication only — claims never grant) + the dedicated-database seam, extract/verify tooling and runbook (docs/31–32). **Phase 4 code complete; the migration criterion stays open until rehearsed at volume**            | done        |
 
 Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
 "Known gaps" section below.
@@ -276,11 +277,11 @@ Open the platform outward: multi-brand commerce, enterprise-grade tenancy, partn
 
 ### 5.3 Exit criteria
 
-- [ ] One large tenant migrated to a dedicated database with zero data loss and bounded downtime (rehearsed on staging first).
-- [ ] Enterprise SSO login works for at least one federated tenant.
-- [ ] A third-party integration consumes the public API + webhooks end-to-end.
-- [ ] A white-label mobile build ships for at least one tenant.
-- [ ] Platform dashboard reports MRR/ARR/churn/AI cost per tenant accurately.
+- [ ] One large tenant migrated to a dedicated database with zero data loss and bounded downtime. **Open, and staying open**: the routing seam, extract/verify tooling and runbook exist (docs/31–32), but there is no large tenant, no second host and no production traffic to bound downtime against. Ticking this because the code compiles is the claim that gets found out during an incident.
+- [ ] Enterprise SSO login works for at least one federated tenant. **Open**: OIDC is verified against a fake provider with real RSA keys (`sso.e2e.spec.ts`); no real IdP has been used.
+- [x] A third-party integration consumes the public API + webhooks end-to-end — `integration.e2e.spec.ts` drives a real in-process TLS receiver and verifies the signature it receives.
+- [x] A white-label mobile build ships for at least one tenant — as a branded installable PWA (per-host manifest). Native store distribution is deliberately out of scope (docs/30 §5).
+- [ ] Platform dashboard reports MRR/ARR/churn/AI cost per tenant. **Partly**: members, tenants, churn and AI _token_ counts are real; AI cost, storage and infrastructure cost report as not-measured rather than as zero (docs/28 §6).
 
 ---
 

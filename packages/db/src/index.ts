@@ -1,6 +1,7 @@
 export * from './client';
 export * from './tenant-extension';
 export * from './unit-of-work';
+export * from './tenant-tables';
 export * from './admin';
 export * from './system-roles';
 export * from './knowledge-seed';

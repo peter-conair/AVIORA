@@ -3,6 +3,7 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { ERROR_CODES, newId } from '@aviora/shared';
+import { withTenant } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 
 const ACCESS_TTL = '15m';
@@ -166,6 +167,35 @@ export class AuthService {
         slug: m.tenant.slug,
       })),
     };
+  }
+
+  /**
+   * What this user may do in ONE tenant. `/auth/me` carries no permission
+   * requirement, so the guard never loaded these — and a screen that has to
+   * guess what the server will accept guesses wrong. Read here, where the
+   * question is actually being answered. It grants nothing: every route still
+   * decides for itself.
+   */
+  async permissionsIn(userId: string, tenantId: string): Promise<string[]> {
+    const rows = await withTenant(this.prisma.app, tenantId, async (tx) => {
+      const member = await tx.member.findFirst({
+        where: { userId, status: 'active' },
+        select: { id: true },
+      });
+      if (!member) return [];
+      return tx.memberRole.findMany({
+        where: { memberId: member.id },
+        select: {
+          role: {
+            select: { rolePermissions: { select: { permission: { select: { key: true } } } } },
+          },
+        },
+      });
+    });
+    const keys = new Set(
+      rows.flatMap((r) => r.role.rolePermissions.map((rp) => rp.permission.key)),
+    );
+    return [...keys].sort();
   }
 
   private hash(raw: string): string {

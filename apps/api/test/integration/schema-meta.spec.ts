@@ -82,6 +82,10 @@ const TENANT_OWNED_TABLES = [
   'webhook_endpoints',
   'webhook_deliveries',
   'api_keys',
+  'tenant_identity_providers',
+  'sso_logins',
+  // tenant_databases is platform scope, not tenant-owned: it records WHERE a
+  // tenant lives, which the tenant itself must not be able to read or change.
 ];
 
 /**

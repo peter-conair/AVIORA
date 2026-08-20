@@ -84,6 +84,10 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'WebhookEndpoint',
   'WebhookDelivery',
   'ApiKey',
+  'TenantIdentityProvider',
+  'SsoLogin',
+  // TenantDatabase is deliberately absent: it is platform scope, and a tenant
+  // must not be able to read or change where it lives.
 ]);
 
 const LIST_OPS = new Set([

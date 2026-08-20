@@ -1,13 +1,14 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { CurrentUser, Public, type AuthenticatedUser } from '../../common/auth/decorators';
-import { ACCESS_COOKIE } from '../../common/auth/jwt-auth.guard';
+import { CLS_PERMISSIONS } from '../../common/auth/permissions.guard';
+import { CLS_TENANT_ID } from '../../common/tenant/tenant-context.middleware';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import { AuditService } from '../../common/audit/audit.service';
-import { AuthService, type IssuedTokens, type SafeUser } from './auth.service';
-
-export const REFRESH_COOKIE = 'aviora_refresh';
+import { AuthService } from './auth.service';
+import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './session-cookies';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -26,6 +27,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly audit: AuditService,
+    private readonly cls: ClsService,
   ) {}
 
   @Public()
@@ -54,7 +56,7 @@ export class AuthController {
       userAgent: req.header('user-agent') ?? undefined,
       ip: req.ip,
     });
-    this.setCookies(res, tokens);
+    setSessionCookies(res, tokens);
     return { user };
   }
 
@@ -67,7 +69,7 @@ export class AuthController {
       userAgent: req.header('user-agent') ?? undefined,
       ip: req.ip,
     });
-    this.setCookies(res, tokens);
+    setSessionCookies(res, tokens);
     return { user };
   }
 
@@ -77,30 +79,24 @@ export class AuthController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const raw = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
     if (raw) await this.auth.revoke(raw);
-    res.clearCookie(ACCESS_COOKIE, { path: '/' });
-    res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
+    clearSessionCookies(res);
   }
 
   @Get('me')
   async me(@CurrentUser() user: AuthenticatedUser) {
-    return this.auth.me(user.userId);
-  }
-
-  private setCookies(res: Response, tokens: IssuedTokens & { user?: SafeUser }) {
-    const secure = process.env.NODE_ENV === 'production';
-    res.cookie(ACCESS_COOKIE, tokens.accessToken, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie(REFRESH_COOKIE, tokens.refreshToken, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/api/v1/auth', // only sent to auth endpoints
-      expires: tokens.refreshExpiresAt,
-    });
+    const me = await this.auth.me(user.userId);
+    // What this caller may do IN THE TENANT they are addressing. A screen that
+    // offers choices the server will refuse — an API-key scope picker, say —
+    // teaches people to expect refusals. Prefer what the guard already loaded;
+    // this route carries no permission requirement, so usually it loaded
+    // nothing and we read it here instead. It grants nothing either way.
+    const cached = this.cls.get(CLS_PERMISSIONS) as Set<string> | undefined;
+    const tenantId = this.cls.get(CLS_TENANT_ID) as string | undefined;
+    const permissions = cached?.size
+      ? [...cached].sort()
+      : tenantId
+        ? await this.auth.permissionsIn(user.userId, tenantId)
+        : [];
+    return { ...me, permissions };
   }
 }

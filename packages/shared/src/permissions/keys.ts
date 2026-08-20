@@ -79,6 +79,7 @@ export const PERMISSIONS = {
   COMPENSATION_MANAGE: 'compensation.manage',
   AUTOMATION_MANAGE: 'automation.manage',
   INTEGRATION_MANAGE: 'integration.manage',
+  TENANT_SSO_MANAGE: 'tenant.sso.manage',
   ANALYTICS_SELF_VIEW: 'analytics.self.view',
   ANALYTICS_TENANT_VIEW: 'analytics.tenant.view',
   REWARD_VIEW: 'reward.view',

@@ -13,6 +13,7 @@ import { HealthController as HealthCheckController } from './common/health/healt
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
 import { EntitlementsGuard } from './common/auth/entitlements.guard';
+import { TenantDatabaseGuard } from './common/db/tenant-database.guard';
 import { EventBus } from './common/events/event-bus';
 import { OutboxRelayService } from './common/events/outbox-relay.service';
 import { EmailService } from './common/email/email.service';
@@ -22,6 +23,8 @@ import { AuthService } from './modules/identity/auth.service';
 import { MembersController } from './modules/identity/members.controller';
 import { PlatformController } from './modules/platform/platform.controller';
 import { ProvisioningService } from './modules/platform/provisioning.service';
+import { TenantDatabaseController } from './modules/platform/tenant-database.controller';
+import { TenantDatabaseService } from './modules/platform/tenant-database.service';
 import { PlansController } from './modules/membership/plans.controller';
 import { PlansService } from './modules/membership/plans.service';
 import { InvitationsController } from './modules/membership/invitations.controller';
@@ -72,6 +75,7 @@ import { GrowthModule } from './modules/growth/growth.module';
 import { CompensationModule } from './modules/compensation/compensation.module';
 import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
 import { IntegrationModule } from './modules/integration/integration.module';
+import { SsoModule } from './modules/sso/sso.module';
 import { WebhookHandlers } from './modules/integration/webhook.handlers';
 
 @Module({
@@ -109,12 +113,17 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     CompensationModule,
     TenantConfigModule,
     IntegrationModule,
+    SsoModule,
   ],
   controllers: [
     HealthCheckController,
     AuthController,
     MembersController,
     PlatformController,
+    // The tenant-database map and dry run live beside the other platform
+    // routes because they need the owner client and the platform-role guard,
+    // both of which are AppModule-scoped (docs/31 §4).
+    TenantDatabaseController,
     PlansController,
     InvitationsController,
     TeamsController,
@@ -151,6 +160,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     EmailService,
     AuthService,
     ProvisioningService,
+    TenantDatabaseService,
     PlansService,
     InvitationsService,
     TeamsService,
@@ -181,6 +191,10 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     GroundedProvider,
     AnalyticsService,
     CoachService,
+    // First in the chain on purpose: "read-only at the API edge" (docs/31 §2)
+    // means the refusal happens before authentication, permissions or any
+    // handler gets a chance to write something the migration would discard.
+    { provide: APP_GUARD, useClass: TenantDatabaseGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: EntitlementsGuard },

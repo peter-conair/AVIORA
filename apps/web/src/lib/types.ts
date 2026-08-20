@@ -2585,3 +2585,199 @@ export interface TaxUpsertResponse {
   rule: TaxRule;
   disclosure: string;
 }
+
+// ---- Integration: webhooks and API keys (docs/30) ----
+
+/**
+ * A webhook endpoint as every route returns it. There is no `secret` field
+ * here on purpose: `POST /webhooks/endpoints` is the only route in the API
+ * that ever returns one, and it returns it once (docs/30 §2). A shape that
+ * carried a secret through a listing would be a shape inviting code that
+ * renders one.
+ */
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  description: string | null;
+  events: string[];
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookEndpointsResponse {
+  endpoints: WebhookEndpoint[];
+  /**
+   * The events the server will accept a subscription to. It comes from the
+   * API rather than a constant here so the picker can never offer one the
+   * server refuses — and so health-bearing events stay absent by the server's
+   * rule rather than by this file remembering to exclude them (docs/30 §7).
+   */
+  subscribableEvents: string[];
+}
+
+/** The one response in the product that carries an endpoint secret. */
+export interface WebhookEndpointCreatedResponse {
+  endpoint: WebhookEndpoint;
+  secret: string;
+  /** The API's own English sentence. The UI says it in the reader's language instead. */
+  secretNote?: string;
+}
+
+export interface WebhookEndpointUpdatedResponse {
+  endpoint: WebhookEndpoint;
+}
+
+/** `active` receives; everything else is silence (API `ENDPOINT_STATUSES`). */
+export const WEBHOOK_ENDPOINT_STATUSES = ['active', 'paused', 'disabled'] as const;
+export type WebhookEndpointStatus = (typeof WEBHOOK_ENDPOINT_STATUSES)[number];
+
+export function isWebhookEndpointStatus(value: string): value is WebhookEndpointStatus {
+  return (WEBHOOK_ENDPOINT_STATUSES as readonly string[]).includes(value);
+}
+
+export interface WebhookDelivery {
+  id: string;
+  endpointId: string;
+  eventId: string;
+  eventName: string;
+  status: string;
+  attempts: number;
+  /** Null when the request never got a response at all — a timeout, a bad host. */
+  responseCode: number | null;
+  error: string | null;
+  nextAttemptAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+}
+
+export interface WebhookDeliveriesResponse {
+  deliveries: WebhookDelivery[];
+}
+
+export interface WebhookRetryResponse {
+  delivery: { id: string; status: string; attempts: number };
+}
+
+/** `pending | delivered | failed` — the schema's own comment on the column. */
+export const WEBHOOK_DELIVERY_STATUSES = ['pending', 'delivered', 'failed'] as const;
+export type WebhookDeliveryStatus = (typeof WEBHOOK_DELIVERY_STATUSES)[number];
+
+export function isWebhookDeliveryStatus(value: string): value is WebhookDeliveryStatus {
+  return (WEBHOOK_DELIVERY_STATUSES as readonly string[]).includes(value);
+}
+
+/** A key as listings return it: a prefix, never the key (docs/30 §3). */
+export interface ApiKeySummary {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface ApiKeysResponse {
+  apiKeys: ApiKeySummary[];
+}
+
+/** The one response in the product that carries a key. */
+export interface ApiKeyCreatedResponse {
+  apiKey: ApiKeySummary;
+  key: string;
+  keyNote?: string;
+}
+
+export interface ApiKeyRevokedResponse {
+  apiKey: ApiKeySummary;
+}
+
+/**
+ * The permissions an API key may be minted with.
+ *
+ * Mirrors the API's `SCOPE_VOCABULARY` (the platform permission catalog) minus
+ * two families, each for a reason stated in the contract rather than a taste:
+ *
+ * - `platform.*` — a key is bound to one tenant, because there is no
+ *   cross-tenant caller (docs/30 §3). A tenant administrator holds no platform
+ *   permission either, so offering one would only ever produce a refusal.
+ * - `health.*` — the public API has no health surface, by rule and not by
+ *   omission (docs/30 §7). A scope that can unlock nothing is a promise.
+ *
+ * Scopes are never wildcards: there is no `*`, and no "everything" shortcut
+ * that would silently widen when a permission is added (docs/30 §7).
+ */
+export const API_KEY_SCOPES = [
+  'tenant.settings.view',
+  'tenant.settings.manage',
+  'tenant.role.manage',
+  'member.view',
+  'member.manage',
+  'member.invite',
+  'membership.plan.view',
+  'membership.plan.manage',
+  'membership.assign',
+  'team.view',
+  'team.create',
+  'team.manage',
+  'team.member.view',
+  'team.member.manage',
+  'team.leader.assign',
+  'team.analytics.view',
+  'goal.view',
+  'goal.manage',
+  'learning.view',
+  'learning.manage',
+  'learning.assign',
+  'crm.lead.view',
+  'crm.lead.manage',
+  'crm.customer.view',
+  'crm.customer.manage',
+  'crm.pipeline.manage',
+  'community.view',
+  'community.post',
+  'community.moderate',
+  'challenge.view',
+  'challenge.join',
+  'challenge.manage',
+  'gamification.manage',
+  'commerce.catalog.view',
+  'commerce.catalog.manage',
+  'commerce.order.view',
+  'commerce.order.manage',
+  'commerce.subscription.manage',
+  'referral.view',
+  'referral.manage',
+  'rank.view',
+  'rank.manage',
+  'compensation.view',
+  'compensation.manage',
+  'automation.manage',
+  'integration.manage',
+  'tenant.sso.manage',
+  'analytics.self.view',
+  'analytics.tenant.view',
+  'reward.view',
+  'reward.manage',
+  'notification.view',
+  'ai.assistant.use',
+  'audit.view',
+] as const;
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+
+const API_KEY_SCOPE_SET: ReadonlySet<string> = new Set(API_KEY_SCOPES);
+
+/**
+ * `admin.integrations.permissions.*` key for a scope, or null when this build
+ * has no wording for it — a key minted before a permission was retired still
+ * has to render, and the raw key is a truthful fallback for a developer.
+ *
+ * The dot is next-intl's own nesting separator, so `commerce.order.view` cannot
+ * be a message key as written; it is folded to `commerceOrderView`.
+ */
+export function permissionLabelKey(scope: string): string | null {
+  if (!API_KEY_SCOPE_SET.has(scope)) return null;
+  return `permissions.${scope.replace(/\.([a-z])/g, (_, c: string) => c.toUpperCase())}`;
+}

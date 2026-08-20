@@ -7,13 +7,14 @@
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "prettier --check src prisma/seed.ts && eslint src",
+    "lint": "prettier --check src prisma/seed.ts scripts && eslint src scripts",
     "test": "vitest run --passWithNoTests",
     "db:generate": "prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate deploy",
     "db:migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
-    "db:setup-app-role": "dotenv -e ../../.env -- tsx prisma/setup-app-role.ts"
+    "db:setup-app-role": "dotenv -e ../../.env -- tsx prisma/setup-app-role.ts",
+    "tenant:migrate": "dotenv -e ../../.env -- tsx scripts/tenant-migrate.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

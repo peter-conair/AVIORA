@@ -13,6 +13,11 @@ export const ERROR_CODES = {
   CONFLICT: 'CONFLICT',
   RATE_LIMITED: 'RATE_LIMITED',
   ENTITLEMENT_REQUIRED: 'ENTITLEMENT_REQUIRED',
+  /**
+   * 503 — the tenant's data is being moved to a dedicated database and the API
+   * is refusing writes for the duration (docs/31 §2). Reads are unaffected.
+   */
+  TENANT_READ_ONLY: 'TENANT_READ_ONLY',
   INTERNAL: 'INTERNAL',
 } as const;
 

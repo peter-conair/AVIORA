@@ -1859,3 +1859,73 @@ model ApiKey {
   @@index([tenantId, revokedAt])
   @@map("api_keys")
 }
+
+// ── Enterprise SSO & tenant database routing (docs/31, spec §77) ──
+
+/// A federated login AUTHENTICATES; it never authorises. Claims are recorded
+/// for an administrator to read, never mapped to permissions (docs/31 §1).
+model TenantIdentityProvider {
+  id                    String   @id @default(uuid(7)) @db.Uuid
+  tenantId              String   @unique @map("tenant_id") @db.Uuid
+  /// oidc — SAML is deliberately absent rather than half-built.
+  kind                  String   @default("oidc")
+  issuer                String
+  discoveryUrl          String   @map("discovery_url")
+  clientId              String   @map("client_id")
+  /// Sealed with AES-256-GCM, not hashed: the token exchange needs the secret
+  /// back, so a one-way digest would make federation impossible. Write-only —
+  /// no route returns it, and a database dump yields nothing without the key.
+  clientSecretEncrypted String   @map("client_secret_encrypted")
+  /// Email domains this provider may assert. One that may assert anything may
+  /// assert the tenant owner.
+  allowedDomains        String[] @default([]) @map("allowed_domains")
+  jitProvisioning       Boolean  @default(false) @map("jit_provisioning")
+  status                String   @default("active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  logins SsoLogin[]
+
+  @@map("tenant_identity_providers")
+}
+
+/// Single-use, expiring. A callback that can be replayed is an account that
+/// can be taken over twice.
+model SsoLogin {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  providerId    String    @map("provider_id") @db.Uuid
+  state         String    @unique
+  nonce         String
+  codeChallenge String    @map("code_challenge")
+  redirectTo    String?   @map("redirect_to")
+  consumedAt    DateTime? @map("consumed_at") @db.Timestamptz(6)
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// What the IdP asserted, kept for an administrator to inspect. Never used
+  /// to grant anything.
+  claims        Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  provider TenantIdentityProvider @relation(fields: [providerId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("sso_logins")
+}
+
+/// Where a tenant's rows live. Platform-scope: a tenant cannot move itself.
+model TenantDatabase {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  tenantId     String    @unique @map("tenant_id") @db.Uuid
+  /// shared | migrating | dedicated
+  status       String    @default("shared")
+  /// A reference into the secret store — never a DSN in the database.
+  dsnSecretRef String?   @map("dsn_secret_ref")
+  migratedAt   DateTime? @map("migrated_at") @db.Timestamptz(6)
+  notes        String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("tenant_databases")
+}

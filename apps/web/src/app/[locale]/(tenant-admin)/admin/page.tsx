@@ -13,6 +13,7 @@ import { RanksTab } from '@/components/admin/RanksTab';
 import { CompensationTab } from '@/components/admin/CompensationTab';
 import { AutomationTab } from '@/components/admin/AutomationTab';
 import { AnalyticsTab } from '@/components/admin/AnalyticsTab';
+import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { LocalisationTab } from '@/components/admin/LocalisationTab';
 import { LegalTab } from '@/components/admin/LegalTab';
@@ -28,6 +29,7 @@ const TABS = [
   'compensation',
   'automation',
   'analytics',
+  'integrations',
   // Branding and localisation share one tab: an administrator opening a new
   // country changes the name, the currency and the timezone in one sitting, and
   // splitting them would make that one job into two screens.
@@ -68,6 +70,7 @@ export default function AdminPage() {
       {tab === 'compensation' ? <CompensationTab /> : null}
       {tab === 'automation' ? <AutomationTab /> : null}
       {tab === 'analytics' ? <AnalyticsTab /> : null}
+      {tab === 'integrations' ? <IntegrationsTab /> : null}
       {tab === 'branding' ? (
         <div className="flex flex-col gap-4">
           <BrandingTab />

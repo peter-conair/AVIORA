@@ -347,6 +347,84 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('the integrations tab shows a webhook secret once, and says so', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'การเชื่อมต่อ' }).click();
+    await expect(page.getByText('ปลายทาง Webhook').first()).toBeVisible();
+
+    await page.getByLabel('URL ปลายทาง').fill(`https://hooks.example.com/aviora/${RUN}`);
+    // The event picker offers what the API says it accepts, one event at a
+    // time — there is no "all events" tick, so this test can only pass by
+    // choosing one. The raw event name is in each option's accessible name
+    // precisely so a developer (and this test) can find it unambiguously.
+    await page.getByRole('checkbox', { name: /GoalCompleted/ }).check();
+    await page.getByRole('button', { name: 'สร้างปลายทาง' }).click();
+
+    // The secret and the sentence that governs it are one control. A secret
+    // rendered without "this is the only time" is a secret somebody will
+    // assume they can come back for — and no route will ever give it back.
+    await expect(page.getByText('รหัสลับสำหรับลงลายเซ็น — แสดงเพียงครั้งเดียว')).toBeVisible();
+    await expect(
+      page.getByText('นี่คือครั้งเดียวที่รหัสลับนี้จะถูกแสดง', { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('รหัสลับที่หายไปกู้คืนไม่ได้ ถ้าทำหาย ให้ลบปลายทางนี้แล้วสร้างใหม่'),
+    ).toBeVisible();
+    // whsec_ is the shape of the thing being shown; asserting it proves the
+    // panel is showing the secret rather than a placeholder.
+    await expect(page.getByText(/whsec_/)).toBeVisible();
+
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('a failed delivery shows its response code and its error text', async ({ page }) => {
+    await signIn(page);
+
+    // The delivery log is stubbed for this one assertion, and only this one.
+    // A genuinely `failed` delivery needs five real attempts with exponential
+    // backoff against an unreachable host — minutes of waiting that a browser
+    // test cannot honestly produce. What is under test here is the screen: that
+    // a failure arrives with its HTTP code, its error text and a way to send it
+    // again, rather than as the word "failed" and nothing to act on.
+    await page.route('**/webhooks/deliveries*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          deliveries: [
+            {
+              id: '0192f2c0-0000-7000-8000-0000000000ff',
+              endpointId: '0192f2c0-0000-7000-8000-0000000000aa',
+              eventId: '0192f2c0-0000-7000-8000-0000000000bb',
+              eventName: 'OrderPlaced',
+              status: 'failed',
+              attempts: 5,
+              responseCode: 502,
+              error: 'upstream returned an empty response',
+              nextAttemptAt: null,
+              deliveredAt: null,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'การเชื่อมต่อ' }).click();
+    await expect(page.getByText('บันทึกการส่ง').first()).toBeVisible();
+
+    await expect(page.getByText('HTTP 502')).toBeVisible();
+    await expect(page.getByText('upstream returned an empty response')).toBeVisible();
+    await expect(page.getByText('พยายามแล้ว 5 ครั้ง', { exact: false })).toBeVisible();
+    // "It didn't work" is not a support answer, and neither is a log with no
+    // way to try again.
+    await expect(page.getByRole('button', { name: 'ส่งอีกครั้ง' })).toBeVisible();
+
+    await expectNoHorizontalScroll(page);
+  });
+
   test('signing out leaves the authenticated area', async ({ page }) => {
     await signIn(page);
     // On a phone the header carries only what is needed constantly; signing

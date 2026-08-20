@@ -16,6 +16,17 @@ export function createAppClient(): PrismaClient {
   return new PrismaClient({ datasourceUrl: requireEnv('AVIORA_APP_DATABASE_URL') });
 }
 
+/**
+ * A client on an explicitly given DSN — the dedicated-database path (ADR-002,
+ * docs/31 §2). Connects as whatever role the DSN names, so a dedicated tenant
+ * gets the same RLS treatment as the shared one when the DSN is the app role's.
+ * Nothing in the request path builds one of these except the tenant-database
+ * resolver, which is the single routing seam.
+ */
+export function createClientForDsn(dsn: string): PrismaClient {
+  return new PrismaClient({ datasourceUrl: dsn });
+}
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing required env var ${name}`);

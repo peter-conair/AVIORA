@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './db/prisma.service';
 import { TenantDb } from './db/tenant-db.service';
+import { TenantDatabaseResolver } from './db/tenant-database.resolver';
 import { AuditService } from './audit/audit.service';
 
 /**
@@ -10,7 +11,7 @@ import { AuditService } from './audit/audit.service';
  */
 @Global()
 @Module({
-  providers: [PrismaService, TenantDb, AuditService],
-  exports: [PrismaService, TenantDb, AuditService],
+  providers: [PrismaService, TenantDb, TenantDatabaseResolver, AuditService],
+  exports: [PrismaService, TenantDb, TenantDatabaseResolver, AuditService],
 })
 export class CoreModule {}
