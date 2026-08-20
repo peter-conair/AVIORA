@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { ERROR_CODES } from '@aviora/shared';
 import { AiService, type AiCitation } from '../ai/ai.service';
 import type { TeamActor } from '../team/team-scope.service';
 import {
@@ -24,16 +25,48 @@ export const COACH_QUESTIONS = [
 ] as const;
 export type CoachQuestion = (typeof COACH_QUESTIONS)[number];
 
+/** Verbatim from docs/28 §4 — the wording a caller may send. */
 const QUESTION_TEXT: Record<CoachQuestion, string> = {
-  fastest_growing_team: 'Which of my teams is growing fastest?',
-  team_needs_support: 'Which of my teams needs support?',
+  fastest_growing_team: 'Which team is growing fastest?',
+  team_needs_support: 'Which team needs support?',
   leader_needs_coaching: 'Which leader needs coaching?',
-  inactive_member: 'Which members are inactive?',
-  close_to_milestone: 'Who is close to their next milestone?',
+  inactive_member: 'Which member is inactive?',
+  close_to_milestone: 'Who is close to the next milestone?',
   next_course: 'Which course should the team take next?',
   team_focus: 'What should this team focus on?',
   growth_correlation: 'What activities correlate with growth?',
 };
+
+const BY_NORMALISED = new Map<string, CoachQuestion>([
+  ...COACH_QUESTIONS.map((code) => [normalise(code), code] as const),
+  ...COACH_QUESTIONS.map((code) => [normalise(QUESTION_TEXT[code]), code] as const),
+]);
+
+/**
+ * §5 types the body as `{ question }` and §4 lists the eight as English
+ * sentences, so a sentence is what a caller sends. The code is accepted too —
+ * it is the same eight, and a client that already has one should not have to
+ * reconstruct the prose to ask.
+ *
+ * Free-form questions are refused rather than guessed at: the eight are the
+ * questions this module can answer from measures it computes, and answering a
+ * ninth would mean inventing the measure behind it.
+ */
+export function coachQuestionFrom(question: string): CoachQuestion | null {
+  return BY_NORMALISED.get(normalise(question)) ?? null;
+}
+
+export function coachQuestionList(): string[] {
+  return COACH_QUESTIONS.map((code) => QUESTION_TEXT[code]);
+}
+
+/** Punctuation, case and spacing are not part of the question. */
+function normalise(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
 
 /** How many people or teams a single answer names. Longer is not more useful. */
 const LIST_LIMIT = 5;
@@ -56,13 +89,21 @@ export class CoachService {
 
   async askTeam(
     actor: TeamActor,
-    input: { question: CoachQuestion; window: AnalyticsWindow; locale?: string },
+    input: { question: string; window: AnalyticsWindow; locale?: string },
   ) {
+    const question = coachQuestionFrom(input.question);
+    if (!question) {
+      throw new BadRequestException({
+        code: ERROR_CODES.VALIDATION_FAILED,
+        message: 'The coach answers these questions only',
+        details: { questions: coachQuestionList() },
+      });
+    }
     const scoped = await this.analytics.team(actor, input.window);
-    const finding = findings[input.question](scoped);
+    const finding = findings[question](scoped);
     const envelope = {
-      question: input.question,
-      questionText: QUESTION_TEXT[input.question],
+      question,
+      questionText: QUESTION_TEXT[question],
       window: scoped.window,
       definitions: scoped.definitions,
       teamsInScope: scoped.teams.length,
@@ -86,7 +127,7 @@ export class CoachService {
     }
 
     const result = await this.ai.answerGrounded(actor.memberId, {
-      question: QUESTION_TEXT[input.question],
+      question: QUESTION_TEXT[question],
       facts: finding.facts,
       citations: finding.citations,
       locale: input.locale,
@@ -122,69 +163,85 @@ const findings: Record<CoachQuestion, (scoped: TeamScopeAnalytics) => Finding> =
   fastest_growing_team(scoped) {
     const ranked = [...scoped.teams].sort(
       (a, b) =>
-        b.measures.growth.change - a.measures.growth.change ||
-        (b.measures.growth.changeRate ?? 0) - (a.measures.growth.changeRate ?? 0),
+        b.measures.growth - a.measures.growth ||
+        (b.measures.growthRate ?? 0) - (a.measures.growthRate ?? 0),
     );
     return {
-      facts: [
-        ...ranked
-          .slice(0, LIST_LIMIT)
-          .map(
-            (t) =>
-              `${t.team.name}: ${signed(t.measures.growth.change)} active members ` +
-              `(${t.measures.growth.active} now vs ${t.measures.growth.previousActive} in the previous window).`,
-          ),
-        ...(ranked.length ? [] : ['No team is in scope for this leader.']),
-      ],
+      facts: ranked.length
+        ? ranked
+            .slice(0, LIST_LIMIT)
+            .map(
+              (t) =>
+                `${t.team.name}: growth ${signed(t.measures.growth)} active members ` +
+                `(${t.measures.activeMembers} now vs ${t.measures.previousActiveMembers} in the previous window).`,
+            )
+        : ['No team is in scope for this leader.'],
       citations: ranked.slice(0, LIST_LIMIT).map((t) => cite('growth', t)),
-      data: ranked.map((t) => ({ team: t.team, growth: t.measures.growth })),
+      data: ranked.map((t) => ({
+        team: t.team,
+        growth: t.measures.growth,
+        activeMembers: t.measures.activeMembers,
+        previousActiveMembers: t.measures.previousActiveMembers,
+      })),
     };
   },
 
   team_needs_support(scoped) {
     const ranked = [...scoped.teams].sort(
       (a, b) =>
-        a.measures.growth.change - b.measures.growth.change ||
-        (a.measures.members.activeShare ?? 1) - (b.measures.members.activeShare ?? 1),
+        a.measures.growth - b.measures.growth ||
+        (a.measures.activeShare ?? 1) - (b.measures.activeShare ?? 1),
     );
     return {
-      facts: ranked
-        .slice(0, LIST_LIMIT)
-        .map(
-          (t) =>
-            `${t.team.name}: growth ${signed(t.measures.growth.change)} active members, ` +
-            `${t.measures.members.active} of ${t.measures.members.total} members active ` +
-            `(${percent(t.measures.members.activeShare)}).`,
-        ),
+      facts: ranked.length
+        ? ranked
+            .slice(0, LIST_LIMIT)
+            .map(
+              (t) =>
+                `${t.team.name}: growth ${signed(t.measures.growth)} active members, ` +
+                `${t.measures.activeMembers} of ${t.measures.totalMembers} members active ` +
+                `(${percent(t.measures.activeShare)}).`,
+            )
+        : ['No team is in scope for this leader.'],
       citations: ranked.slice(0, LIST_LIMIT).map((t) => cite('growth', t)),
       data: ranked.map((t) => ({
         team: t.team,
         growth: t.measures.growth,
-        members: t.measures.members,
+        activeMembers: t.measures.activeMembers,
+        totalMembers: t.measures.totalMembers,
+        activeShare: t.measures.activeShare,
       })),
     };
   },
 
   leader_needs_coaching(scoped) {
-    // A measure that fell, never a judgement about a person (docs/28 §6).
+    // A measure that fell, never a judgement about a person (docs/28 §6). Every
+    // team's figures are stated either way: "nothing fell" is only checkable if
+    // the numbers it is claiming about are in the answer too.
     const fell = scoped.teams
-      .filter((t) => (t.measures.engagement.change ?? 0) < 0)
-      .sort((a, b) => (a.measures.engagement.change ?? 0) - (b.measures.engagement.change ?? 0));
+      .filter((t) => (t.measures.engagementChange ?? 0) < 0)
+      .sort((a, b) => (a.measures.engagementChange ?? 0) - (b.measures.engagementChange ?? 0));
+    const line = (t: TeamAnalytics) =>
+      `${t.team.name} (led by ${names(t.leaders)}): engagement per active member ` +
+      `${round(t.measures.engagementPerActiveMember)}, previously ` +
+      `${round(t.measures.previousEngagementPerActiveMember)}; ` +
+      `${t.measures.activeMembers} of ${t.measures.totalMembers} members active.`;
     return {
-      facts: fell.length
-        ? fell
-            .slice(0, LIST_LIMIT)
-            .map(
-              (t) =>
-                `${t.team.name} (led by ${names(t.leaders)}): engagement per active member fell from ` +
-                `${round(t.measures.engagement.previousPerActiveMember)} to ${round(t.measures.engagement.perActiveMember)}.`,
-            )
-        : ['Engagement per active member did not fall in any team in scope.'],
-      citations: fell.slice(0, LIST_LIMIT).map((t) => cite('engagement', t)),
-      data: fell.map((t) => ({
+      facts: [
+        fell.length
+          ? `Engagement per active member fell in ${fell.length} of ${scoped.teams.length} teams in scope.`
+          : `Engagement per active member fell in 0 of ${scoped.teams.length} teams in scope.`,
+        ...(fell.length ? fell : scoped.teams).slice(0, LIST_LIMIT).map(line),
+      ],
+      citations: (fell.length ? fell : scoped.teams)
+        .slice(0, LIST_LIMIT)
+        .map((t) => cite('engagement', t)),
+      data: (fell.length ? fell : scoped.teams).map((t) => ({
         team: t.team,
         leaders: t.leaders,
-        engagement: t.measures.engagement,
+        engagementPerActiveMember: t.measures.engagementPerActiveMember,
+        previousEngagementPerActiveMember: t.measures.previousEngagementPerActiveMember,
+        engagementChange: t.measures.engagementChange,
       })),
     };
   },
@@ -234,7 +291,7 @@ const findings: Record<CoachQuestion, (scoped: TeamScopeAnalytics) => Finding> =
   },
 
   next_course(scoped) {
-    const ranked = [...scoped.measures.learning.courses].sort(
+    const ranked = [...scoped.measures.courses].sort(
       (a, b) =>
         a.completedAllTime - b.completedAllTime || a.completedInWindow - b.completedInWindow,
     );
@@ -279,13 +336,13 @@ const findings: Record<CoachQuestion, (scoped: TeamScopeAnalytics) => Finding> =
   growth_correlation(scoped) {
     const series = scoped.teams.map((t) => ({
       team: t.team,
-      growthChange: t.measures.growth.change,
-      engagementPerActiveMember: t.measures.engagement.perActiveMember,
-      learningCompletions: t.measures.learning.completedInWindow,
-      paidOrders: t.measures.commerce.paidOrders,
-      volumeMinor: t.measures.commerce.volumeMinor,
-      currency: t.measures.commerce.currency,
-      activeShare: t.measures.members.activeShare,
+      growth: t.measures.growth,
+      engagementPerActiveMember: t.measures.engagementPerActiveMember,
+      courseCompletions: t.measures.courseCompletions,
+      paidOrders: t.measures.paidOrders,
+      volumeMinor: t.measures.volumeMinor,
+      currency: t.measures.currency,
+      activeShare: t.measures.activeShare,
     }));
     return {
       refusal: [
@@ -296,8 +353,8 @@ const findings: Record<CoachQuestion, (scoped: TeamScopeAnalytics) => Finding> =
       ].join(' '),
       facts: series.map(
         (s) =>
-          `${s.team.name}: growth ${signed(s.growthChange)}, engagement per active member ${round(s.engagementPerActiveMember)}, ` +
-          `${s.learningCompletions} course completions, ${s.paidOrders} paid orders totalling ${s.volumeMinor} ${s.currency} minor units.`,
+          `${s.team.name}: growth ${signed(s.growth)}, engagement per active member ${round(s.engagementPerActiveMember)}, ` +
+          `${s.courseCompletions} course completions, ${s.paidOrders} paid orders totalling ${s.volumeMinor} ${s.currency} minor units.`,
       ),
       citations: [],
       data: { series },
@@ -315,50 +372,44 @@ function concerns(scoped: TeamScopeAnalytics) {
   const m = scoped.measures;
   const rows: Array<{ code: string; label: string; value: string; concern: number }> = [];
 
-  if (m.members.activeShare !== null) {
+  if (m.activeShare !== null) {
     rows.push({
-      code: 'members.activeShare',
+      code: 'activeShare',
       label: 'share of members active',
-      value: `${m.members.active} of ${m.members.total} (${percent(m.members.activeShare)})`,
-      concern: 1 - m.members.activeShare,
+      value: `${m.activeMembers} of ${m.totalMembers} (${percent(m.activeShare)})`,
+      concern: 1 - m.activeShare,
     });
   }
   rows.push({
-    code: 'growth.change',
+    code: 'growth',
     label: 'growth in active members',
-    value: `${signed(m.growth.change)} vs the previous window`,
-    concern:
-      m.growth.change < 0
-        ? Math.min(1, -m.growth.change / Math.max(1, m.growth.previousActive))
-        : 0,
+    value: `${signed(m.growth)} vs the previous window`,
+    concern: m.growth < 0 ? Math.min(1, -m.growth / Math.max(1, m.previousActiveMembers)) : 0,
   });
-  if (m.engagement.change !== null) {
+  if (m.engagementChange !== null) {
     rows.push({
-      code: 'engagement.perActiveMember',
+      code: 'engagementPerActiveMember',
       label: 'engagement per active member',
-      value: `${round(m.engagement.perActiveMember)} vs ${round(m.engagement.previousPerActiveMember)}`,
+      value: `${round(m.engagementPerActiveMember)} vs ${round(m.previousEngagementPerActiveMember)}`,
       concern:
-        m.engagement.change < 0
-          ? Math.min(
-              1,
-              -m.engagement.change / Math.max(1, m.engagement.previousPerActiveMember ?? 1),
-            )
+        m.engagementChange < 0
+          ? Math.min(1, -m.engagementChange / Math.max(1, m.previousEngagementPerActiveMember ?? 1))
           : 0,
     });
   }
-  if (m.churn.rate !== null) {
+  if (m.churnRate !== null) {
     rows.push({
-      code: 'churn.rate',
+      code: 'churnRate',
       label: 'churn',
-      value: `${m.churn.ended} of ${m.churn.activeAtStart} memberships ended (${percent(m.churn.rate)})`,
-      concern: m.churn.rate,
+      value: `${m.churnedMembers} of ${m.membersActiveAtWindowStart} memberships ended (${percent(m.churnRate)})`,
+      concern: m.churnRate,
     });
   }
   rows.push({
-    code: 'learning.completedInWindow',
+    code: 'courseCompletions',
     label: 'course completions',
-    value: `${m.learning.completedInWindow} in the window`,
-    concern: m.learning.completedInWindow === 0 && m.members.active > 0 ? 0.5 : 0,
+    value: `${m.courseCompletions} in the window`,
+    concern: m.courseCompletions === 0 && m.activeMembers > 0 ? 0.5 : 0,
   });
   return rows;
 }

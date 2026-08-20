@@ -4,7 +4,7 @@ import { TenantDb } from '../../common/db/tenant-db.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { AnthropicProvider } from './anthropic.provider';
 import { GroundedProvider } from './grounded.provider';
-import type { AiProvider } from './provider.port';
+import { CONTEXT_MARKER, type AiProvider, type AiPurpose } from './provider.port';
 
 const MAX_OUTPUT_TOKENS = 700;
 const HISTORY_TURNS = 10;
@@ -35,7 +35,7 @@ const SYSTEM_RULES = [
  */
 const COACH_RULES = [
   'You are the AVIORA team coach, speaking to a team leader about the teams they lead.',
-  'Answer ONLY from the MEASURES below. Quote the exact numbers you used, with the team or member they belong to.',
+  'Answer ONLY from the measures listed under CONTEXT below. Quote the exact numbers you used, with the team or member they belong to.',
   'Never estimate, extrapolate, project, or claim a cause. If the measures do not answer the question, say which measure is missing.',
   'Name measures that fell, never judgements about a person. Do not score, rank or predict people.',
   'Say nothing about anyone’s health: none is provided, and none may be inferred.',
@@ -167,7 +167,7 @@ export class AiService {
       '',
       `REPLY_LANGUAGE: ${locale === 'th' ? 'Thai' : 'English'}`,
       '',
-      'CONTEXT:',
+      CONTEXT_MARKER,
       ...context.map((c) => `- ${c}`),
     ].join('\n');
 
@@ -211,7 +211,7 @@ export class AiService {
       '',
       `REPLY_LANGUAGE: ${locale === 'th' ? 'Thai' : 'English'}`,
       '',
-      'MEASURES:',
+      CONTEXT_MARKER,
       ...input.facts.map((f) => `- ${f}`),
     ].join('\n');
 
@@ -222,6 +222,7 @@ export class AiService {
       system,
       citations: input.citations,
       locale,
+      purpose: 'measures',
       cap,
       used,
     });
@@ -254,6 +255,7 @@ export class AiService {
       used: { requests: number } | null;
       conversationId?: string;
       agent?: string;
+      purpose?: AiPurpose;
     },
   ) {
     const { system, citations, locale, cap, used } = input;
@@ -279,6 +281,7 @@ export class AiService {
       messages,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       locale,
+      purpose: input.purpose ?? 'knowledge',
     });
 
     await this.db.tx(async (tx) => {

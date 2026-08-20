@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Headers, Post, Query } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { PERMISSIONS } from '@aviora/shared';
@@ -10,14 +10,17 @@ import {
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import type { TeamActor } from '../team/team-scope.service';
-import { COACH_QUESTIONS, CoachService } from './coach.service';
-import { ANALYTICS_WINDOWS, DEFAULT_ANALYTICS_WINDOW } from './window';
+import { CoachService } from './coach.service';
+import { ANALYTICS_WINDOWS, DEFAULT_ANALYTICS_WINDOW, type AnalyticsWindow } from './window';
 
 const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
 
 const askSchema = z.object({
-  question: z.enum(COACH_QUESTIONS),
-  window: z.enum(ANALYTICS_WINDOWS).default(DEFAULT_ANALYTICS_WINDOW),
+  // The eight of docs/28 §4, as prose or as a code. Which eight, and the
+  // refusal for anything else, belong to the coach service — the shape here is
+  // only "a question was sent".
+  question: z.string().min(2).max(300),
+  window: z.enum(ANALYTICS_WINDOWS).optional(),
 });
 
 /**
@@ -44,12 +47,15 @@ export class CoachController {
   async team(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodPipe(askSchema)) body: z.infer<typeof askSchema>,
+    // `?window=` is what §5 documents; the body is accepted for symmetry.
+    @Query('window', new ZodPipe(z.enum(ANALYTICS_WINDOWS).optional()))
+    windowFromQuery?: AnalyticsWindow,
     @Headers('accept-language') acceptLanguage?: string,
   ) {
     const locale = acceptLanguage?.split(',')[0]?.trim().slice(0, 2).toLowerCase();
     return await this.coach.askTeam(this.actor(user), {
       question: body.question,
-      window: body.window,
+      window: windowFromQuery ?? body.window ?? DEFAULT_ANALYTICS_WINDOW,
       locale: locale === 'th' ? 'th' : 'en',
     });
   }

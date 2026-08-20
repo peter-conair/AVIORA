@@ -71,35 +71,46 @@ export interface CourseMeasure {
   inProgress: number;
 }
 
+/**
+ * Flat on purpose: §3 names six measures, and each is ONE number. Nesting
+ * them under `members`/`growth` groups would make `growth` an object, and a
+ * reader asking for growth would get a container instead of the change.
+ */
 export interface Measures {
-  members: {
-    total: number;
-    active: number;
-    inactive: number;
-    activeShare: number | null;
-    new: number;
-  };
-  growth: {
-    active: number;
-    previousActive: number;
-    change: number;
-    /** null when the previous window had no active members — not 0, and not Infinity. */
-    changeRate: number | null;
-  };
-  churn: { ended: number; activeAtStart: number; rate: number | null };
-  retention: { cohorts: CohortMeasure[] };
-  engagement: {
-    posts: number;
-    comments: number;
-    reactions: number;
-    total: number;
-    perActiveMember: number | null;
-    previousPerActiveMember: number | null;
-    change: number | null;
-  };
-  learning: { completedInWindow: number; courses: CourseMeasure[] };
+  totalMembers: number;
+  activeMembers: number;
+  inactiveMembers: number;
+  activeShare: number | null;
+  newMembers: number;
+
+  previousActiveMembers: number;
+  /** §3 Growth: the CHANGE in active members between two equal, adjacent windows — a count, not a rate. */
+  growth: number;
+  /** null when the previous window had no active members — not 0, and not Infinity. */
+  growthRate: number | null;
+
+  churnedMembers: number;
+  membersActiveAtWindowStart: number;
+  churnRate: number | null;
+
+  retentionCohorts: CohortMeasure[];
+
+  posts: number;
+  comments: number;
+  reactions: number;
+  engagementEvents: number;
+  /** §3 Engagement: posts, comments and reactions per active member. */
+  engagementPerActiveMember: number | null;
+  previousEngagementPerActiveMember: number | null;
+  engagementChange: number | null;
+
+  courseCompletions: number;
+  courses: CourseMeasure[];
+
   /** Integer minor units, with the code they are quoted in. */
-  commerce: { currency: string; paidOrders: number; volumeMinor: number };
+  currency: string;
+  paidOrders: number;
+  volumeMinor: number;
 }
 
 export interface MeasureResult {
@@ -138,38 +149,36 @@ export async function computeMeasures(scope: MeasureScope): Promise<MeasureResul
   const active = new Set([...activeNow].filter((id) => inScope.has(id)));
   const previousActive = new Set([...activePrev].filter((id) => inScope.has(id)));
 
-  const perActive = ratio(engagement.total, active.size);
-  const prevPerActive = ratio(prevEngagement.total, previousActive.size);
+  const perActive = ratio(engagement.engagementEvents, active.size);
+  const prevPerActive = ratio(prevEngagement.engagementEvents, previousActive.size);
 
   return {
     measures: {
-      members: {
-        total: members.length,
-        active: active.size,
-        inactive: members.length - active.size,
-        activeShare: ratio(active.size, members.length),
-        new: members.filter((m) => m.joinedAt >= window.from && m.joinedAt <= window.to).length,
-      },
-      growth: {
-        active: active.size,
-        previousActive: previousActive.size,
-        change: active.size - previousActive.size,
-        changeRate: ratio(active.size - previousActive.size, previousActive.size),
-      },
-      churn: {
-        ended: churn.ended,
-        activeAtStart: churn.activeAtStart,
-        rate: ratio(churn.ended, churn.activeAtStart),
-      },
-      retention: { cohorts: cohorts(members, active, window) },
-      engagement: {
-        ...engagement,
-        perActiveMember: perActive,
-        previousPerActiveMember: prevPerActive,
-        change: perActive === null || prevPerActive === null ? null : perActive - prevPerActive,
-      },
-      learning,
-      commerce,
+      totalMembers: members.length,
+      activeMembers: active.size,
+      inactiveMembers: members.length - active.size,
+      activeShare: ratio(active.size, members.length),
+      newMembers: members.filter((m) => m.joinedAt >= window.from && m.joinedAt <= window.to)
+        .length,
+
+      previousActiveMembers: previousActive.size,
+      growth: active.size - previousActive.size,
+      growthRate: ratio(active.size - previousActive.size, previousActive.size),
+
+      churnedMembers: churn.ended,
+      membersActiveAtWindowStart: churn.activeAtStart,
+      churnRate: ratio(churn.ended, churn.activeAtStart),
+
+      retentionCohorts: cohorts(members, active, window),
+
+      ...engagement,
+      engagementPerActiveMember: perActive,
+      previousEngagementPerActiveMember: prevPerActive,
+      engagementChange:
+        perActive === null || prevPerActive === null ? null : perActive - prevPerActive,
+
+      ...learning,
+      ...commerce,
     },
     members,
     activeMemberIds: active,
@@ -269,7 +278,7 @@ async function engagementCounts(scope: MeasureScope, from: Date, to: Date) {
     }),
     reader.reaction.count({ where: { tenantId, memberId, createdAt: range } }),
   ]);
-  return { posts, comments, reactions, total: posts + comments + reactions };
+  return { posts, comments, reactions, engagementEvents: posts + comments + reactions };
 }
 
 /**
@@ -277,7 +286,9 @@ async function engagementCounts(scope: MeasureScope, from: Date, to: Date) {
  * .assignedCourse): there is no assignment table, and inventing one here would
  * be a metric that can disagree with the thing it measures.
  */
-async function learningByCourse(scope: MeasureScope): Promise<Measures['learning']> {
+async function learningByCourse(
+  scope: MeasureScope,
+): Promise<Pick<Measures, 'courseCompletions' | 'courses'>> {
   const { reader, tenantId, window } = scope;
   const memberId = memberFilter(scope);
 
@@ -312,7 +323,7 @@ async function learningByCourse(scope: MeasureScope): Promise<Measures['learning
   }
 
   return {
-    completedInWindow: inWindow.reduce((sum, r) => sum + r._count, 0),
+    courseCompletions: inWindow.reduce((sum, r) => sum + r._count, 0),
     courses: courses.map((c) => ({
       courseId: c.id,
       code: c.code,
@@ -324,7 +335,9 @@ async function learningByCourse(scope: MeasureScope): Promise<Measures['learning
   };
 }
 
-async function commerceTotals(scope: MeasureScope): Promise<Measures['commerce']> {
+async function commerceTotals(
+  scope: MeasureScope,
+): Promise<Pick<Measures, 'currency' | 'paidOrders' | 'volumeMinor'>> {
   const { reader, tenantId, window } = scope;
   const [currency, totals] = await Promise.all([
     tenantCurrency(reader, tenantId),

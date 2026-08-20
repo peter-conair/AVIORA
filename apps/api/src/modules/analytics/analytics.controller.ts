@@ -60,16 +60,12 @@ export class AnalyticsController {
   }
 
   /**
-   * Cross-tenant, so the platform ROLE is the gate, not the permission key
-   * alone: `TENANT_OWNER` is seeded with every permission in the catalog at
-   * TENANT_ALL, `platform.metrics.view` included, and a tenant owner reading
-   * other tenants' numbers is the isolation breach the whole platform is built
-   * to prevent. The key is still declared — it is what docs/28 §5 names, and
-   * it is what a future non-owner platform analyst role will carry.
+   * Cross-tenant, so the platform ROLE is the gate — docs/28 §1, "platform
+   * roles only". A tenant permission key cannot carry this: permission keys
+   * are granted per tenant, and the answer here spans all of them.
    */
   @Get('platform')
   @RequirePlatformRoles('PLATFORM_OWNER', 'SUPER_ADMIN')
-  @RequirePermissions(PERMISSIONS.PLATFORM_METRICS_VIEW)
   async platform(@Query('window', new ZodPipe(windowSchema)) window: AnalyticsWindow) {
     return await this.analytics.platform(window);
   }

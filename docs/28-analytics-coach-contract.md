@@ -38,17 +38,40 @@ The member's _own_ dashboard may show their own health summary — it is theirs.
 
 Measures nobody can define the same way twice are worse than no measures:
 
-| Term              | Definition used everywhere                                                                                                             |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Active member** | a member with at least one recorded action (goal, learning, order, post, habit log — the _existence_, never the content) in the window |
-| **New member**    | `joinedAt` inside the window                                                                                                           |
-| **Retention**     | of members who joined in cohort month _M_, the share still active in the window                                                        |
-| **Churn**         | members whose membership ended or lapsed in the window, over the members active at its start                                           |
-| **Growth**        | change in active members between two equal, adjacent windows                                                                           |
-| **Engagement**    | posts, comments and reactions per active member                                                                                        |
+| Term              | Definition used everywhere                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Active member** | a member with at least one recorded action (goal, learning, order, post, comment, reaction) in the window. **Health activity does not count** — see below |
+| **New member**    | `joinedAt` inside the window                                                                                                                              |
+| **Retention**     | of members who joined in cohort month _M_, the share still active in the window                                                                           |
+| **Churn**         | members whose membership ended or lapsed in the window, over the members active at its start                                                              |
+| **Growth**        | change in active members between two equal, adjacent windows                                                                                              |
+| **Engagement**    | posts, comments and reactions per active member                                                                                                           |
 
 Every dashboard response states the window it used and the definitions it
 applied. A number without its window is a number that will be misquoted.
+
+### Why health activity does not even count as activity
+
+The first draft of this contract counted a habit log as activity — "the
+existence, never the content". That was wrong, and the conflict surfaced while
+building it.
+
+The set difference gives it away. A member with no goals, no orders, no posts
+and no learning who nonetheless shows as _active_ can only have been logging
+health habits. The leader learns no value, but they learn that this person
+tracks their health — which is precisely the thing docs/13 says crosses to
+another person only by that member's explicit grant. Aggregation does not
+launder it, and neither does counting only the existence of a row.
+
+This has a real cost and it must not be hidden: a member using the health
+features every day and nothing else appears in the leader's dashboard as
+**inactive**. Being chased for inactivity while diligently using the product is
+a genuine harm, so every response that reports activity states, in the
+definitions it echoes, that health activity is deliberately excluded. "Inactive"
+here means _no non-health activity_, and a leader reading it must be able to
+see that without asking anyone.
+
+The member's own dashboard counts their health activity, because it is theirs.
 
 ## 4. The AI Team Coach answers from these numbers
 

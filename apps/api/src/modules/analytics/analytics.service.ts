@@ -259,12 +259,14 @@ export class AnalyticsService {
       scope: 'platform' as const,
       window: windowEcho(window),
       definitions: definitionsFor(SHARED_ACTIVITY_SIGNALS),
-      tenants: rows,
+      // `perTenant`, not `tenants`: the tenant COUNT lives in totals, and one
+      // name cannot honestly be both a number and a breakdown.
+      perTenant: rows,
       totals: {
         tenants: rows.length,
-        members: sum(rows.map((r) => r.measures.members.total)),
-        activeMembers: sum(rows.map((r) => r.measures.members.active)),
-        newMembers: sum(rows.map((r) => r.measures.members.new)),
+        totalMembers: sum(rows.map((r) => r.measures.totalMembers)),
+        activeMembers: sum(rows.map((r) => r.measures.activeMembers)),
+        newMembers: sum(rows.map((r) => r.measures.newMembers)),
         aiRequests: sum(rows.map((r) => r.ai.requests)),
         aiInputTokens: sum(rows.map((r) => r.ai.inputTokens)),
         aiOutputTokens: sum(rows.map((r) => r.ai.outputTokens)),
@@ -394,7 +396,21 @@ const NOT_MEASURED = {
 } as const;
 
 function definitionsFor(signals: readonly string[]) {
-  return { ...DEFINITIONS, activitySignals: [...signals] };
+  const countsHealth = signals.includes('habit_log');
+  return {
+    ...DEFINITIONS,
+    activitySignals: [...signals],
+    // A member who uses only the health features every day is reported here as
+    // INACTIVE. Being chased for inactivity while diligently using the product
+    // is a real harm, so a reader is told plainly what "inactive" means rather
+    // than being left to assume it means "doing nothing" (docs/28 §3).
+    ...(countsHealth
+      ? {}
+      : {
+          healthActivityExcluded:
+            'Health activity is deliberately not counted. A member who only logs habits appears inactive here — "inactive" means no non-health activity, not an idle member.',
+        }),
+  };
 }
 
 function requireMember(actor: TeamActor): string {

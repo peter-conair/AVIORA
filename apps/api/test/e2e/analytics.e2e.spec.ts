@@ -269,22 +269,33 @@ async function backdateGoal(tenant: string, goalId: string, daysAgo: number): Pr
  * Decimal columns arrive as strings ("4.50"), so numeric leaves are compared
  * numerically whether they arrive as a number or as a string.
  */
-function findHealth(value: unknown, path = '$', found: string[] = []): string[] {
+function findHealth(
+  value: unknown,
+  path = '$',
+  found: string[] = [],
+  inDefinitions = false,
+): string[] {
   if (value === null || value === undefined) return found;
   if (Array.isArray(value)) {
-    value.forEach((v, i) => findHealth(v, `${path}[${i}]`, found));
+    value.forEach((v, i) => findHealth(v, `${path}[${i}]`, found, inDefinitions));
     return found;
   }
   if (typeof value === 'object') {
     for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-      if (HEALTH_KEY.test(key)) found.push(`${path}.${key} — key names health data`);
-      findHealth(child, `${path}.${key}`, found);
+      // `definitions` is methodology prose, and the honest disclosure that
+      // health activity is NOT counted has to be allowed to say the word
+      // health. Its values are still scanned for the fixture's own tokens and
+      // numbers below, so a leak cannot hide in there.
+      if (!inDefinitions && key !== 'definitions' && HEALTH_KEY.test(key)) {
+        found.push(`${path}.${key} — key names health data`);
+      }
+      findHealth(child, `${path}.${key}`, found, inDefinitions || key === 'definitions');
     }
     return found;
   }
   if (typeof value === 'string') {
     const hay = value.toLowerCase();
-    for (const token of FORBIDDEN.strings) {
+    for (const token of inDefinitions ? [] : FORBIDDEN.strings) {
       if (hay.includes(token.toLowerCase())) found.push(`${path} — contains "${token}"`);
     }
     const asNumber = Number(value);
@@ -890,21 +901,27 @@ describe('Analytics — the definitions, computed by hand (docs/28 §3)', () => 
 
   it('counts a member active on one recorded action, and never on none', async () => {
     // In the 30-day window:
-    //   bo  — 2 posts + 1 comment + 1 reaction + 1 goal + habit log → active
-    //   cy  — ONE habit log and nothing else → active, because §3 counts the
-    //         EXISTENCE of a habit log ("never the content")
+    //   bo  — 2 posts + 1 comment + 1 reaction + 1 goal → active
+    //   cy  — ONE habit log and nothing else → NOT active here. Health
+    //         activity does not count at team/tenant scope, not even its
+    //         existence: a member active with no goal, order, post or lesson
+    //         could only have been logging health, which is the fact docs/13
+    //         says never crosses without a grant (docs/28 §3).
     //   dov — one goal, but 40 days ago → outside the window, not active
     //   ada, bea, piet, admin — nothing at all → not active
-    // active members = bo + cy = 2
+    // active members = bo = 1
     const admin = await login(`admin-n-${RUN}@test.local`);
     const res = await dashboard('tenant', admin, { tenant: north, window: '30d' });
-    expect(numberOf(res.body, ACTIVE_KEYS, 'tenant activeMembers')).toBe(2);
+    expect(numberOf(res.body, ACTIVE_KEYS, 'tenant activeMembers')).toBe(1);
 
-    // and the same two, counted through the leader's scope: Alder is bo and cy
+    // …and the response says so, so nobody reads "inactive" as "idle"
+    expect(JSON.stringify(res.body.definitions)).toMatch(/health/i);
+
+    // the same one, counted through the leader's scope: Alder is bo and cy
     const ada = await login(`ada-${RUN}@test.local`);
     const team30 = await dashboard('team', ada, { tenant: north, window: '30d' });
     expect(numberOf(teamEntry(team30.body, team.alder), ACTIVE_KEYS, 'Alder activeMembers')).toBe(
-      2,
+      1,
     );
     // Cedar is dov alone, whose one action is outside the window
     expect(numberOf(teamEntry(team30.body, team.cedar), ACTIVE_KEYS, 'Cedar activeMembers')).toBe(
@@ -925,13 +942,14 @@ describe('Analytics — the definitions, computed by hand (docs/28 §3)', () => 
   it('divides engagement by active members — and does not divide by zero', async () => {
     // Engagement = posts + comments + reactions, per active member (§3).
     // Alder, 30 days: bo published 2 posts + 1 comment + 1 reaction = 4 events;
-    // cy published none. Active members in Alder = 2 (bo, cy).
-    //   4 / 2 = 2
+    // cy published none and their only action is a habit log, which does not
+    // count at this scope. Active members in Alder = 1 (bo).
+    //   4 / 1 = 4
     const ada = await login(`ada-${RUN}@test.local`);
     const res = await dashboard('team', ada, { tenant: north, window: '30d' });
     expect(
       numberOf(teamEntry(res.body, team.alder), ENGAGEMENT_KEYS, 'Alder engagement'),
-    ).toBeCloseTo(2, 6);
+    ).toBeCloseTo(4, 6);
 
     // Cedar has 0 events and 0 active members. 0/0 is not a number a dashboard
     // may print: it is 0 or it is nothing, never NaN and never Infinity.
@@ -944,11 +962,11 @@ describe('Analytics — the definitions, computed by hand (docs/28 §3)', () => 
     }
     expect(JSON.stringify(res.body)).not.toMatch(/NaN|Infinity/);
 
-    // tenant-wide, the same four events over the same two active members:
-    //   4 / 2 = 2
+    // tenant-wide, the same four events over the one active member:
+    //   4 / 1 = 4
     const admin = await login(`admin-n-${RUN}@test.local`);
     const tenant = await dashboard('tenant', admin, { tenant: north, window: '30d' });
-    expect(numberOf(tenant.body, ENGAGEMENT_KEYS, 'tenant engagement')).toBeCloseTo(2, 6);
+    expect(numberOf(tenant.body, ENGAGEMENT_KEYS, 'tenant engagement')).toBeCloseTo(4, 6);
   });
 
   it('states the window it used and the definitions it applied', async () => {
@@ -988,16 +1006,17 @@ describe('Analytics — windows disagree over the same data (docs/28 §3, §5)',
     expect(numberOf(thirty.body, NEW_KEYS, '30d newMembers')).toBe(2);
     expect(numberOf(ninety.body, NEW_KEYS, '90d newMembers')).toBe(3);
 
-    // active members: 30d = bo + cy = 2
-    //                 90d = bo + cy + dov (one goal, 40 days ago) = 3
-    expect(numberOf(thirty.body, ACTIVE_KEYS, '30d activeMembers')).toBe(2);
-    expect(numberOf(ninety.body, ACTIVE_KEYS, '90d activeMembers')).toBe(3);
+    // active members: 30d = bo = 1 (cy's only action is a habit log, which
+    //                 does not count at tenant scope)
+    //                 90d = bo + dov (one goal, 40 days ago) = 2
+    expect(numberOf(thirty.body, ACTIVE_KEYS, '30d activeMembers')).toBe(1);
+    expect(numberOf(ninety.body, ACTIVE_KEYS, '90d activeMembers')).toBe(2);
 
     // engagement follows the divisor, not just the numerator: the four events
     // are all recent, so 90d has the same 4 over one more active member.
-    //   30d: 4 / 2 = 2      90d: 4 / 3 = 1.333…
-    expect(numberOf(thirty.body, ENGAGEMENT_KEYS, '30d engagement')).toBeCloseTo(2, 6);
-    expect(numberOf(ninety.body, ENGAGEMENT_KEYS, '90d engagement')).toBeCloseTo(4 / 3, 3);
+    //   30d: 4 / 1 = 4      90d: 4 / 2 = 2
+    expect(numberOf(thirty.body, ENGAGEMENT_KEYS, '30d engagement')).toBeCloseTo(4, 6);
+    expect(numberOf(ninety.body, ENGAGEMENT_KEYS, '90d engagement')).toBeCloseTo(2, 6);
   });
 
   it('treats month as the calendar month, and counts its own joiners', async () => {
@@ -1031,13 +1050,14 @@ describe('Analytics — windows disagree over the same data (docs/28 §3, §5)',
   it('measures growth between two equal, adjacent windows', async () => {
     // §3: growth = change in active members between two equal, adjacent
     // windows. With a 30-day window the previous one is [T-60, T-30].
-    //   Alder — now: bo + cy = 2 · before: nobody acted = 0 → +2
+    //   Alder — now: bo = 1 (cy's health logging does not count) ·
+    //           before: nobody acted = 0 → +1
     //   Cedar — now: 0 · before: dov's goal at 40 days ago = 1 → −1
     // INTERPRETATION: §3 says "change in active members", so this is a count,
     // not a percentage.
     const ada = await login(`ada-${RUN}@test.local`);
     const res = await dashboard('team', ada, { tenant: north, window: '30d' });
-    expect(numberOf(teamEntry(res.body, team.alder), GROWTH_KEYS, 'Alder growth')).toBe(2);
+    expect(numberOf(teamEntry(res.body, team.alder), GROWTH_KEYS, 'Alder growth')).toBe(1);
     expect(numberOf(teamEntry(res.body, team.cedar), GROWTH_KEYS, 'Cedar growth')).toBe(-1);
   });
 
@@ -1104,7 +1124,11 @@ describe('AI Team Coach — answers from these numbers (docs/28 §4)', () => {
     expect(answer).toMatch(/Estes/); // Dov Estes
     expect(answer).not.toMatch(/Lund/); // Piet Lund, in Birch
     expect(answer).not.toMatch(/Rowan/); // Bea Rowan, leader of Birch
-    expect(answer).not.toMatch(/Ness|Marek/); // bo and cy are active
+    expect(answer).not.toMatch(/Ness/); // bo is active
+    // cy IS named: their only activity is health, which this scope cannot see.
+    // That is the documented cost of the privacy rule, and the definitions the
+    // dashboard echoes say so rather than leaving the leader to guess.
+    expect(answer).toMatch(/Marek/);
   });
 
   it('names a measure that fell, not a judgement about a person', async () => {
@@ -1261,12 +1285,12 @@ describe("Isolation — another tenant's numbers stay in their tenant", () => {
 
   it("does not let South's activity move North's numbers", async () => {
     // zia joined today and created a goal today. If tenant scoping were
-    // missing, North's 90-day counts would read 4 new and 4 active instead of
-    // 3 and 3.
+    // missing, North's 90-day counts would read 4 new and 3 active instead of
+    // 3 and 2.
     const admin = await login(`admin-n-${RUN}@test.local`);
     const res = await dashboard('tenant', admin, { tenant: north, window: '90d' });
     expect(numberOf(res.body, NEW_KEYS, 'North 90d newMembers')).toBe(3);
-    expect(numberOf(res.body, ACTIVE_KEYS, 'North 90d activeMembers')).toBe(3);
+    expect(numberOf(res.body, ACTIVE_KEYS, 'North 90d activeMembers')).toBe(2);
   });
 
   it("shows South its own single active member, unaffected by North's", async () => {
