@@ -17,5 +17,9 @@ import { TenantConfigController } from './tenant-config.controller';
 @Module({
   controllers: [TenantConfigController, LegalController],
   providers: [BrandingService, LocalisationService, LegalService],
+  // Branding is exported so the white-label PWA manifest (docs/30 §5) paints
+  // itself from the SAME source the login page does, rather than from a second
+  // read of the same tables that could drift from it.
+  exports: [BrandingService],
 })
 export class TenantConfigModule {}

@@ -12,7 +12,10 @@ export async function createApp(options?: { logger?: boolean }): Promise<INestAp
     ...(options?.logger === false ? { logger: false } : {}),
   });
   app.use(cookieParser());
-  app.setGlobalPrefix('api/v1', { exclude: ['healthz', 'readyz'] });
+  // The PWA manifest is a document of the SITE, not a call to the API: a
+  // browser asks for /manifest.webmanifest at the web root and will not look
+  // for it under a version prefix (docs/30 §5).
+  app.setGlobalPrefix('api/v1', { exclude: ['healthz', 'readyz', 'manifest.webmanifest'] });
   app.useGlobalFilters(app.get(AllExceptionsFilter));
   app.enableCors({
     origin: [/^http:\/\/localhost:\d+$/, /^http:\/\/.*\.localhost:\d+$/],

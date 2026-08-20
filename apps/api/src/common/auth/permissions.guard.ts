@@ -17,7 +17,13 @@ export const CLS_MEMBER_ID = 'memberId';
  * the database the same question again.
  */
 export const CLS_PERMISSIONS = 'permissionKeys';
-const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
+/**
+ * Platform roles that pass every tenant permission check. Exported so anything
+ * that has to reason about "what may this caller delegate?" — minting an API
+ * key, for one — asks the same question this guard does rather than keeping a
+ * second copy of the answer.
+ */
+export const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
 
 /**
  * Global authorization guard: platform-role routes and tenant permission-key

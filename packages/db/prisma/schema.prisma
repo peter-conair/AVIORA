@@ -1790,3 +1790,72 @@ model TaxRule {
   @@unique([tenantId, country, region])
   @@map("tax_rules")
 }
+
+// ── Public API & webhooks (docs/30, spec §77) ──
+
+/// A webhook is one more handler on the existing outbox, not a second event
+/// system (docs/30 §1).
+model WebhookEndpoint {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  url         String
+  description String?
+  /// Hashed like a password: a secret the platform can read back is a secret
+  /// it is holding for no reason.
+  secretHash  String   @map("secret_hash")
+  /// Event names this endpoint asked for. No wildcard — a subscription that
+  /// silently grows when a new event ships is a subscription nobody agreed to.
+  events      String[]
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId, status])
+  @@map("webhook_endpoints")
+}
+
+/// One row per (endpoint, event). The unique key is what stops a replayed
+/// event from notifying twice.
+model WebhookDelivery {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  endpointId    String    @map("endpoint_id") @db.Uuid
+  eventId       String    @map("event_id") @db.Uuid
+  eventName     String    @map("event_name")
+  /// pending | delivered | failed
+  status        String    @default("pending")
+  attempts      Int       @default(0)
+  responseCode  Int?      @map("response_code")
+  error         String?
+  nextAttemptAt DateTime? @map("next_attempt_at") @db.Timestamptz(6)
+  deliveredAt   DateTime? @map("delivered_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id])
+
+  @@unique([endpointId, eventId])
+  @@index([tenantId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("webhook_deliveries")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  name       String
+  /// Shown in listings so two keys can be told apart; the rest is a hash.
+  prefix     String
+  hash       String
+  /// Permission keys. A key can never hold a scope its creator lacked.
+  scopes     String[]
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, prefix])
+  @@index([tenantId, revokedAt])
+  @@map("api_keys")
+}

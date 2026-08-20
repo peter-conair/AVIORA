@@ -71,6 +71,8 @@ import { CommerceModule } from './modules/commerce/commerce.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { CompensationModule } from './modules/compensation/compensation.module';
 import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
+import { IntegrationModule } from './modules/integration/integration.module';
+import { WebhookHandlers } from './modules/integration/webhook.handlers';
 
 @Module({
   imports: [
@@ -106,6 +108,7 @@ import { TenantConfigModule } from './modules/tenant-config/tenant-config.module
     GrowthModule,
     CompensationModule,
     TenantConfigModule,
+    IntegrationModule,
   ],
   controllers: [
     HealthCheckController,
@@ -154,6 +157,10 @@ import { TenantConfigModule } from './modules/tenant-config/tenant-config.module
     TeamScopeService,
     NotificationHandlers,
     NotificationsService,
+    // A webhook is one more handler on the existing relay (docs/30 §1), so its
+    // registration sits here beside the bus with every other *Handlers class;
+    // the dispatcher it calls is owned by IntegrationModule.
+    WebhookHandlers,
     CrmService,
     CrmScopeService,
     KnowledgeService,

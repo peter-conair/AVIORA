@@ -79,6 +79,9 @@ const TENANT_OWNED_TABLES = [
   'legal_documents',
   'legal_acceptances',
   'tax_rules',
+  'webhook_endpoints',
+  'webhook_deliveries',
+  'api_keys',
 ];
 
 /**

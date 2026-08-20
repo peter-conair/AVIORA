@@ -81,6 +81,9 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'LegalDocument',
   'LegalAcceptance',
   'TaxRule',
+  'WebhookEndpoint',
+  'WebhookDelivery',
+  'ApiKey',
 ]);
 
 const LIST_OPS = new Set([
