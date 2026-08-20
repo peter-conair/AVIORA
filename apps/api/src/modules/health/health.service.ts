@@ -288,6 +288,33 @@ export class HealthService {
     });
   }
 
+  /**
+   * How many distinct days the member logged a habit on, in an arbitrary
+   * window. It exists so the member's OWN analytics dashboard can honour the
+   * docs/28 §3 definition of an active member, which counts a habit log — the
+   * count crosses the module boundary, never the rows, and it still passes
+   * through the consent gate, so no other scope can ask this about anyone.
+   */
+  async habitLogDays(
+    actorMemberId: string | null,
+    subjectMemberId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    return this.db.tx(async (tx) => {
+      await this.access.assertCanView(tx, actorMemberId, subjectMemberId);
+      const logs = await tx.habitLog.findMany({
+        where: {
+          memberId: subjectMemberId,
+          completed: true,
+          logDate: { gte: startOfDay(from), lte: startOfDay(to) },
+        },
+        select: { logDate: true },
+      });
+      return new Set(logs.map((l) => l.logDate.toISOString().slice(0, 10))).size;
+    });
+  }
+
   // ── consent ─────────────────────────────────────────────────────────────
 
   grants(actorMemberId: string | null) {

@@ -10,7 +10,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { ENTITLEMENTS, PERMISSIONS, PermissionScope } from '@aviora/shared';
-import { SCOPES, SYSTEM_ROLES } from '../src/system-roles';
+import { SCOPES, SYSTEM_ROLES, isTenantScopePermission } from '../src/system-roles';
 import { seedGlobalKnowledge } from '../src/knowledge-seeder';
 
 const prisma = new PrismaClient({ datasourceUrl: process.env.AVIORA_DATABASE_URL });
@@ -82,7 +82,9 @@ async function repairSystemRoles(): Promise<{ tenants: number; changes: number }
       }
       const desired = new Map<string, string>(
         def.grants === null
-          ? permissions.map((p) => [p.id, SCOPES.TENANT_ALL])
+          ? permissions
+              .filter((p) => isTenantScopePermission(p.key))
+              .map((p) => [p.id, SCOPES.TENANT_ALL])
           : def.grants.flatMap((g) => {
               const p = permByKey.get(g.key);
               return p ? ([[p.id, g.scope]] as Array<[string, string]>) : [];

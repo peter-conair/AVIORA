@@ -32,6 +32,10 @@ import { TeamScopeService } from './modules/team/team-scope.service';
 import { GoalsController } from './modules/goal/goals.controller';
 import { LearningController } from './modules/learning/learning.controller';
 import { DashboardController } from './modules/analytics/dashboard.controller';
+import { AnalyticsController } from './modules/analytics/analytics.controller';
+import { AnalyticsService } from './modules/analytics/analytics.service';
+import { CoachController } from './modules/analytics/coach.controller';
+import { CoachService } from './modules/analytics/coach.service';
 import { NotificationHandlers } from './modules/notification/notification.handlers';
 import { NotificationsController } from './modules/notification/notifications.controller';
 import { NotificationsService } from './modules/notification/notifications.service';
@@ -127,6 +131,11 @@ import { CompensationModule } from './modules/compensation/compensation.module';
     // GamificationService (docs/27 §1, §2).
     RuleController,
     RewardController,
+    // Analytics and the team coach stay here for the same reason: the coach
+    // reaches for AiService, and the analytics service for HealthService and
+    // TeamScopeService, all AppModule-scoped (docs/28 §1, §4).
+    AnalyticsController,
+    CoachController,
   ],
   providers: [
     AllExceptionsFilter,
@@ -161,6 +170,8 @@ import { CompensationModule } from './modules/compensation/compensation.module';
     AiService,
     AnthropicProvider,
     GroundedProvider,
+    AnalyticsService,
+    CoachService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: EntitlementsGuard },

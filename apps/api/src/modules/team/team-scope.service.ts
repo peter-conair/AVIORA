@@ -4,6 +4,17 @@ import type { Tx } from '@aviora/db';
 
 export type AccessibleTeams = 'ALL' | Set<string>;
 
+/**
+ * The four tables scope resolution reads, and nothing else. Stated as a Pick
+ * rather than `Tx` so a caller holding a deliberately narrowed handle — the
+ * analytics reader, which has the health delegates removed from its type —
+ * can resolve its scope without widening back to a full transaction first.
+ */
+export type TeamScopeReader = Pick<
+  Tx,
+  'memberRole' | 'teamLeadership' | 'teamClosure' | 'teamMembership'
+>;
+
 /** The acting caller for team-scoped operations. */
 export interface TeamActor {
   memberId: string | null;
@@ -22,7 +33,11 @@ export interface TeamActor {
  */
 @Injectable()
 export class TeamScopeService {
-  async accessibleTeamIds(tx: Tx, actor: TeamActor, permKey: string): Promise<AccessibleTeams> {
+  async accessibleTeamIds(
+    tx: TeamScopeReader,
+    actor: TeamActor,
+    permKey: string,
+  ): Promise<AccessibleTeams> {
     if (actor.platformBypass) return 'ALL';
     if (!actor.memberId) return new Set();
 

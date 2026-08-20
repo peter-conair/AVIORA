@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ERROR_CODES, EVENTS, PermissionScope, newId } from '@aviora/shared';
-import { appendEvent, SYSTEM_ROLES } from '@aviora/db';
+import { appendEvent, isTenantScopePermission, SYSTEM_ROLES } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 
@@ -80,12 +80,14 @@ export class ProvisioningService {
         await tx.rolePermission.createMany({
           data:
             def.grants === null
-              ? permissions.map((p) => ({
-                  tenantId: tenant.id,
-                  roleId: role.id,
-                  permissionId: p.id,
-                  scope: PermissionScope.TENANT_ALL,
-                }))
+              ? permissions
+                  .filter((p) => isTenantScopePermission(p.key))
+                  .map((p) => ({
+                    tenantId: tenant.id,
+                    roleId: role.id,
+                    permissionId: p.id,
+                    scope: PermissionScope.TENANT_ALL,
+                  }))
               : def.grants.flatMap((g) => {
                   const p = permByKey.get(g.key);
                   return p

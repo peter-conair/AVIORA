@@ -17,8 +17,23 @@ export type Scope = (typeof SCOPES)[keyof typeof SCOPES];
 export interface SystemRoleDef {
   code: string;
   name: string;
-  /** null = every permission in the catalog at TENANT_ALL (tenant owner). */
+  /**
+   * null = every TENANT-SCOPE permission in the catalog at TENANT_ALL.
+   * Platform-scope keys are excluded — see `isTenantScopePermission`.
+   */
   grants: Array<{ key: string; scope: Scope }> | null;
+}
+
+/**
+ * `platform.*` keys govern the platform ACROSS tenants: creating tenants,
+ * reading cross-tenant metrics. A tenant owner is the top of exactly one
+ * tenant and must never hold them, or "grant every permission" quietly hands
+ * one tenant's owner a view of everybody else's. Platform routes are gated on
+ * platform ROLES, but a permission nobody should hold is a trap waiting for
+ * the first route that checks the permission alone.
+ */
+export function isTenantScopePermission(key: string): boolean {
+  return !key.startsWith('platform.');
 }
 
 export const SYSTEM_ROLES: SystemRoleDef[] = [

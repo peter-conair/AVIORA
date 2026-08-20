@@ -27,6 +27,29 @@ const SYSTEM_RULES = [
   'Reply in the language named by REPLY_LANGUAGE below.',
 ].join(' ');
 
+/**
+ * The AI Team Coach (docs/28 §4, spec §49). The CALLER retrieved the numbers
+ * under its own authorization, so this prompt adds no retrieval and forbids
+ * arithmetic the leader cannot check: an AI answer a leader cannot verify is
+ * an answer they should not act on.
+ */
+const COACH_RULES = [
+  'You are the AVIORA team coach, speaking to a team leader about the teams they lead.',
+  'Answer ONLY from the MEASURES below. Quote the exact numbers you used, with the team or member they belong to.',
+  'Never estimate, extrapolate, project, or claim a cause. If the measures do not answer the question, say which measure is missing.',
+  'Name measures that fell, never judgements about a person. Do not score, rank or predict people.',
+  'Say nothing about anyone’s health: none is provided, and none may be inferred.',
+  'Be brief — a few sentences, then what the leader could do next.',
+  'Reply in the language named by REPLY_LANGUAGE below.',
+].join(' ');
+
+/**
+ * What an answer cites, so the reader can check it against the dashboard.
+ * A type alias, not an interface: it is persisted to a Prisma Json column,
+ * which only accepts shapes carrying an implicit index signature.
+ */
+export type AiCitation = { kind: string; code: string; title: string };
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -119,16 +142,7 @@ export class AiService {
     input: { question: string; conversationId?: string; locale?: string },
   ) {
     const owner = this.requireMember(memberId);
-    const cap = await this.dailyCap();
-    const used = await this.db.tx((tx) =>
-      tx.aiUsage.findFirst({ where: { memberId: owner, usageDate: today() } }),
-    );
-    if ((used?.requests ?? 0) >= cap) {
-      throw new ForbiddenException({
-        code: ERROR_CODES.RATE_LIMITED,
-        message: `Daily AI limit reached (${cap} requests). It resets tomorrow.`,
-      });
-    }
+    const { cap, used } = await this.assertQuota(owner);
 
     // Retrieval runs through the tenant-scoped knowledge service, so RLS has
     // already excluded anything this tenant may not read.
@@ -157,6 +171,92 @@ export class AiService {
       ...context.map((c) => `- ${c}`),
     ].join('\n');
 
+    return await this.runTurn(owner, {
+      question: input.question,
+      conversationId: input.conversationId,
+      system,
+      citations,
+      locale,
+      cap,
+      used,
+    });
+  }
+
+  /**
+   * Answer from facts the CALLER already retrieved under its own authorization
+   * (spec §50). Nothing here reads a domain table: the AI Team Coach hands in
+   * numbers it obtained from the scoped analytics service, so there is no code
+   * path by which the model sees a team the caller could not (docs/28 §4).
+   *
+   * It shares this gateway's quota, provider routing, persistence and
+   * citations with `ask` — a second AI path would be a second set of limits.
+   */
+  async answerGrounded(
+    memberId: string | null,
+    input: {
+      question: string;
+      /** One line per number, already scoped and already authorised. */
+      facts: string[];
+      citations: AiCitation[];
+      locale?: string;
+      agent?: string;
+      conversationId?: string;
+    },
+  ) {
+    const owner = this.requireMember(memberId);
+    const { cap, used } = await this.assertQuota(owner);
+    const locale = input.locale ?? 'en';
+    const system = [
+      COACH_RULES,
+      '',
+      `REPLY_LANGUAGE: ${locale === 'th' ? 'Thai' : 'English'}`,
+      '',
+      'MEASURES:',
+      ...input.facts.map((f) => `- ${f}`),
+    ].join('\n');
+
+    return await this.runTurn(owner, {
+      question: input.question,
+      conversationId: input.conversationId,
+      agent: input.agent,
+      system,
+      citations: input.citations,
+      locale,
+      cap,
+      used,
+    });
+  }
+
+  /** Quota first, always: retrieval a rate-limited caller cannot use is waste. */
+  private async assertQuota(memberId: string) {
+    const cap = await this.dailyCap();
+    const used = await this.db.tx((tx) =>
+      tx.aiUsage.findFirst({ where: { memberId, usageDate: today() } }),
+    );
+    if ((used?.requests ?? 0) >= cap) {
+      throw new ForbiddenException({
+        code: ERROR_CODES.RATE_LIMITED,
+        message: `Daily AI limit reached (${cap} requests). It resets tomorrow.`,
+      });
+    }
+    return { cap, used };
+  }
+
+  /** One turn: history → provider → persist messages and usage. */
+  private async runTurn(
+    owner: string,
+    input: {
+      question: string;
+      system: string;
+      citations: AiCitation[];
+      locale: string;
+      cap: number;
+      used: { requests: number } | null;
+      conversationId?: string;
+      agent?: string;
+    },
+  ) {
+    const { system, citations, locale, cap, used } = input;
     const conversationId = await this.ensureConversation(owner, input);
     const history = await this.db.tx((tx) =>
       tx.aiMessage.findMany({
@@ -251,7 +351,7 @@ export class AiService {
 
   private async ensureConversation(
     memberId: string,
-    input: { question: string; conversationId?: string },
+    input: { question: string; conversationId?: string; agent?: string },
   ): Promise<string> {
     return this.db.tx(async (tx) => {
       if (input.conversationId) {
@@ -272,6 +372,7 @@ export class AiService {
           tenantId: this.db.tenantId,
           memberId,
           title: input.question.slice(0, 80),
+          ...(input.agent ? { agent: input.agent } : {}),
         },
         select: { id: true },
       });

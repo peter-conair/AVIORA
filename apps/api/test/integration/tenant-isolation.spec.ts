@@ -115,6 +115,31 @@ describe('RLS tenant isolation (as aviora_app)', () => {
   });
 });
 
+describe('a tenant owner is the top of ONE tenant', () => {
+  it('holds no platform-scope permission, however it is granted', async () => {
+    // TENANT_OWNER is granted "every permission in the catalog". The catalog
+    // contains platform.* keys, which govern the platform ACROSS tenants — so
+    // the grant-all path has to exclude them. Platform routes are gated on
+    // platform ROLES, but a permission nobody should hold is a trap waiting
+    // for the first route that checks the permission alone.
+    const owners = await owner.role.findMany({
+      where: { code: 'TENANT_OWNER' },
+      select: { id: true },
+      take: 50,
+    });
+    expect(owners.length).toBeGreaterThan(0);
+
+    const platformGrants = await owner.rolePermission.findMany({
+      where: {
+        roleId: { in: owners.map((r) => r.id) },
+        permission: { key: { startsWith: 'platform.' } },
+      },
+      select: { roleId: true, permission: { select: { key: true } } },
+    });
+    expect(platformGrants).toEqual([]);
+  });
+});
+
 describe('app-layer tenant guard (Prisma extension)', () => {
   it('refuses tenant-owned queries when TenantContext is missing', async () => {
     const guarded = app.$extends(tenantExtension(() => null));
