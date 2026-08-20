@@ -92,6 +92,17 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test("the phone keyboard's Go key signs in, not just the button", async ({ page }) => {
+    // On a phone most people submit with the keyboard, never touching the
+    // button. If implicit submission ever breaks, sign-in breaks for them and
+    // for nobody testing with a mouse.
+    await page.goto('/th/sign-in');
+    await page.getByLabel('อีเมล').fill(admin.email);
+    await page.getByLabel('รหัสผ่าน').fill(PW);
+    await page.getByLabel('รหัสผ่าน').press('Enter');
+    await page.waitForURL(/\/th\/(dashboard|admin)/);
+  });
+
   test('the admin console and its tabs are reachable on a phone', async ({ page }) => {
     await signIn(page);
     await page.goto('/th/admin');
@@ -148,6 +159,26 @@ test.describe('AVIORA in a phone browser', () => {
       await expect(page.getByRole('heading', { name: heading })).toBeVisible();
       await expectNoHorizontalScroll(page);
     }
+  });
+
+  test('the shop and orders pages render on a phone', async ({ page }) => {
+    await signIn(page);
+    for (const [path, heading] of [
+      ['/th/shop', 'ร้านค้า'],
+      ['/th/orders', 'คำสั่งซื้อและการสมัครสมาชิกต่อเนื่อง'],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      await expectNoHorizontalScroll(page);
+    }
+  });
+
+  test('the commerce tab is where a tenant decides what it sells', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'ร้านค้า' }).click();
+    await expect(page.getByText('สินค้าและบริการ').first()).toBeVisible();
+    await expectNoHorizontalScroll(page);
   });
 
   test('the gamification tab explains that points are configuration', async ({ page }) => {

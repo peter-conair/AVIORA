@@ -23,6 +23,8 @@ interface NavItem {
     | 'learning'
     | 'knowledge'
     | 'assistant'
+    | 'shop'
+    | 'orders'
     | 'crm'
     | 'followUps'
     | 'teams'
@@ -41,6 +43,8 @@ const BASE_NAV: NavItem[] = [
   { href: '/learning', key: 'learning' },
   { href: '/knowledge', key: 'knowledge' },
   { href: '/assistant', key: 'assistant' },
+  { href: '/shop', key: 'shop' },
+  { href: '/orders', key: 'orders' },
   { href: '/crm', key: 'crm' },
   { href: '/follow-ups', key: 'followUps' },
   { href: '/teams', key: 'teams' },

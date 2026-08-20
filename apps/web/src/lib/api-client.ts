@@ -21,6 +21,15 @@ export function isForbidden(err: unknown): boolean {
   return err instanceof ApiError && (err.status === 403 || err.code === 'FORBIDDEN');
 }
 
+/**
+ * True when the refusal is "your membership plan does not include this", not
+ * "you may not do this". Both arrive as 403, but they mean different things to
+ * a member and deserve different wording.
+ */
+export function isEntitlementRequired(err: unknown): boolean {
+  return err instanceof ApiError && err.code === 'ENTITLEMENT_REQUIRED';
+}
+
 export function getTenantId(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(TENANT_STORAGE_KEY);

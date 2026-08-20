@@ -23,6 +23,27 @@ export function formatDateTime(value: string | null | undefined, locale: string)
   }).format(date);
 }
 
+/**
+ * Money for display only.
+ *
+ * The API speaks integer MINOR units plus an ISO-4217 code, and every sum,
+ * discount and total is computed server-side in that integer form. This divides
+ * by 100 exactly once, at the moment of rendering — the result is a string and
+ * is never fed back into arithmetic or sent anywhere.
+ */
+export function formatMoney(
+  amountMinor: number | null | undefined,
+  currency: string,
+  locale: string,
+): string {
+  if (amountMinor === null || amountMinor === undefined || !Number.isFinite(amountMinor))
+    return '—';
+  return new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-GB', {
+    style: 'currency',
+    currency,
+  }).format(amountMinor / 100);
+}
+
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 31_536_000_000],
   ['month', 2_592_000_000],

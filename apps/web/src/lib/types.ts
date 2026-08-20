@@ -1025,3 +1025,170 @@ export function toCitations(value: unknown): AiCitation[] {
       typeof (item as AiCitation).kind === 'string',
   );
 }
+
+// ---- Commerce (docs/24) ----
+
+export const OFFERING_KINDS = ['one_time', 'subscription'] as const;
+export type OfferingKind = (typeof OFFERING_KINDS)[number];
+
+export const INTERVAL_UNITS = ['day', 'week', 'month'] as const;
+export type IntervalUnit = (typeof INTERVAL_UNITS)[number];
+
+export const COUPON_KINDS = ['percent', 'fixed'] as const;
+export type CouponKind = (typeof COUPON_KINDS)[number];
+
+export const ORDER_STATUSES = ['pending', 'paid', 'cancelled', 'refunded'] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+/**
+ * Every priced field is an integer in MINOR units of its own row's `currency`.
+ * There is no tenant-wide currency to fall back on, so the code always travels
+ * with the amount.
+ */
+export interface Offering {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  productId: string | null;
+  kind: string;
+  currency: string;
+  /** The catalogue price before membership pricing is applied. */
+  listPriceMinor: number;
+  /** What THIS caller would pay — the resolved price (docs/24 §1). */
+  priceMinor: number;
+  intervalUnit: string | null;
+  intervalCount: number | null;
+}
+
+export interface OfferingsResponse {
+  offerings: Offering[];
+}
+
+/** The raw row a write returns — it carries `status`, which the list never does. */
+export interface OfferingRow extends Omit<Offering, 'listPriceMinor' | 'priceMinor'> {
+  priceMinor: number;
+  status: string;
+}
+
+export interface OfferingResponse {
+  offering: OfferingRow;
+}
+
+export interface CartItem {
+  id: string;
+  offeringId: string;
+  name: string;
+  kind: string;
+  quantity: number;
+  unitPriceMinor: number;
+  lineTotalMinor: number;
+}
+
+export interface Cart {
+  id: string;
+  status: string;
+  currency: string;
+  items: CartItem[];
+  coupon: { code: string; kind: string; value: number } | null;
+  subtotalMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+}
+
+export interface CartResponse {
+  cart: Cart;
+}
+
+export interface OrderItem {
+  id: string;
+  offeringId: string;
+  /** Snapshotted at purchase — a later rename must not rewrite history. */
+  name: string;
+  quantity: number;
+  unitPriceMinor: number;
+  lineTotalMinor: number;
+}
+
+export interface Order {
+  id: string;
+  number: string;
+  status: string;
+  currency: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  placedAt: string;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  items?: OrderItem[];
+}
+
+export interface OrdersResponse {
+  orders: Order[];
+}
+
+/** `POST /cart/checkout` answers with the order and any subscriptions it started. */
+export interface CheckoutResponse {
+  order: Order;
+  subscriptions: Subscription[];
+}
+
+export interface Subscription {
+  id: string;
+  offeringId: string;
+  status: string;
+  intervalUnit: string;
+  intervalCount: number;
+  quantity: number;
+  currency: string;
+  priceMinor: number;
+  startedAt: string;
+  nextRunOn: string;
+  pausedAt: string | null;
+  cancelledAt: string | null;
+  autoRenew: boolean;
+  offering?: { code: string; name: string };
+}
+
+export interface SubscriptionsResponse {
+  subscriptions: Subscription[];
+}
+
+export interface SubscriptionResponse {
+  subscription: Subscription;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  kind: string;
+  value: number;
+  currency: string | null;
+  minSubtotalMinor: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  maxRedemptions: number | null;
+  redeemedCount: number;
+  status: string;
+}
+
+export interface CouponsResponse {
+  coupons: Coupon[];
+}
+
+/**
+ * `orders.status*` message key for an order status, or null when the API sends
+ * a status this build has no wording for — the caller then shows it verbatim
+ * rather than mislabelling it.
+ */
+export function orderStatusKey(status: string): string | null {
+  if (!(ORDER_STATUSES as readonly string[]).includes(status)) return null;
+  return `status${status.charAt(0).toUpperCase()}${status.slice(1)}`;
+}
+
+/** `shop.unit*` message key for a billing interval unit, or null if unknown. */
+export function intervalUnitKey(unit: string): string | null {
+  if (!(INTERVAL_UNITS as readonly string[]).includes(unit)) return null;
+  return `unit${unit.charAt(0).toUpperCase()}${unit.slice(1)}`;
+}
