@@ -11,16 +11,17 @@
 The roadmap below is the plan; this table is what actually exists, so the two
 never drift silently.
 
-| Sprint | Scope                                                                                                                                                                             | State |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| 0      | Monorepo, compose stack, CI + gitleaks, base schema, RLS + non-owner role, TenantContext, error envelope, idempotent seed                                                         | done  |
-| 1      | Vertical Slice 1 — auth, tenant provisioning, plans + entitlements, invitations, teams, goals, learning, dashboard, audit, outbox + email                                         | done  |
-| 2      | Vertical Slice 2 — recursive teams, scoped permissions, subtree move, direct vs organization rollups, leader dashboard                                                            | done  |
-| 3      | CRM (configurable pipeline, conversion, follow-ups), notification centre, audit viewer                                                                                            | done  |
-| 4      | Vertical Slice 3 — knowledge graph, brand-neutral journey, knowledge-first search, AI Lite with quotas and citations; content i18n (th/en)                                        | done  |
-| 5      | MVP hardening — route-registry isolation sweep, ESLint module boundaries, multi-tenant-user proof, Playwright at a phone viewport                                                 | done  |
-| 6      | **Phase 2 begins:** Healthy Living OS — habits, metrics, 30-day summary, consent-gated health privacy, PII field encryption                                                       | done  |
-| 7      | Community (team spaces, posts, comments, reactions), Challenge engine (progress derived from habits/courses/goals), Gamification (configurable point rules, badges, leaderboards) | done  |
+| Sprint | Scope                                                                                                                                                                                                                                              | State |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 0      | Monorepo, compose stack, CI + gitleaks, base schema, RLS + non-owner role, TenantContext, error envelope, idempotent seed                                                                                                                          | done  |
+| 1      | Vertical Slice 1 — auth, tenant provisioning, plans + entitlements, invitations, teams, goals, learning, dashboard, audit, outbox + email                                                                                                          | done  |
+| 2      | Vertical Slice 2 — recursive teams, scoped permissions, subtree move, direct vs organization rollups, leader dashboard                                                                                                                             | done  |
+| 3      | CRM (configurable pipeline, conversion, follow-ups), notification centre, audit viewer                                                                                                                                                             | done  |
+| 4      | Vertical Slice 3 — knowledge graph, brand-neutral journey, knowledge-first search, AI Lite with quotas and citations; content i18n (th/en)                                                                                                         | done  |
+| 5      | MVP hardening — route-registry isolation sweep, ESLint module boundaries, multi-tenant-user proof, Playwright at a phone viewport                                                                                                                  | done  |
+| 6      | **Phase 2 begins:** Healthy Living OS — habits, metrics, 30-day summary, consent-gated health privacy, PII field encryption                                                                                                                        | done  |
+| 7      | Community (team spaces, posts, comments, reactions), Challenge engine (progress derived from habits/courses/goals), Gamification (configurable point rules, badges, leaderboards)                                                                  | done  |
+| 8      | Commerce OS — catalogue on top of the knowledge graph, membership pricing as data, coupons, cart with snapshotted prices, provider-agnostic payments; Subscriptions at any interval with pause/skip/resume/cancel and idempotent renewal (docs/24) | done  |
 
 Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
 "Known gaps" section below.
@@ -35,6 +36,13 @@ Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
   it means refactoring every data-loading page.
 - The outbox relay is an in-process poller; BullMQ remains the documented
   upgrade path (docs/11).
+- Commerce ships no payment provider, no tax, shipping or inventory, and no
+  refund flow beyond the status value. Payments are recorded, not captured;
+  a PSP is another `provider` value behind the same record (docs/24 §6).
+- `GET /offerings` lists active rows only, so the admin tab can create and
+  price but cannot edit or archive — that needs an admin-scoped listing.
+- Subscription renewal runs from an admin/scheduler endpoint; nothing calls it
+  on a timer yet.
 
 ## 1. Roadmap at a Glance
 
@@ -198,13 +206,15 @@ Turn the proven spine into the full member journey: wellness, knowledge depth, c
 
 ### 3.3 Exit criteria
 
-- [ ] A member can run a complete healthy-living journey (goal → habits → tracking → wellness score) without touching commerce.
-- [ ] Knowledge search is RAG-backed and provably authorization-scoped (AI permission suite extended).
-- [ ] A tenant can run a challenge with leaderboard end-to-end.
-- [ ] An order and a subscription can be placed, renewed, paused, and cancelled; `OrderCompleted` / `SubscriptionRenewed` events flow through the outbox.
-- [ ] AI CRM suggestions appear in the CRM UI and respect tenant/permission scope.
-- [ ] Health data endpoints enforce `health.profile.*` permissions — team leaders see nothing without explicit member grant.
-- [ ] All Phase 1 gates (isolation, coverage, E2E) still green — no regression.
+Status as built. A checked box means a test proves it, and the proof is named.
+
+- [x] A member can run a complete healthy-living journey (goal → habits → tracking → summary) without touching commerce — `health.e2e.spec.ts`. The summary is deliberately a summary, not a wellness _score_: see docs/13.
+- [ ] Knowledge search is RAG-backed. It is retrieval-backed and authorization-scoped (`knowledge-ai.e2e.spec.ts`), but retrieval is lexical, not embedding-based.
+- [x] A tenant can run a challenge with leaderboard end-to-end — `community-challenges.e2e.spec.ts`.
+- [x] An order and a subscription can be placed, renewed, paused, and cancelled; `OrderPlaced` / `OrderCompleted` / `SubscriptionRenewed` flow through the outbox — `commerce.e2e.spec.ts`, including the case that renewal cannot bill a cycle twice.
+- [ ] AI CRM suggestions appear in the CRM UI — not started.
+- [x] Health data endpoints enforce `health.profile.*` — leaders, coaches and the tenant owner all get 403 without the member's grant, with no admin override (docs/13).
+- [x] All Phase 1 gates still green — 164 API tests, 11 browser tests, four required CI checks.
 
 ---
 
