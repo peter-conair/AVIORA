@@ -30,6 +30,7 @@ const SCOPED_DEFAULTS: Record<string, PermissionScope> = {
   [PERMISSIONS.RANK_VIEW]: PermissionScope.SELF,
   [PERMISSIONS.REFERRAL_VIEW]: PermissionScope.SELF,
   [PERMISSIONS.COMPENSATION_VIEW]: PermissionScope.SELF,
+  [PERMISSIONS.REWARD_VIEW]: PermissionScope.SELF,
 };
 
 async function seedPermissions(): Promise<number> {

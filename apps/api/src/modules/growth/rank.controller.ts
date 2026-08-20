@@ -27,6 +27,8 @@ const createSchema = z.object({
   level: z.number().int().min(0).max(1000),
   status: z.enum(['active', 'archived']).optional(),
   requalifyWindowDays: z.number().int().positive().max(3650).optional(),
+  /** Course ids to suggest on the way to this rank (docs/27 §3). */
+  recommendedCourseIds: z.array(z.string().uuid()).max(20).optional(),
   qualifications: z.array(qualificationSchema).max(20).default([]),
 });
 

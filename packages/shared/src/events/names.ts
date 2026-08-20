@@ -42,6 +42,8 @@ export const EVENTS = {
   CommissionRunCreated: 'CommissionRunCreated',
   CommissionRunApproved: 'CommissionRunApproved',
   CommissionEarned: 'CommissionEarned',
+  RewardGranted: 'RewardGranted',
+  RewardRevoked: 'RewardRevoked',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

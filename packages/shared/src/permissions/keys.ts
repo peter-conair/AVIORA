@@ -77,6 +77,9 @@ export const PERMISSIONS = {
   RANK_MANAGE: 'rank.manage',
   COMPENSATION_VIEW: 'compensation.view',
   COMPENSATION_MANAGE: 'compensation.manage',
+  AUTOMATION_MANAGE: 'automation.manage',
+  REWARD_VIEW: 'reward.view',
+  REWARD_MANAGE: 'reward.manage',
 
   // notifications
   NOTIFICATION_VIEW: 'notification.view',

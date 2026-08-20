@@ -1019,5 +1019,26 @@
     "payoutPercent": "{percent}% of {metric} ({basis})",
     "payoutCapped": "Capped at {cap} — {uncapped} before the cap",
     "computedAt": "Calculated as of {date}"
+  },
+  "myRewards": {
+    "title": "My rewards",
+    "intro": "What you have been given, and where it came from.",
+    "forbidden": "This area is outside your permissions.",
+    "empty": "No rewards yet.",
+    "grantedOn": "Granted {date}",
+    "revoked": "Revoked",
+    "sourceAutomation": "From an automation rule",
+    "sourceManual": "Granted by an administrator",
+    "typePoints": "Points",
+    "typeBadge": "Badge",
+    "typeCourseAccess": "Course access",
+    "typeCoupon": "Discount",
+    "typeMembershipUpgrade": "Plan upgrade",
+    "typeProduct": "Product",
+    "typeEventTicket": "Event ticket",
+    "typeRecognition": "Recognition",
+    "typeCertificate": "Certificate",
+    "typeCash": "Cash award",
+    "cashNote": "A cash reward is recorded here, not paid — paying happens through a separate payout process."
   }
 }

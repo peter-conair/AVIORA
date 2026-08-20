@@ -56,6 +56,13 @@ import { AiController } from './modules/ai/ai.controller';
 import { AiService } from './modules/ai/ai.service';
 import { AnthropicProvider } from './modules/ai/anthropic.provider';
 import { GroundedProvider } from './modules/ai/grounded.provider';
+import { RuleController } from './modules/automation/rule.controller';
+import { RuleService } from './modules/automation/rule.service';
+import { AutomationEngine } from './modules/automation/automation.engine';
+import { AutomationHandlers } from './modules/automation/automation.handlers';
+import { ActionAdapters } from './modules/automation/action-adapters';
+import { RewardController } from './modules/reward/reward.controller';
+import { RewardService } from './modules/reward/reward.service';
 import { CommerceModule } from './modules/commerce/commerce.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { CompensationModule } from './modules/compensation/compensation.module';
@@ -114,6 +121,12 @@ import { CompensationModule } from './modules/compensation/compensation.module';
     CommunityController,
     ChallengeController,
     GamificationController,
+    // Automation and rewards are registered here rather than as their own
+    // modules because both reach for AppModule-scoped collaborators: the
+    // engine subscribes to EventBus, and rewards delegate points and badges to
+    // GamificationService (docs/27 §1, §2).
+    RuleController,
+    RewardController,
   ],
   providers: [
     AllExceptionsFilter,
@@ -139,6 +152,11 @@ import { CompensationModule } from './modules/compensation/compensation.module';
     ChallengeService,
     GamificationService,
     GamificationHandlers,
+    RuleService,
+    AutomationEngine,
+    AutomationHandlers,
+    ActionAdapters,
+    RewardService,
     FieldEncryptionService,
     AiService,
     AnthropicProvider,

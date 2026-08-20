@@ -29,6 +29,9 @@ export interface CreateRankInput {
   level: number;
   status?: 'active' | 'archived';
   requalifyWindowDays?: number;
+  /** Courses to suggest to a member working towards this rank (docs/27 §3).
+   *  Recommendation only — a rank is earned by its qualifications. */
+  recommendedCourseIds?: string[];
   qualifications: QualificationInput[];
 }
 
@@ -47,6 +50,7 @@ interface RankRow {
   name: string;
   level: number;
   requalifyWindowDays: number | null;
+  recommendedCourseIds: string[];
   qualifications: Array<{
     metric: string;
     comparator: string;
@@ -105,6 +109,7 @@ export class RankService {
             level: input.level,
             status: input.status ?? 'active',
             requalifyWindowDays: input.requalifyWindowDays ?? null,
+            recommendedCourseIds: input.recommendedCourseIds ?? [],
           },
         });
         for (const qualification of input.qualifications) {
@@ -212,7 +217,15 @@ export class RankService {
         highest: highest
           ? { id: highest.id, code: highest.code, name: highest.name, level: highest.level }
           : null,
-        next: { id: next.id, code: next.code, name: next.name, level: next.level },
+        next: {
+          id: next.id,
+          code: next.code,
+          name: next.name,
+          level: next.level,
+          // What §44's dashboard asks and ranks lacked: the learning a member
+          // can do next (docs/27 §3).
+          recommendedCourseIds: next.recommendedCourseIds,
+        },
         missing,
       };
     });
@@ -369,6 +382,7 @@ export class RankService {
         name: true,
         level: true,
         requalifyWindowDays: true,
+        recommendedCourseIds: true,
         qualifications: {
           select: {
             metric: true,
@@ -396,11 +410,26 @@ function toRequirement(qualification: {
 }
 
 function currentView(
-  rank: { id: string; code: string; name: string; level: number } | null,
+  rank: {
+    id: string;
+    code: string;
+    name: string;
+    level: number;
+    recommendedCourseIds: string[];
+  } | null,
   evaluatedAt: Date | null,
 ) {
   return rank
-    ? { id: rank.id, code: rank.code, name: rank.name, level: rank.level, evaluatedAt }
+    ? {
+        id: rank.id,
+        code: rank.code,
+        name: rank.name,
+        level: rank.level,
+        // "What should I do next?" is asked of the rank a member HOLDS as often
+        // as of the one above it (docs/27 §3).
+        recommendedCourseIds: rank.recommendedCourseIds,
+        evaluatedAt,
+      }
     : null;
 }
 

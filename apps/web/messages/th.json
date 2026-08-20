@@ -1019,5 +1019,26 @@
     "payoutPercent": "{percent}% ของ {metric} ({basis})",
     "payoutCapped": "จำกัดไม่เกิน {cap} — ก่อนจำกัดคือ {uncapped}",
     "computedAt": "คำนวณ ณ {date}"
+  },
+  "myRewards": {
+    "title": "รางวัลของฉัน",
+    "intro": "สิ่งที่คุณได้รับจากกิจกรรมและแผนของทีม",
+    "forbidden": "ส่วนนี้อยู่นอกขอบเขตสิทธิ์ของคุณ",
+    "empty": "ยังไม่ได้รับรางวัล",
+    "grantedOn": "ได้รับเมื่อ {date}",
+    "revoked": "ถูกยกเลิกแล้ว",
+    "sourceAutomation": "จากกติกาอัตโนมัติ",
+    "sourceManual": "มอบให้โดยผู้ดูแล",
+    "typePoints": "แต้ม",
+    "typeBadge": "ตรา",
+    "typeCourseAccess": "สิทธิ์เข้าเรียน",
+    "typeCoupon": "ส่วนลด",
+    "typeMembershipUpgrade": "อัปเกรดแพ็กเกจ",
+    "typeProduct": "ของรางวัล",
+    "typeEventTicket": "บัตรเข้างาน",
+    "typeRecognition": "การยกย่อง",
+    "typeCertificate": "ประกาศนียบัตร",
+    "typeCash": "เงินรางวัล",
+    "cashNote": "รางวัลเงินสดบันทึกไว้เท่านั้น การจ่ายจริงทำผ่านระบบจ่ายเงินแยกต่างหาก"
   }
 }

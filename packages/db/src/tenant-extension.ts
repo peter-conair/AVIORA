@@ -72,6 +72,10 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'CompensationRule',
   'CommissionRun',
   'CommissionEntry',
+  'AutomationRule',
+  'AutomationExecution',
+  'RewardDefinition',
+  'RewardGrant',
 ]);
 
 const LIST_OPS = new Set([

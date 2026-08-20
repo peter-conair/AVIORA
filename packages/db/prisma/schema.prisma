@@ -139,6 +139,7 @@ model Member {
   compUpline        CompensationRelationship[] @relation("compUpline")
   compDownline      CompensationRelationship[] @relation("compDownline")
   commissionEntries CommissionEntry[]
+  rewardGrants      RewardGrant[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
@@ -1390,17 +1391,20 @@ model ReferralRelationship {
 }
 
 model RankDefinition {
-  id                  String   @id @default(uuid(7)) @db.Uuid
-  tenantId            String   @map("tenant_id") @db.Uuid
-  code                String
-  name                String
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  code                 String
+  name                 String
   /// Ordering of the ladder. The highest level whose rules all pass wins.
-  level               Int
-  status              String   @default("active")
+  level                Int
+  status               String   @default("active")
   /// Null = the rank is kept once earned. Otherwise it must still qualify.
-  requalifyWindowDays Int?     @map("requalify_window_days")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  requalifyWindowDays  Int?     @map("requalify_window_days")
+  /// Course ids a member working towards this rank can do next (docs/27 §3).
+  /// Recommendation only — nothing here gates the rank.
+  recommendedCourseIds String[] @map("recommended_course_ids")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   qualifications RankQualification[]
   progress       RankProgress[]
@@ -1583,4 +1587,98 @@ model CommissionEntry {
   @@unique([runId, memberId, ruleId])
   @@index([tenantId, memberId])
   @@map("commission_entries")
+}
+
+// ── Automation & Rewards (docs/27, spec §51, §45) ──
+
+/// A rule is one more handler on the existing outbox: trigger, conditions,
+/// actions. Nothing here is a new pipeline (docs/27 §1).
+model AutomationRule {
+  id           String @id @default(uuid(7)) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  /// An event name from the shared EVENTS catalog; a rule naming an event that
+  /// does not exist is refused at creation.
+  triggerEvent String @map("trigger_event")
+  /// [{ metric | payloadPath, comparator, threshold | value, window, graph }]
+  conditions   Json
+  /// [{ type, ...config }] — only actions with a real adapter are accepted.
+  actions      Json
+  priority     Int    @default(100)
+  status       String @default("active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  executions AutomationExecution[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, triggerEvent, status])
+  @@map("automation_rules")
+}
+
+/// One row per (rule, event). The unique key is what stops a replayed event
+/// from granting a second reward.
+model AutomationExecution {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  ruleId   String  @map("rule_id") @db.Uuid
+  eventId  String  @map("event_id") @db.Uuid
+  memberId String? @map("member_id") @db.Uuid
+  /// success | failed | skipped
+  status   String
+  result   Json?
+  error    String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id])
+
+  @@unique([ruleId, eventId])
+  @@index([tenantId, createdAt])
+  @@map("automation_executions")
+}
+
+model RewardDefinition {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  code     String
+  name     String
+  /// points | badge | course_access | coupon | membership_upgrade | product |
+  /// event_ticket | recognition | certificate | cash
+  type     String
+  /// Type-specific configuration, e.g. { "points": 50 } or { "courseId": … }.
+  config   Json?
+  status   String @default("active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  grants RewardGrant[]
+
+  @@unique([tenantId, code])
+  @@map("reward_definitions")
+}
+
+/// Revocable, never deleted: the history of what was given and taken back is
+/// the point of recording a reward at all.
+model RewardGrant {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  rewardId   String    @map("reward_id") @db.Uuid
+  memberId   String    @map("member_id") @db.Uuid
+  /// automation | manual
+  sourceType String    @map("source_type")
+  /// The rule or actor that caused it.
+  sourceRef  String?   @map("source_ref")
+  status     String    @default("granted")
+  grantedAt  DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  metadata   Json?
+
+  reward RewardDefinition @relation(fields: [rewardId], references: [id])
+  member Member           @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId, memberId, grantedAt])
+  @@map("reward_grants")
 }

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { withTenant } from '@aviora/db';
+import { withTenant, type Tx } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
 
@@ -88,6 +88,73 @@ export class GamificationService {
         points: g._sum.points ?? 0,
       }));
     });
+  }
+
+  /**
+   * Awards points and/or a badge a CALLER has already decided is owed — a
+   * reward of type `points` or `badge` (docs/27 §2). The reward engine calls
+   * this rather than writing point entries of its own: points live in one
+   * place, or two modules end up disagreeing about a member's balance.
+   *
+   * Runs in the caller's transaction so the grant and its points commit
+   * together, and is idempotent per (member, eventName, referenceId).
+   */
+  async grant(
+    tx: Tx,
+    input: {
+      tenantId: string;
+      memberId: string;
+      eventName: string;
+      referenceId?: string;
+      points?: number;
+      badgeCode?: string;
+      badgeName?: string;
+    },
+  ): Promise<{ pointsAwarded: number; badgeAwarded: string | null }> {
+    let pointsAwarded = 0;
+    if (input.points && input.points > 0) {
+      const already = input.referenceId
+        ? await tx.pointEntry.findFirst({
+            where: {
+              memberId: input.memberId,
+              eventName: input.eventName,
+              referenceId: input.referenceId,
+            },
+          })
+        : null;
+      if (!already) {
+        await tx.pointEntry.create({
+          data: {
+            tenantId: input.tenantId,
+            memberId: input.memberId,
+            eventName: input.eventName,
+            points: input.points,
+            referenceId: input.referenceId,
+          },
+        });
+        pointsAwarded = input.points;
+      }
+    }
+
+    let badgeAwarded: string | null = null;
+    if (input.badgeCode) {
+      const held = await tx.memberBadge.findFirst({
+        where: { memberId: input.memberId, badgeCode: input.badgeCode },
+      });
+      if (!held) {
+        await tx.memberBadge.create({
+          data: {
+            tenantId: input.tenantId,
+            memberId: input.memberId,
+            badgeCode: input.badgeCode,
+            badgeName: input.badgeName ?? input.badgeCode,
+          },
+        });
+        badgeAwarded = input.badgeCode;
+      }
+    }
+
+    return { pointsAwarded, badgeAwarded };
   }
 
   /**

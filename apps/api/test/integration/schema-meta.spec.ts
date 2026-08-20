@@ -70,6 +70,10 @@ const TENANT_OWNED_TABLES = [
   'compensation_rules',
   'commission_runs',
   'commission_entries',
+  'automation_rules',
+  'automation_executions',
+  'reward_definitions',
+  'reward_grants',
 ];
 
 /**

@@ -79,6 +79,7 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'rank.view', scope: SCOPES.SELF },
       { key: 'referral.view', scope: SCOPES.SELF },
       { key: 'compensation.view', scope: SCOPES.SELF },
+      { key: 'reward.view', scope: SCOPES.SELF },
     ],
   },
 ];
