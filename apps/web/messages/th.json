@@ -32,7 +32,8 @@
       "leader": "องค์กรของฉัน",
       "admin": "ผู้ดูแล",
       "platform": "แพลตฟอร์ม",
-      "growth": "การเติบโต"
+      "growth": "การเติบโต",
+      "earnings": "รายได้"
     }
   },
   "notifications": {
@@ -553,7 +554,8 @@
       "gamification": "แต้มและชาเลนจ์",
       "commerce": "ร้านค้า",
       "audit": "บันทึกการใช้งาน",
-      "growth": "ระดับและการแนะนำ"
+      "growth": "ระดับและการแนะนำ",
+      "compensation": "แผนตอบแทน"
     },
     "plans": {
       "listTitle": "แผนสมาชิก",
@@ -779,6 +781,104 @@
       "referralEnded": "สิ้นสุดแล้ว",
       "membersUnavailable": "ยังไม่มีสมาชิกให้เชื่อมโยง",
       "showEnded": "แสดงความสัมพันธ์ที่สิ้นสุดแล้ว"
+    },
+    "compensation": {
+      "forbidden": "ส่วนนี้อยู่นอกขอบเขตสิทธิ์ของคุณ",
+      "plansTitle": "แผนตอบแทน",
+      "plansHint": "แผนตอบแทนคือข้อมูล ไม่ใช่โค้ด — โบนัสทุกแบบเป็นแถวในตารางนี้ อยากได้โบนัสแบบใหม่ก็เพิ่มแถว ไม่ต้องปล่อยเวอร์ชันใหม่",
+      "plansEmpty": "ยังไม่มีแผนตอบแทน",
+      "plansUnavailable": "สร้างแผนตอบแทนก่อน",
+      "rulesEmpty": "แผนนี้ยังไม่มีกติกา",
+      "noConditions": "ไม่มีเงื่อนไข — สมาชิกที่ใช้งานอยู่ทุกคนได้รับ",
+      "priorityLabel": "ลำดับ {priority}",
+      "conditionLine": "{metric} {comparator} {threshold} · {window} · {graph}",
+      "payoutFixed": "จ่าย {amount}",
+      "payoutPercent": "{percent}% ของ {metric} ({graph}, {window})",
+      "payoutCap": "จำกัดไม่เกิน {cap}",
+      "payoutUnreadable": "รูปแบบการจ่ายนี้หน้าจอยังอ่านไม่ได้",
+      "statuses": {
+        "active": "ใช้งาน",
+        "archived": "เก็บเข้าคลัง"
+      },
+      "planFormTitle": "เพิ่มแผนตอบแทน",
+      "code": "รหัสอ้างอิง",
+      "codeHint": "ตัวพิมพ์เล็ก ตัวเลข และขีดกลาง ความยาว 2–40 ตัวอักษร",
+      "name": "ชื่อแผน",
+      "description": "คำอธิบาย (ถ้ามี)",
+      "currency": "สกุลเงิน (ถ้าไม่ระบุจะใช้ค่าของทั้งองค์กร)",
+      "currencyHint": "รหัส ISO-4217 สามตัวอักษรพิมพ์ใหญ่ เช่น THB",
+      "submitPlan": "สร้างแผน",
+      "planCreated": "สร้าง {name} แล้ว",
+      "ruleFormTitle": "เพิ่มกติกา",
+      "ruleFormHint": "ทุกโบนัสคือประโยคเดียวกัน — ถ้าเมตริกของสมาชิกผ่านเงื่อนไขเหล่านี้ ให้จ่ายจำนวนคงที่ หรือจ่ายเป็นสัดส่วนของฐานที่ระบุ",
+      "plan": "แผนตอบแทน",
+      "ruleCode": "รหัสกติกา",
+      "ruleName": "ชื่อกติกา",
+      "bonusType": "ประเภทโบนัส",
+      "bonusTypeHint": "เป็นแค่ป้ายกำกับสำหรับรายงาน เช่น fixed_cash, rank, matching, referral — ระบบไม่ได้แยกการคำนวณตามค่านี้",
+      "priority": "ลำดับความสำคัญ",
+      "priorityHint": "เลขน้อยคำนวณก่อน",
+      "conditionsTitle": "เงื่อนไข",
+      "conditionsEmpty": "ยังไม่มีเงื่อนไข — ถ้าไม่ใส่ สมาชิกที่ใช้งานอยู่ทุกคนจะได้รับ",
+      "addCondition": "เพิ่มเงื่อนไข",
+      "removeCondition": "ลบ",
+      "metric": "เมตริก",
+      "comparator": "ตัวเปรียบเทียบ",
+      "threshold": "เกณฑ์",
+      "thresholdHint": "เมตริกที่เป็นเงินใส่เป็นหน่วยย่อย ส่วนเมตริกที่นับจำนวนใส่จำนวนตรง ๆ",
+      "window": "ช่วงเวลา",
+      "graph": "สายที่ใช้คำนวณ",
+      "payoutTitle": "การจ่าย",
+      "payoutKind": "รูปแบบการจ่าย",
+      "payoutKinds": {
+        "fixed": "จำนวนคงที่",
+        "percent": "สัดส่วนของฐานที่ระบุ"
+      },
+      "amountMinorInput": "จำนวนเงิน (หน่วยย่อย)",
+      "minorHint": "กรอกเป็นจำนวนเต็มหน่วยย่อย เช่น 199 บาท = 19900",
+      "percent": "เปอร์เซ็นต์",
+      "percentHint": "ไม่เกิน 100 ระบบปัดเศษครั้งเดียวตอนคำนวณ",
+      "basis": "ฐานที่ใช้คิดเปอร์เซ็นต์",
+      "basisWindow": "ช่วงเวลาของฐาน",
+      "basisGraph": "สายของฐาน",
+      "capMinorInput": "เพดานการจ่าย (หน่วยย่อย, ถ้ามี)",
+      "capHint": "จำนวนสูงสุดที่กติกานี้จ่ายให้สมาชิกหนึ่งคนในหนึ่งรอบ กรอกเป็นหน่วยย่อย",
+      "windowNote": "ช่วงเวลาของฐานตั้งต้นเป็นรอบที่คำนวณ ถ้าเลือกตลอดอายุการเป็นสมาชิก ยอดเดิมจะถูกจ่ายซ้ำทุกรอบไปตลอด — แผนที่ตั้งใจแบบนั้นจริงต้องเลือกเอง",
+      "submitRule": "เพิ่มกติกา",
+      "ruleCreated": "เพิ่ม {name} แล้ว",
+      "runsTitle": "รอบคำนวณค่าตอบแทน",
+      "runsHint": "หนึ่งรอบคือภาพนิ่งของช่วงเวลาหนึ่ง สั่งคำนวณช่วงเวลาเดิมซ้ำจะได้รอบเดิม เพราะรอบที่สองคือการจ่ายซ้ำ",
+      "runsEmpty": "ยังไม่มีรอบคำนวณ",
+      "periodStart": "เริ่มรอบ",
+      "periodEnd": "สิ้นสุดรอบ",
+      "submitRun": "คำนวณรอบนี้",
+      "runCreated": "สร้างรอบคำนวณแล้ว",
+      "runExisted": "ช่วงเวลานี้มีรอบคำนวณอยู่แล้ว ระบบคืนรอบเดิมโดยไม่เปลี่ยนแปลง",
+      "runPeriod": "{start} – {end}",
+      "runEntryCount": "{count} รายการ",
+      "runStatuses": {
+        "draft": "ฉบับร่าง",
+        "approved": "อนุมัติแล้ว"
+      },
+      "recompute": "คำนวณฉบับร่างใหม่",
+      "approve": "อนุมัติ — ถาวร แก้ไขไม่ได้",
+      "approveConfirm": "การอนุมัติจะตรึงรอบนี้และบันทึกทุกรายการเป็นรายได้ของสมาชิก ย้อนกลับไม่ได้ ยืนยันหรือไม่",
+      "approvedOn": "อนุมัติเมื่อ {date}",
+      "viewEntries": "ดูรายการ",
+      "hideEntries": "ซ่อนรายการ",
+      "entriesEmpty": "รอบนี้ไม่มีรายการ",
+      "basisRow": "{metric}: {value} (เกณฑ์ {threshold})",
+      "placementsTitle": "สายการวางตำแหน่ง",
+      "placementsHint": "ใครได้รับค่าตอบแทนอยู่ใต้ใคร นี่เป็นสายของตัวเอง — สมาชิกอาจถูกแนะนำโดยคนหนึ่งแต่รับค่าตอบแทนใต้อีกคน และสองสายนี้ไม่ตามกัน",
+      "placementsEmpty": "ยังไม่มีการวางตำแหน่ง",
+      "upline": "อยู่ใต้",
+      "downline": "สมาชิกที่วาง",
+      "submitPlacement": "วางตำแหน่ง",
+      "endPlacement": "สิ้นสุด",
+      "placementEnded": "สิ้นสุดแล้ว",
+      "showEnded": "แสดงตำแหน่งที่สิ้นสุดแล้ว",
+      "conditionLineNoGraph": "{metric} {comparator} {threshold} · {window}",
+      "payoutPercentNoGraph": "{percent}% ของ {metric} ({window})"
     }
   },
   "platform": {
@@ -890,7 +990,11 @@
     "typeSponsor": "สปอนเซอร์",
     "typeIntroducer": "ผู้แนะนำให้รู้จัก",
     "typeAffiliate": "พันธมิตร",
-    "typeMentorReferral": "พี่เลี้ยงที่แนะนำ"
+    "typeMentorReferral": "พี่เลี้ยงที่แนะนำ",
+    "metricDownlineVolumeAny": "ยอดซื้อของสายล่าง",
+    "windowPeriod": "รอบที่คำนวณ",
+    "graphCompensation": "สายแผนตอบแทน",
+    "graphReferral": "สายการแนะนำ"
   },
   "earnings": {
     "title": "รายได้จากแผนตอบแทน",
@@ -909,6 +1013,11 @@
     "bonusReferral": "โบนัสแนะนำ",
     "bonusMilestone": "โบนัสเป้าหมาย",
     "bonusTeam": "โบนัสทีม",
-    "bonusOther": "โบนัส"
+    "bonusOther": "โบนัส",
+    "basisThreshold": "เกณฑ์ {threshold}",
+    "payoutFixed": "จ่ายคงที่ {amount}",
+    "payoutPercent": "{percent}% ของ {metric} ({basis})",
+    "payoutCapped": "จำกัดไม่เกิน {cap} — ก่อนจำกัดคือ {uncapped}",
+    "computedAt": "คำนวณ ณ {date}"
   }
 }

@@ -23,6 +23,7 @@ never drift silently.
 | 7      | Community (team spaces, posts, comments, reactions), Challenge engine (progress derived from habits/courses/goals), Gamification (configurable point rules, badges, leaderboards)                                                                  | done  |
 | 8      | Commerce OS — catalogue on top of the knowledge graph, membership pricing as data, coupons, cart with snapshotted prices, provider-agnostic payments; Subscriptions at any interval with pause/skip/resume/cancel and idempotent renewal (docs/24) | done  |
 | 9      | **Phase 3 begins:** Referral graph as its own structure (spec §17 mandatory), Rank engine with qualifications as data, derived metrics, as-of reproducible evaluation (docs/25)                                                                    | done  |
+| 10     | Compensation rule engine — the compensation graph (third graph), plans and rules as data, commission runs that are idempotent per period and frozen on approval (docs/26)                                                                          | done  |
 
 Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
 "Known gaps" section below.
@@ -44,9 +45,9 @@ Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
   price but cannot edit or archive — that needs an admin-scoped listing.
 - Subscription renewal runs from an admin/scheduler endpoint; nothing calls it
   on a timer yet. Rank evaluation has the same gap.
-- The compensation graph — a third graph again, separate from both team and
-  referral — does not exist yet. Ranks are an input to compensation, not a
-  payer (Sprint 10).
+- Compensation pays nobody: a run produces entries, and moving money is a
+  payout provider — the same seam commerce payments leave open. Clawbacks and
+  adjustments are not modelled, and nothing runs on a timer (docs/26 §9).
 
 ## 1. Roadmap at a Glance
 
@@ -242,11 +243,11 @@ Add the optional, configurable growth-economics layer — ranks, compensation, r
 
 ### 4.3 Exit criteria
 
-- [ ] Two tenants run two _different_ compensation plans with zero code changes (config only).
-- [ ] A tenant with compensation disabled sees no compensation UI or API surface.
-- [ ] Team graph, referral graph, and compensation graph are independently editable; coupling tests prove no cross-contamination.
-- [ ] Rank progress computes correctly against configurable qualification rules (rule-engine test matrix green).
-- [ ] Commission runs are idempotent, auditable, and reproducible from event history.
+- [x] Two tenants run two _different_ compensation plans with zero code changes — `compensation.e2e.spec.ts`, and a third tenant that configured nothing has no surface at all.
+- [x] A tenant with compensation disabled sees no compensation UI or API surface.
+- [x] Team graph, referral graph, and compensation graph are independently editable; coupling tests assert it in every direction (`growth.e2e.spec.ts`, `compensation.e2e.spec.ts`).
+- [x] Rank progress computes against configurable qualification rules — `growth.e2e.spec.ts`.
+- [x] Commission runs are idempotent (unique per period), auditable (every entry stores its working), and reproducible (as-of traversal + frozen approvals).
 - [ ] AI Team Coach answers spec §49 questions only within the requesting leader's scope (AI permission tests).
 - [ ] Automation workflows execute from all spec §51 triggers via the outbox/BullMQ pipeline.
 

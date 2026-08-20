@@ -32,7 +32,8 @@
       "leader": "My organization",
       "admin": "Admin",
       "platform": "Platform",
-      "growth": "Growth"
+      "growth": "Growth",
+      "earnings": "Earnings"
     }
   },
   "notifications": {
@@ -553,7 +554,8 @@
       "gamification": "Points & challenges",
       "commerce": "Shop",
       "audit": "Audit",
-      "growth": "Ranks & referrals"
+      "growth": "Ranks & referrals",
+      "compensation": "Compensation"
     },
     "plans": {
       "listTitle": "Membership plans",
@@ -779,6 +781,104 @@
       "referralEnded": "Ended",
       "membersUnavailable": "No members to link yet.",
       "showEnded": "Show ended edges"
+    },
+    "compensation": {
+      "forbidden": "This area is outside your permissions.",
+      "plansTitle": "Compensation plans",
+      "plansHint": "A plan is configuration, not code — every bonus is a row here. A twelfth bonus is another row, not a release.",
+      "plansEmpty": "No compensation plan yet.",
+      "plansUnavailable": "Create a plan first.",
+      "rulesEmpty": "This plan has no rules yet.",
+      "noConditions": "No conditions — every active member qualifies.",
+      "priorityLabel": "priority {priority}",
+      "conditionLine": "{metric} {comparator} {threshold} · {window} · {graph}",
+      "payoutFixed": "Pays {amount}",
+      "payoutPercent": "{percent}% of {metric} ({graph}, {window})",
+      "payoutCap": "capped at {cap}",
+      "payoutUnreadable": "This payout is not in a shape this screen can read.",
+      "statuses": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "planFormTitle": "Add a plan",
+      "code": "Code",
+      "codeHint": "Lowercase letters, digits and hyphens, 2–40 characters.",
+      "name": "Plan name",
+      "description": "Description (optional)",
+      "currency": "Currency (defaults to the tenant's)",
+      "currencyHint": "Three uppercase letters, ISO-4217 — for example THB.",
+      "submitPlan": "Create plan",
+      "planCreated": "{name} created.",
+      "ruleFormTitle": "Add a rule",
+      "ruleFormHint": "Every bonus is the same sentence: if the member's metrics pass these conditions, pay a fixed amount or a percentage of a basis.",
+      "plan": "Plan",
+      "ruleCode": "Rule code",
+      "ruleName": "Rule name",
+      "bonusType": "Bonus type",
+      "bonusTypeHint": "A reporting label only — fixed_cash, rank, matching, referral. Nothing in the engine branches on it.",
+      "priority": "Priority",
+      "priorityHint": "Lower numbers are calculated first.",
+      "conditionsTitle": "Conditions",
+      "conditionsEmpty": "No conditions — leave it empty and every active member is paid.",
+      "addCondition": "Add condition",
+      "removeCondition": "Remove",
+      "metric": "Metric",
+      "comparator": "Comparator",
+      "threshold": "Threshold",
+      "thresholdHint": "Money metrics in minor units; count metrics as plain numbers.",
+      "window": "Window",
+      "graph": "Graph",
+      "payoutTitle": "Payout",
+      "payoutKind": "Payout kind",
+      "payoutKinds": {
+        "fixed": "A fixed amount",
+        "percent": "A percentage of a basis"
+      },
+      "amountMinorInput": "Amount (minor units)",
+      "minorHint": "A whole number of minor units — 199.00 is 19900.",
+      "percent": "Percent",
+      "percentHint": "Up to 100. Rounded once, at calculation.",
+      "basis": "Basis metric",
+      "basisWindow": "Basis window",
+      "basisGraph": "Basis graph",
+      "capMinorInput": "Cap (minor units, optional)",
+      "capHint": "The most this rule may pay one member in one run. Minor units.",
+      "windowNote": "A basis window defaults to the run's own period. Lifetime pays for the same sales again in every period, for ever — a plan that really means all-time has to choose it.",
+      "submitRule": "Add rule",
+      "ruleCreated": "{name} added.",
+      "runsTitle": "Commission runs",
+      "runsHint": "A run is a snapshot of one period. Asking twice for the same period returns the same run — a second one would be a second payout.",
+      "runsEmpty": "No runs yet.",
+      "periodStart": "Period start",
+      "periodEnd": "Period end",
+      "submitRun": "Run this period",
+      "runCreated": "Run created.",
+      "runExisted": "This period already had a run — it was returned unchanged.",
+      "runPeriod": "{start} – {end}",
+      "runEntryCount": "{count} entries",
+      "runStatuses": {
+        "draft": "Draft",
+        "approved": "Approved"
+      },
+      "recompute": "Recompute draft",
+      "approve": "Approve — final, cannot be undone",
+      "approveConfirm": "Approving freezes this run and records every entry as earned. It cannot be undone. Approve?",
+      "approvedOn": "Approved {date}",
+      "viewEntries": "Show entries",
+      "hideEntries": "Hide entries",
+      "entriesEmpty": "This run produced no entries.",
+      "basisRow": "{metric}: {value} (threshold {threshold})",
+      "placementsTitle": "Placement graph",
+      "placementsHint": "Who is paid under whom. This is its own graph — a member may be referred by one person and paid under another, and neither line follows the other.",
+      "placementsEmpty": "No placements yet.",
+      "upline": "Upline",
+      "downline": "Placed under them",
+      "submitPlacement": "Place member",
+      "endPlacement": "End",
+      "placementEnded": "Ended",
+      "showEnded": "Show ended placements",
+      "conditionLineNoGraph": "{metric} {comparator} {threshold} · {window}",
+      "payoutPercentNoGraph": "{percent}% of {metric} ({window})"
     }
   },
   "platform": {
@@ -890,7 +990,11 @@
     "typeSponsor": "Sponsor",
     "typeIntroducer": "Introducer",
     "typeAffiliate": "Affiliate",
-    "typeMentorReferral": "Mentor referral"
+    "typeMentorReferral": "Mentor referral",
+    "metricDownlineVolumeAny": "Downline volume",
+    "windowPeriod": "This run's period",
+    "graphCompensation": "compensation graph",
+    "graphReferral": "referral graph"
   },
   "earnings": {
     "title": "Compensation earnings",
@@ -909,6 +1013,11 @@
     "bonusReferral": "Referral bonus",
     "bonusMilestone": "Milestone bonus",
     "bonusTeam": "Team bonus",
-    "bonusOther": "Bonus"
+    "bonusOther": "Bonus",
+    "basisThreshold": "Threshold {threshold}",
+    "payoutFixed": "Flat {amount}",
+    "payoutPercent": "{percent}% of {metric} ({basis})",
+    "payoutCapped": "Capped at {cap} — {uncapped} before the cap",
+    "computedAt": "Calculated as of {date}"
   }
 }

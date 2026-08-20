@@ -201,6 +201,28 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('the earnings page says what it is not showing', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/earnings');
+    await expect(page.getByRole('heading', { name: 'รายได้จากแผนตอบแทน' })).toBeVisible();
+    // Only approved entries reach a member, so the reason something is absent
+    // has to be on the screen — otherwise an empty page reads as a lost payout.
+    await expect(
+      page.getByText(
+        'แสดงเฉพาะรายการที่อนุมัติแล้วเท่านั้น รายการที่ยังไม่อนุมัติจะยังไม่ปรากฏที่นี่',
+      ),
+    ).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('the compensation tab is where a tenant configures what it pays', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'แผนตอบแทน' }).click();
+    await expect(page.getByText('รอบคำนวณค่าตอบแทน').first()).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('the gamification tab explains that points are configuration', async ({ page }) => {
     await signIn(page);
     await page.goto('/th/admin');

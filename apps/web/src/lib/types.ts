@@ -1220,11 +1220,20 @@ export const REFERRAL_TYPES = [
 export type ReferralType = (typeof REFERRAL_TYPES)[number];
 
 /**
- * The two metrics whose values are integer MINOR units of money. Everything
- * else is a plain count and must never be divided — a member with 3 direct
- * referrals has 3, not 0.03.
+ * The metrics whose values are integer MINOR units of money. Everything else is
+ * a plain count and must never be divided — a member with 3 direct referrals
+ * has 3, not 0.03.
+ *
+ * `downline_volume` is the graph-parameterised spelling introduced by the
+ * compensation engine (docs/26 §3). It measures the same money as its Sprint 9
+ * alias, so it has to be here too — a volume that missed this list would be
+ * rendered as a count and read a hundred times too large.
  */
-const MONEY_METRICS: readonly string[] = ['personal_volume', 'referral_downline_volume'];
+const MONEY_METRICS: readonly string[] = [
+  'personal_volume',
+  'downline_volume',
+  'referral_downline_volume',
+];
 
 export function isMoneyMetric(metric: string): boolean {
   return MONEY_METRICS.includes(metric);
@@ -1232,7 +1241,10 @@ export function isMoneyMetric(metric: string): boolean {
 
 const RANK_METRIC_KEYS: Record<string, string> = {
   personal_volume: 'metricPersonalVolume',
+  /** Pinned to the referral graph by its name — worded that way (docs/26 §3). */
   referral_downline_volume: 'metricDownlineVolume',
+  /** Takes its line from the requirement's graph, so its wording names none. */
+  downline_volume: 'metricDownlineVolumeAny',
   direct_referrals: 'metricDirectReferrals',
   qualified_legs: 'metricQualifiedLegs',
   courses_completed: 'metricCoursesCompleted',
@@ -1243,6 +1255,12 @@ const RANK_WINDOW_KEYS: Record<string, string> = {
   rolling_30: 'windowRolling30',
   rolling_90: 'windowRolling90',
   calendar_month: 'windowCalendarMonth',
+  period: 'windowPeriod',
+};
+
+const METRIC_GRAPH_KEYS: Record<string, string> = {
+  compensation: 'graphCompensation',
+  referral: 'graphReferral',
 };
 
 const REFERRAL_TYPE_KEYS: Record<string, string> = {
@@ -1264,6 +1282,27 @@ export function rankWindowKey(window: string): string | null {
 
 export function referralTypeKey(type: string): string | null {
   return REFERRAL_TYPE_KEYS[type] ?? null;
+}
+
+/** `growth.*` message key naming the graph a requirement walks (docs/26 §2). */
+export function metricGraphKey(graph: string): string | null {
+  return METRIC_GRAPH_KEYS[graph] ?? null;
+}
+
+/**
+ * Whether a metric walks a graph at all. Personal volume and completed courses
+ * are about one member, so naming a graph beside them tells the reader
+ * something that is not true of the calculation.
+ */
+const GRAPH_DEPENDENT_METRICS = new Set([
+  'downline_volume',
+  'referral_downline_volume',
+  'direct_referrals',
+  'qualified_legs',
+]);
+
+export function metricWalksAGraph(metric: string): boolean {
+  return GRAPH_DEPENDENT_METRICS.has(metric);
 }
 
 export interface RankQualification {
@@ -1375,4 +1414,324 @@ export interface RankEvaluateResponse {
   asOf: string;
   evaluated: number;
   changed: number;
+}
+
+// ---- Compensation (docs/26) ----
+
+/**
+ * The metric vocabulary a compensation rule may use. It is the rank vocabulary
+ * plus `downline_volume`, whose line comes from the requirement's `graph`;
+ * `referral_downline_volume` survives as the Sprint 9 alias pinned to the
+ * referral graph (docs/26 §3).
+ */
+export const COMPENSATION_METRICS = [
+  'personal_volume',
+  'downline_volume',
+  'referral_downline_volume',
+  'direct_referrals',
+  'qualified_legs',
+  'courses_completed',
+] as const;
+export type CompensationMetric = (typeof COMPENSATION_METRICS)[number];
+
+/**
+ * The rank windows plus `period`, which resolves against the run being
+ * computed. It is deliberately NOT added to `RANK_WINDOWS`: a rank evaluation
+ * has no period and degrades to lifetime, so offering it on the ladder form
+ * would offer a window that does not mean what it says.
+ */
+export const COMPENSATION_WINDOWS = [
+  'period',
+  'lifetime',
+  'rolling_30',
+  'rolling_90',
+  'calendar_month',
+] as const;
+export type CompensationWindow = (typeof COMPENSATION_WINDOWS)[number];
+
+/** Which line a requirement walks. Never a default — always said out loud. */
+export const METRIC_GRAPHS = ['compensation', 'referral'] as const;
+export type MetricGraph = (typeof METRIC_GRAPHS)[number];
+
+export const PAYOUT_KINDS = ['fixed', 'percent'] as const;
+export type PayoutKind = (typeof PAYOUT_KINDS)[number];
+
+/**
+ * The eleven bonuses of spec §43 are labels, not code paths, so `bonusType` is
+ * a free string the tenant chooses. These are the ones this build has wording
+ * for; anything else is shown as a bonus with its own code beside it, never
+ * mislabelled as one of these.
+ */
+const BONUS_TYPE_KEYS: Record<string, string> = {
+  fixed_cash: 'bonusFixedCash',
+  percentage: 'bonusPercentage',
+  rank: 'bonusRank',
+  referral: 'bonusReferral',
+  milestone: 'bonusMilestone',
+  team: 'bonusTeam',
+};
+
+/** `earnings.bonus*` message key for a bonus label, or null when unknown. */
+export function bonusTypeKey(bonusType: string): string | null {
+  return BONUS_TYPE_KEYS[bonusType] ?? null;
+}
+
+export interface RuleCondition {
+  metric: string;
+  comparator: string;
+  threshold: number;
+  window: string;
+  graph?: string;
+  params?: Record<string, unknown> | null;
+}
+
+/**
+ * `percent` pays `round(basis × percent / 100)`, then caps. The basis is a
+ * metric name computed by the same calculator as the conditions, so a rule
+ * cannot mean one number in its condition and another in its payout.
+ */
+export type RulePayout =
+  | { kind: 'fixed'; amountMinor: number }
+  | {
+      kind: 'percent';
+      percent: number;
+      basis: string;
+      basisWindow?: string;
+      basisGraph?: string;
+      capMinor?: number | null;
+    };
+
+export interface CompensationRule {
+  id: string;
+  planId: string;
+  code: string;
+  name: string;
+  /** A reporting label. Nothing branches on it (docs/26 §1). */
+  bonusType: string;
+  priority: number;
+  status: string;
+  /** JSON columns — narrow with `toConditions()` / `toPayout()` before use. */
+  conditions: unknown;
+  payout: unknown;
+  createdAt?: string;
+}
+
+export interface CompensationPlan {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  /** Every amount in this plan is minor units of THIS code. */
+  currency: string;
+  status: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  createdAt?: string;
+  rules: CompensationRule[];
+}
+
+export interface CompensationPlansResponse {
+  plans: CompensationPlan[];
+}
+
+export interface CompensationPlanResponse {
+  plan: CompensationPlan;
+}
+
+export interface CompensationRuleResponse {
+  rule: CompensationRule;
+}
+
+export interface CommissionRun {
+  id: string;
+  planId: string;
+  periodStart: string;
+  periodEnd: string;
+  /** draft | approved. Draft is recomputable; approved is frozen (docs/26 §4). */
+  status: string;
+  currency: string;
+  totalMinor: number;
+  entryCount: number;
+  computedAt: string;
+  approvedAt: string | null;
+  plan?: { code: string; name: string };
+}
+
+export interface CommissionRunsResponse {
+  runs: CommissionRun[];
+}
+
+export interface CommissionRunResponse {
+  run: CommissionRun;
+}
+
+/**
+ * `POST /compensation/runs` answers with the run AND whether this call made it.
+ * Asking twice for the same period returns the first run, because the second
+ * row would be a second payout (docs/26 §4).
+ */
+export interface CreateRunResponse {
+  run: CommissionRun;
+  created: boolean;
+}
+
+export interface CommissionEntry {
+  id: string;
+  runId: string;
+  memberId: string;
+  ruleId: string;
+  bonusType: string;
+  amountMinor: number;
+  /** Minor units of this code — the amount never travels without it. */
+  currency: string;
+  /** The exact numbers that produced the amount — narrow with `toEntryBasis()`. */
+  basis: unknown;
+  rule?: { code: string; name: string };
+  member?: { displayName: string };
+  run?: { id: string; periodStart: string; periodEnd: string; approvedAt: string | null };
+}
+
+export interface RunEntriesResponse {
+  run: CommissionRun;
+  entries: CommissionEntry[];
+}
+
+/**
+ * `GET /compensation/me`. Approved entries only — a member should never see a
+ * number that has not been signed off. `currency` is null when there are none.
+ */
+export interface EarningsResponse {
+  memberId: string;
+  currency: string | null;
+  totalMinor: number;
+  entries: CommissionEntry[];
+}
+
+export interface Placement {
+  id: string;
+  uplineMemberId: string;
+  downlineMemberId: string;
+  effectiveFrom: string;
+  /** Set when the placement ended — the row is closed, never deleted. */
+  effectiveTo: string | null;
+  uplineDisplayName?: string | null;
+  downlineDisplayName?: string | null;
+}
+
+export interface PlacementsResponse {
+  placements: Placement[];
+}
+
+export interface PlacementResponse {
+  placement: Placement;
+}
+
+/** One condition as it stood when the entry was computed: rule and reality. */
+export interface EntryBasisCondition {
+  metric: string;
+  comparator: string;
+  window: string;
+  graph?: string;
+  threshold: number;
+  value: number;
+}
+
+export interface EntryBasis {
+  ruleCode: string | null;
+  asOf: string | null;
+  conditions: EntryBasisCondition[];
+  payout: RulePayout | null;
+  /** The metric value a percentage was taken OF; null for a fixed payout. */
+  basisValue: number | null;
+  /** What the percentage came to before the cap. */
+  uncappedMinor: number | null;
+  capApplied: boolean;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+/** Narrow a rule's stored `conditions` column to something renderable. */
+export function toConditions(value: unknown): RuleCondition[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): RuleCondition[] => {
+    const row = asRecord(item);
+    if (!row || typeof row.metric !== 'string') return [];
+    return [
+      {
+        metric: row.metric,
+        comparator: asString(row.comparator, 'gte'),
+        threshold: asNumber(row.threshold) ?? 0,
+        window: asString(row.window, 'lifetime'),
+        graph: typeof row.graph === 'string' ? row.graph : undefined,
+      },
+    ];
+  });
+}
+
+/** Narrow a rule's stored `payout` column; null when it is not one of the two kinds. */
+export function toPayout(value: unknown): RulePayout | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  if (row.kind === 'fixed') {
+    const amountMinor = asNumber(row.amountMinor);
+    return amountMinor === null ? null : { kind: 'fixed', amountMinor };
+  }
+  if (row.kind === 'percent') {
+    const percent = asNumber(row.percent);
+    if (percent === null || typeof row.basis !== 'string') return null;
+    return {
+      kind: 'percent',
+      percent,
+      basis: row.basis,
+      basisWindow: typeof row.basisWindow === 'string' ? row.basisWindow : undefined,
+      basisGraph: typeof row.basisGraph === 'string' ? row.basisGraph : undefined,
+      capMinor: asNumber(row.capMinor),
+    };
+  }
+  return null;
+}
+
+/**
+ * Narrow an entry's `basis` column. It is written once at computation time and
+ * never recomputed, so this only reads — it must never derive a number the run
+ * did not store, or the explanation stops being the explanation.
+ */
+export function toEntryBasis(value: unknown): EntryBasis {
+  const row = asRecord(value);
+  const payoutRow = asRecord(row?.payout);
+  const conditions = Array.isArray(row?.conditions) ? row.conditions : [];
+  return {
+    ruleCode: typeof row?.ruleCode === 'string' ? row.ruleCode : null,
+    asOf: typeof row?.asOf === 'string' ? row.asOf : null,
+    conditions: conditions.flatMap((item): EntryBasisCondition[] => {
+      const condition = asRecord(item);
+      if (!condition || typeof condition.metric !== 'string') return [];
+      return [
+        {
+          metric: condition.metric,
+          comparator: asString(condition.comparator, 'gte'),
+          window: asString(condition.window, 'lifetime'),
+          graph: typeof condition.graph === 'string' ? condition.graph : undefined,
+          threshold: asNumber(condition.threshold) ?? 0,
+          value: asNumber(condition.value) ?? 0,
+        },
+      ];
+    }),
+    payout: toPayout(payoutRow),
+    basisValue: asNumber(payoutRow?.basisValue),
+    uncappedMinor: asNumber(payoutRow?.uncappedMinor),
+    capApplied: payoutRow?.capApplied === true,
+  };
 }

@@ -20,6 +20,7 @@ interface NavItem {
     | 'challenges'
     | 'rewards'
     | 'growth'
+    | 'earnings'
     | 'goals'
     | 'learning'
     | 'knowledge'
@@ -41,6 +42,7 @@ const BASE_NAV: NavItem[] = [
   { href: '/challenges', key: 'challenges' },
   { href: '/rewards', key: 'rewards' },
   { href: '/growth', key: 'growth' },
+  { href: '/earnings', key: 'earnings' },
   { href: '/goals', key: 'goals' },
   { href: '/learning', key: 'learning' },
   { href: '/knowledge', key: 'knowledge' },
