@@ -265,17 +265,21 @@ test.describe('AVIORA in a phone browser', () => {
     // A member who only logs health habits is reported here as inactive. That
     // costs someone something real, so the sentence explaining it has to be on
     // the screen next to the numbers — not in a document nobody opens.
+    // It appears twice on purpose — once beside the numbers and once in the
+    // definitions the response echoes — so this asserts presence, not count.
     await expect(
-      page.getByText(
-        'ตัวเลขชุดนี้ไม่นับกิจกรรมด้านสุขภาพโดยเจตนา สมาชิกที่บันทึกเฉพาะกิจวัตรสุขภาพจะปรากฏที่นี่ว่า',
-      ),
+      page
+        .getByText(
+          'ตัวเลขชุดนี้ไม่นับกิจกรรมด้านสุขภาพโดยเจตนา สมาชิกที่บันทึกเฉพาะกิจวัตรสุขภาพจะปรากฏที่นี่ว่า',
+        )
+        .first(),
     ).toBeVisible();
 
     // A number without its window is a number that will be misquoted, so the
     // dates the API resolved are shown, not just the key that was asked for.
-    await expect(page.getByText('ช่วงเวลาที่ใช้:')).toBeVisible();
+    await expect(page.getByText('ช่วงเวลาที่ใช้:').first()).toBeVisible();
     await page.getByRole('button', { name: '90 วันล่าสุด' }).click();
-    await expect(page.getByText('ช่วงเวลาที่ใช้:')).toBeVisible();
+    await expect(page.getByText('ช่วงเวลาที่ใช้:').first()).toBeVisible();
 
     await expectNoHorizontalScroll(page);
   });
@@ -293,7 +297,7 @@ test.describe('AVIORA in a phone browser', () => {
     await expect(
       page.getByText('นี่คือคำตอบที่ตั้งใจให้เป็นเช่นนี้ ไม่ใช่ความผิดพลาด'),
     ).toBeVisible();
-    await expect(page.getByText('ตัวเลขที่ใช้ตอบ')).toBeVisible();
+    await expect(page.getByText('ตัวเลขที่ใช้ตอบ').first()).toBeVisible();
     // The generic failure wording must not be what a leader sees here.
     await expect(page.getByText('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')).toHaveCount(0);
 
