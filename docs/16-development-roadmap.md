@@ -22,6 +22,7 @@ never drift silently.
 | 6      | **Phase 2 begins:** Healthy Living OS — habits, metrics, 30-day summary, consent-gated health privacy, PII field encryption                                                                                                                        | done  |
 | 7      | Community (team spaces, posts, comments, reactions), Challenge engine (progress derived from habits/courses/goals), Gamification (configurable point rules, badges, leaderboards)                                                                  | done  |
 | 8      | Commerce OS — catalogue on top of the knowledge graph, membership pricing as data, coupons, cart with snapshotted prices, provider-agnostic payments; Subscriptions at any interval with pause/skip/resume/cancel and idempotent renewal (docs/24) | done  |
+| 9      | **Phase 3 begins:** Referral graph as its own structure (spec §17 mandatory), Rank engine with qualifications as data, derived metrics, as-of reproducible evaluation (docs/25)                                                                    | done  |
 
 Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
 "Known gaps" section below.
@@ -42,7 +43,10 @@ Open items are tracked honestly in `14-mvp-scope.md` §3 (one row) and in the
 - `GET /offerings` lists active rows only, so the admin tab can create and
   price but cannot edit or archive — that needs an admin-scoped listing.
 - Subscription renewal runs from an admin/scheduler endpoint; nothing calls it
-  on a timer yet.
+  on a timer yet. Rank evaluation has the same gap.
+- The compensation graph — a third graph again, separate from both team and
+  referral — does not exist yet. Ranks are an input to compensation, not a
+  payer (Sprint 10).
 
 ## 1. Roadmap at a Glance
 

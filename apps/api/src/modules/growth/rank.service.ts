@@ -68,13 +68,18 @@ export class RankService {
   ) {}
 
   /** The tenant's ladder, lowest rank first. */
+  /** The ladder, with the currency its money thresholds are quoted in. */
   list() {
-    return this.db.tx((tx) =>
-      tx.rankDefinition.findMany({
-        orderBy: { level: 'asc' },
-        include: { qualifications: { orderBy: { metric: 'asc' } } },
-      }),
-    );
+    return this.db.tx(async (tx) => {
+      const [ranks, currency] = await Promise.all([
+        tx.rankDefinition.findMany({
+          orderBy: { level: 'asc' },
+          include: { qualifications: { orderBy: { metric: 'asc' } } },
+        }),
+        tenantCurrency(tx),
+      ]);
+      return { ranks, currency };
+    });
   }
 
   async create(input: CreateRankInput) {

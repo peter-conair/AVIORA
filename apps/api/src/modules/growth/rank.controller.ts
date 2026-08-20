@@ -60,7 +60,7 @@ export class RankController {
   @Get()
   @RequirePermissions(PERMISSIONS.RANK_VIEW)
   async list() {
-    return { ranks: await this.ranks.list() };
+    return await this.ranks.list();
   }
 
   @Post()

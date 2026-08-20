@@ -768,8 +768,7 @@
       "evaluateDone": "Evaluated {evaluated}, changed {changed}.",
       "referralsTitle": "Referral edges",
       "referralsHint": "The referral graph is not the team graph: writing here never moves anyone between teams, and moving a team never writes here.",
-      "referralsEmpty": "No edges created here yet.",
-      "referralsListNote": "The API has no workspace-wide list of edges, so only the ones created on this screen are shown.",
+      "referralsEmpty": "No referral edges yet.",
       "referrer": "Referrer",
       "referred": "Referred member",
       "relationshipType": "Relationship",
@@ -778,7 +777,8 @@
       "referralCreated": "Edge created.",
       "endReferral": "End",
       "referralEnded": "Ended",
-      "membersUnavailable": "No members to link yet."
+      "membersUnavailable": "No members to link yet.",
+      "showEnded": "Show ended edges"
     }
   },
   "platform": {

@@ -1230,14 +1230,6 @@ export function isMoneyMetric(metric: string): boolean {
   return MONEY_METRICS.includes(metric);
 }
 
-/**
- * The growth routes carry amounts without a currency code, and no route exposes
- * the tenant's default. This matches the API's own default so a rank threshold
- * is at least formatted consistently; the shop's own currency, when the
- * catalogue has one, is preferred over it.
- */
-export const FALLBACK_CURRENCY = 'THB';
-
 const RANK_METRIC_KEYS: Record<string, string> = {
   personal_volume: 'metricPersonalVolume',
   referral_downline_volume: 'metricDownlineVolume',
@@ -1293,8 +1285,13 @@ export interface RankDefinition {
   qualifications: RankQualification[];
 }
 
+/**
+ * The ladder names its own currency, as `/ranks/me` does: every money-valued
+ * threshold below is minor units of THIS code, and nothing has to infer one.
+ */
 export interface RanksResponse {
   ranks: RankDefinition[];
+  currency: string;
 }
 
 export interface RankResponse {
@@ -1334,6 +1331,8 @@ export interface RankRequirementGap {
  */
 export interface RankMeResponse {
   memberId: string;
+  /** ISO-4217 code for every money-valued metric in `missing`. */
+  currency: string;
   current: CurrentRank | null;
   highest: RankRef | null;
   next: RankRef | null;
@@ -1346,8 +1345,17 @@ export interface ReferralEdge {
   referredMemberId?: string;
   relationshipType: string;
   effectiveFrom: string;
+  /** Set when the edge was ended — the row is closed, never deleted. */
   effectiveTo?: string | null;
+  /** The member-facing rows name only the OTHER end of the edge. */
   displayName?: string | null;
+  /** The tenant-wide list names both ends. */
+  referrerDisplayName?: string | null;
+  referredDisplayName?: string | null;
+}
+
+export interface ReferralsResponse {
+  referrals: ReferralEdge[];
 }
 
 export interface ReferralMeResponse {

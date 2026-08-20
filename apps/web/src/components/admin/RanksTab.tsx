@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { api, ApiError, isForbidden } from '@/lib/api-client';
 import {
-  FALLBACK_CURRENCY,
   isMoneyMetric,
   RANK_COMPARATORS,
   RANK_METRICS,
@@ -15,7 +14,6 @@ import {
   referralTypeKey,
   type Member,
   type MembersResponse,
-  type OfferingsResponse,
   type RankComparator,
   type RankDefinition,
   type RankEvaluateResponse,
@@ -24,6 +22,7 @@ import {
   type RankWindow,
   type ReferralEdge,
   type ReferralResponse,
+  type ReferralsResponse,
   type ReferralType,
 } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
@@ -31,7 +30,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { formatMoney } from '@/lib/format';
+import { formatDate, formatMoney } from '@/lib/format';
 
 /** Matches the API's own code rule, so the mistake is caught before the request. */
 const RANK_CODE_PATTERN = '[a-z0-9-]{2,40}';
@@ -62,7 +61,8 @@ export function RanksTab() {
 
   const [ranks, setRanks] = useState<RankDefinition[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [currency, setCurrency] = useState(FALLBACK_CURRENCY);
+  /** Named by the ladder response — never inferred, never defaulted. */
+  const [currency, setCurrency] = useState('');
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,19 +82,31 @@ export function RanksTab() {
   const [evaluateError, setEvaluateError] = useState<string | null>(null);
   const [evaluated, setEvaluated] = useState<RankEvaluateResponse | null>(null);
 
-  // Referral form. The API exposes no workspace-wide list of edges, so the only
-  // honest list is the one this screen produced.
+  // Referral form and the tenant-wide graph behind it.
   const [referrerId, setReferrerId] = useState('');
   const [referredId, setReferredId] = useState('');
   const [relationshipType, setRelationshipType] = useState<ReferralType>('referral');
   const [savingReferral, setSavingReferral] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [edges, setEdges] = useState<ReferralEdge[]>([]);
+  const [edgesLoading, setEdgesLoading] = useState(true);
+  /** Ended edges are history, not noise — off by default, never dropped. */
+  const [includeEnded, setIncludeEnded] = useState(false);
   const [endingId, setEndingId] = useState<string | null>(null);
 
   const loadRanks = useCallback(async () => {
     const res = await api.get<RanksResponse>('/ranks');
     setRanks(res.ranks);
+    // The thresholds and the code they are denominated in arrive together, so a
+    // rank can never be rendered against a currency from somewhere else.
+    setCurrency(res.currency);
+  }, []);
+
+  const loadEdges = useCallback(async (withEnded: boolean) => {
+    const res = await api.get<ReferralsResponse>(
+      `/referrals?includeEnded=${withEnded ? 'true' : 'false'}`,
+    );
+    setEdges(res.referrals);
   }, []);
 
   useEffect(() => {
@@ -108,15 +120,22 @@ export function RanksTab() {
       })
       .catch(() => undefined);
 
-    // Thresholds are bare minor units — the catalogue is the only place a
-    // currency code can be read from.
-    api
-      .get<OfferingsResponse>('/offerings')
-      .then((res) => {
-        const found = res.offerings.find((offering) => !!offering.currency)?.currency;
-        if (!cancelled && found) setCurrency(found);
+    // A separate permission from the ladder (`referral.manage`), so it fails on
+    // its own and reports on its own rather than blanking the tab.
+    loadEdges(false)
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setReferralError(
+          isForbidden(err)
+            ? t('forbidden')
+            : err instanceof ApiError
+              ? err.message
+              : tc('errorGeneric'),
+        );
       })
-      .catch(() => undefined);
+      .finally(() => {
+        if (!cancelled) setEdgesLoading(false);
+      });
 
     loadRanks()
       .catch((err: unknown) => {
@@ -154,9 +173,13 @@ export function RanksTab() {
       ? t(`comparators.${comparator}`)
       : comparator;
 
-  /** Money thresholds divide by 100 once, at render. Counts never divide. */
+  /**
+   * Money thresholds divide by 100 once, at render. Counts never divide. The
+   * currency arrives with the ranks it belongs to, so the guard only holds for
+   * the instant before the first response lands.
+   */
   const thresholdLabel = (metric: string, threshold: number): string =>
-    isMoneyMetric(metric)
+    isMoneyMetric(metric) && currency
       ? formatMoney(threshold, currency, locale)
       : new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-GB').format(threshold);
 
@@ -221,18 +244,32 @@ export function RanksTab() {
     }
   };
 
+  const handleToggleEnded = async (withEnded: boolean) => {
+    setIncludeEnded(withEnded);
+    setReferralError(null);
+    setEdgesLoading(true);
+    try {
+      await loadEdges(withEnded);
+    } catch (err: unknown) {
+      if (isForbidden(err)) setReferralError(t('forbidden'));
+      else setReferralError(err instanceof ApiError ? err.message : tc('errorGeneric'));
+    } finally {
+      setEdgesLoading(false);
+    }
+  };
+
   const handleCreateReferral = async (e: FormEvent) => {
     e.preventDefault();
     setReferralError(null);
     setSavingReferral(true);
     try {
-      const res = await api.post<ReferralResponse>('/referrals', {
+      await api.post<ReferralResponse>('/referrals', {
         referrerMemberId: referrerId,
         referredMemberId: referredId,
         type: relationshipType,
       });
-      setEdges((rows) => [res.referral, ...rows]);
       setReferredId('');
+      await loadEdges(includeEnded);
     } catch (err: unknown) {
       if (isForbidden(err)) setReferralError(t('forbidden'));
       else setReferralError(err instanceof ApiError ? err.message : tc('errorGeneric'));
@@ -245,9 +282,11 @@ export function RanksTab() {
     setReferralError(null);
     setEndingId(id);
     try {
-      const res = await api.delete<ReferralResponse>(`/referrals/${id}`);
-      // Ending stamps effective_to; the row survives, so the list keeps it.
-      setEdges((rows) => rows.map((row) => (row.id === id ? res.referral : row)));
+      await api.delete<ReferralResponse>(`/referrals/${id}`);
+      // Ending stamps effective_to rather than deleting, so the row leaves this
+      // list only because the list is showing active edges — reloading is what
+      // makes that visible either way.
+      await loadEdges(includeEnded);
     } catch (err: unknown) {
       if (isForbidden(err)) setReferralError(t('forbidden'));
       else setReferralError(err instanceof ApiError ? err.message : tc('errorGeneric'));
@@ -256,8 +295,9 @@ export function RanksTab() {
     }
   };
 
-  const memberName = (id: string | undefined): string =>
-    members.find((member) => member.id === id)?.displayName ?? id ?? '—';
+  /** The list names both ends; the member roster is only a fallback. */
+  const edgeName = (name: string | null | undefined, id: string | undefined): string =>
+    name ?? members.find((member) => member.id === id)?.displayName ?? id ?? '—';
 
   return (
     <div className="flex flex-col gap-4">
@@ -544,9 +584,6 @@ export function RanksTab() {
                     </option>
                   ))}
                 </Select>
-                {referralError ? (
-                  <p className="text-sm text-red-600 sm:col-span-2">{referralError}</p>
-                ) : null}
                 <div className="sm:col-span-2">
                   <Button type="submit" disabled={savingReferral}>
                     {savingReferral ? tc('saving') : t('submitReferral')}
@@ -555,39 +592,62 @@ export function RanksTab() {
               </form>
             )}
 
+            {/* One place for every failure on this card — writing an edge,
+                ending one, or reading the list back. */}
+            {referralError ? <p className="mt-3 text-sm text-red-600">{referralError}</p> : null}
+
             <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3">
-              <p className="text-xs text-slate-500">{t('referralsListNote')}</p>
-              {edges.length === 0 ? (
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                  checked={includeEnded}
+                  onChange={(e) => void handleToggleEnded(e.target.checked)}
+                />
+                <span>{t('showEnded')}</span>
+              </label>
+              {edgesLoading ? (
+                <p className="text-sm text-slate-500">{tc('loading')}</p>
+              ) : edges.length === 0 ? (
                 <p className="text-sm text-slate-500">{t('referralsEmpty')}</p>
               ) : (
                 <ul className="flex flex-col divide-y divide-slate-100">
-                  {edges.map((edge) => (
-                    <li
-                      key={edge.id}
-                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2"
-                    >
-                      <span className="flex min-w-0 flex-col">
-                        <span className="min-w-0 break-words text-sm text-slate-800">
-                          {memberName(edge.referrerMemberId)} → {memberName(edge.referredMemberId)}
+                  {edges.map((edge) => {
+                    const ended = !!edge.effectiveTo;
+                    return (
+                      <li
+                        key={edge.id}
+                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2"
+                      >
+                        <span className="flex min-w-0 flex-col">
+                          <span
+                            className={`min-w-0 break-words text-sm ${
+                              ended ? 'text-slate-400 line-through' : 'text-slate-800'
+                            }`}
+                          >
+                            {edgeName(edge.referrerDisplayName, edge.referrerMemberId)} →{' '}
+                            {edgeName(edge.referredDisplayName, edge.referredMemberId)}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {typeLabel(edge.relationshipType)} ·{' '}
+                            {tg('since', { date: formatDate(edge.effectiveFrom, locale) })}
+                          </span>
                         </span>
-                        <span className="text-xs text-slate-500">
-                          {typeLabel(edge.relationshipType)}
-                        </span>
-                      </span>
-                      {edge.effectiveTo ? (
-                        <Badge tone="gray">{t('referralEnded')}</Badge>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={endingId === edge.id}
-                          onClick={() => void handleEndReferral(edge.id)}
-                          className="text-sm font-medium text-slate-500 hover:underline disabled:opacity-50"
-                        >
-                          {endingId === edge.id ? tc('saving') : t('endReferral')}
-                        </button>
-                      )}
-                    </li>
-                  ))}
+                        {ended ? (
+                          <Badge tone="gray">{t('referralEnded')}</Badge>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={endingId === edge.id}
+                            onClick={() => void handleEndReferral(edge.id)}
+                            className="text-sm font-medium text-slate-500 hover:underline disabled:opacity-50"
+                          >
+                            {endingId === edge.id ? tc('saving') : t('endReferral')}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

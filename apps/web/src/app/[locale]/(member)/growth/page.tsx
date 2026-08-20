@@ -4,12 +4,10 @@ import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { api, ApiError, isEntitlementRequired, isForbidden } from '@/lib/api-client';
 import {
-  FALLBACK_CURRENCY,
   isMoneyMetric,
   rankMetricKey,
   rankWindowKey,
   referralTypeKey,
-  type OfferingsResponse,
   type RankDefinition,
   type RankMeResponse,
   type RankRequirementGap,
@@ -29,7 +27,6 @@ export default function GrowthPage() {
   const [rank, setRank] = useState<RankMeResponse | null>(null);
   const [referrals, setReferrals] = useState<ReferralMeResponse | null>(null);
   const [ladder, setLadder] = useState<RankDefinition[] | null>(null);
-  const [currency, setCurrency] = useState(FALLBACK_CURRENCY);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   /** The plan does not include `growth.ranks` — a refusal, not a failure. */
@@ -49,17 +46,6 @@ export default function GrowthPage() {
       .catch(() => {
         if (!cancelled) setLadder(null);
       });
-
-    // Rank thresholds arrive as bare minor units with no currency code, so the
-    // catalogue supplies one. Without it the fallback stands rather than a guess
-    // dressed up as a fact.
-    api
-      .get<OfferingsResponse>('/offerings')
-      .then((res) => {
-        const found = res.offerings.find((offering) => !!offering.currency)?.currency;
-        if (!cancelled && found) setCurrency(found);
-      })
-      .catch(() => undefined);
 
     api
       .get<ReferralMeResponse>('/referrals/me')
@@ -108,20 +94,20 @@ export default function GrowthPage() {
   };
 
   /**
-   * Money metrics are minor units and go through the currency formatter, which
-   * divides by 100 exactly once. Counts are counts — dividing one would turn 3
-   * referrals into 0.03.
+   * Money metrics are minor units in the currency the response names, and go
+   * through the currency formatter, which divides by 100 exactly once. Counts
+   * are counts — dividing one would turn 3 referrals into 0.03.
    */
-  const metricValue = (metric: string, value: number): string =>
+  const metricValue = (metric: string, value: number, currency: string): string =>
     isMoneyMetric(metric)
       ? formatMoney(value, currency, locale)
       : new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-GB').format(value);
 
-  const requirementLine = (gap: RankRequirementGap): string =>
+  const requirementLine = (gap: RankRequirementGap, currency: string): string =>
     t('requirement', {
       metric: metricLabel(gap.metric),
-      current: metricValue(gap.metric, gap.current),
-      threshold: metricValue(gap.metric, gap.threshold),
+      current: metricValue(gap.metric, gap.current, currency),
+      threshold: metricValue(gap.metric, gap.threshold, currency),
     });
 
   const edgeName = (edge: ReferralEdge): string => edge.displayName ?? '—';
@@ -214,7 +200,7 @@ export default function GrowthPage() {
                         >
                           <span className="flex min-w-0 flex-col">
                             <span className="min-w-0 break-words text-sm text-slate-800">
-                              {requirementLine(gap)}
+                              {requirementLine(gap, rank.currency)}
                             </span>
                             <span className="text-xs text-slate-500">
                               {windowLabel(gap.window)}
@@ -222,7 +208,7 @@ export default function GrowthPage() {
                           </span>
                           <Badge tone="amber">
                             {t('remaining', {
-                              amount: metricValue(gap.metric, gap.remaining),
+                              amount: metricValue(gap.metric, gap.remaining, rank.currency),
                             })}
                           </Badge>
                         </li>

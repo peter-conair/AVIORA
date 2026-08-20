@@ -36,6 +36,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 22  | [Development Backlog](./22-development-backlog.md)             | 59 stories, 14 epics, P0–Future                           |
 | 23  | [Sprint Plan](./23-sprint-plan.md)                             | Sprint 0 + Sprint 1 (Vertical Slice 1)                    |
 | 24  | [Commerce Contract](./24-commerce-contract.md)                 | Sprint 8 — commerce + subscription routes and rules       |
+| 25  | [Growth Contract](./25-growth-contract.md)                     | Sprint 9 — referral graph + rank engine                   |
 
 ## Canonical stack (see ADRs)
 
