@@ -2335,3 +2335,253 @@ export interface CoachAnswerResponse {
   conversationId?: string;
   remaining?: number;
 }
+
+// ---- White label, localisation, legal and tax (docs/29) ----
+
+/**
+ * The feature keys a tenant may HIDE from navigation.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * HIDING IS PRESENTATION. IT IS NOT ACCESS CONTROL (docs/29 §1).
+ *
+ * A key in this list removes a navigation ENTRY and nothing else. The routes
+ * behind it still answer, and they must — permissions and entitlements are what
+ * refuse. Nothing that reads this list may ever gate a request, a fetch or a
+ * render of data; if it could, a tenant would "secure" a feature by editing a
+ * menu and the first person to type the URL would find it wide open.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * These are the same keys `lib/navigation.ts` marks each destination with, kept
+ * here so the admin picker and the navigation share ONE vocabulary rather than
+ * drifting into two. Labels live at `admin.branding.features.<key>`.
+ */
+export const HIDEABLE_FEATURES = [
+  'health',
+  'goals',
+  'challenges',
+  'learning',
+  'knowledge',
+  'ai',
+  'community',
+  'gamification',
+  'rewards',
+  'commerce',
+  'crm',
+  'teams',
+  'ranks',
+  'compensation',
+] as const;
+export type HideableFeature = (typeof HIDEABLE_FEATURES)[number];
+
+/** Colour tokens the branding screen offers. Each becomes a CSS custom property. */
+export const BRANDING_COLOR_TOKENS = ['primary', 'onPrimary', 'accent', 'surface', 'text'] as const;
+export type BrandingColorToken = (typeof BRANDING_COLOR_TOKENS)[number];
+
+/**
+ * The font a tenant picked, as a CSS stack. The tenant chose a NAME from the
+ * server's allow-list — never a URL and never an @font-face block — so this map
+ * is the only place that decides how a name becomes type on a page.
+ */
+const FONT_STACKS: Record<string, string> = {
+  system: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+  inter: 'Inter, system-ui, sans-serif',
+  roboto: 'Roboto, system-ui, sans-serif',
+  lato: 'Lato, system-ui, sans-serif',
+  'open-sans': '"Open Sans", system-ui, sans-serif',
+  'source-sans-3': '"Source Sans 3", system-ui, sans-serif',
+  'ibm-plex-sans': '"IBM Plex Sans", system-ui, sans-serif',
+  'noto-sans': '"Noto Sans", system-ui, sans-serif',
+  'noto-sans-thai': '"Noto Sans Thai", system-ui, sans-serif',
+  sarabun: 'Sarabun, system-ui, sans-serif',
+  prompt: 'Prompt, system-ui, sans-serif',
+  kanit: 'Kanit, system-ui, sans-serif',
+  merriweather: 'Merriweather, Georgia, serif',
+  'playfair-display': '"Playfair Display", Georgia, serif',
+  'jetbrains-mono': '"JetBrains Mono", ui-monospace, monospace',
+};
+
+/** Falls back to the page's own type rather than guessing at a family nobody serves. */
+export function fontStack(family: string | null | undefined): string | undefined {
+  if (!family) return undefined;
+  return FONT_STACKS[family] ?? undefined;
+}
+
+/**
+ * A colour VALUE, in the forms this screen produces. Mirrors the API's rule so
+ * the refusal happens before the request — and so nothing but a colour is ever
+ * written into an inline style.
+ */
+const BRANDING_COLOR_RE = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+export function isBrandingColor(value: string): boolean {
+  return BRANDING_COLOR_RE.test(value);
+}
+
+export interface BrandingLandingSection {
+  title: string;
+  body: string;
+}
+
+export interface BrandingLanding {
+  headline?: string;
+  subheadline?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  sections?: BrandingLandingSection[];
+}
+
+export interface BrandingView {
+  appName: string;
+  logoUrl: string | null;
+  colors: Record<string, string>;
+  fontFamily: string | null;
+  landing: unknown;
+  hiddenFeatures: string[];
+  /** The API's own words about what `hiddenFeatures` is — shown, not paraphrased. */
+  hiddenFeaturesNote: string;
+}
+
+export interface BrandingResponse {
+  branding: BrandingView;
+  /** The families the server serves. The screen never hardcodes this list. */
+  fontFamilies: string[];
+}
+
+export interface BrandingUpdateResponse {
+  branding: BrandingView;
+}
+
+/** `landing` arrives as unstructured JSON; narrow it rather than trusting it. */
+export function toLanding(value: unknown): BrandingLanding {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const text = (key: string): string | undefined =>
+    typeof raw[key] === 'string' ? (raw[key] as string) : undefined;
+  const sections = Array.isArray(raw.sections)
+    ? (raw.sections as unknown[]).flatMap((entry) => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const row = entry as Record<string, unknown>;
+        if (typeof row.title !== 'string' || typeof row.body !== 'string') return [];
+        return [{ title: row.title, body: row.body }];
+      })
+    : undefined;
+  return {
+    headline: text('headline'),
+    subheadline: text('subheadline'),
+    ctaLabel: text('ctaLabel'),
+    ctaHref: text('ctaHref'),
+    ...(sections && sections.length > 0 ? { sections } : {}),
+  };
+}
+
+export interface LocalisationView {
+  country: string;
+  currency: string;
+  timezone: string;
+  defaultLocale: string;
+  supportedLocales: string[];
+  addressFormat: unknown;
+  /**
+   * Whether these values were configured here or inherited from the workspace
+   * record. "Nobody has set this yet" and "somebody chose this" look identical
+   * on a form, and they are not the same thing.
+   */
+  source: 'localisation' | 'tenant-defaults';
+}
+
+export interface LocalisationResponse {
+  localisation: LocalisationView;
+}
+
+export const LEGAL_KINDS = ['terms', 'privacy', 'refund', 'custom'] as const;
+export type LegalKind = (typeof LEGAL_KINDS)[number];
+
+export function isLegalKind(value: string): value is LegalKind {
+  return (LEGAL_KINDS as readonly string[]).includes(value);
+}
+
+export interface LegalDocument {
+  id: string;
+  kind: string;
+  locale: string;
+  country: string | null;
+  version: number;
+  title: string;
+  body: string;
+  publishedAt: string;
+  /** Present on the admin listing only — how many members accepted THIS version. */
+  _count?: { acceptances: number };
+}
+
+export interface LegalDocumentsResponse {
+  documents: LegalDocument[];
+}
+
+export interface LegalPublishResponse {
+  document: LegalDocument;
+}
+
+export interface LegalCurrentResponse {
+  document: LegalDocument;
+  /** Which locale and country the server matched — not necessarily the one asked for. */
+  resolvedFor: { locale: string; country: string | null };
+}
+
+export interface LegalAcceptedDocument {
+  id: string;
+  kind: string;
+  locale: string;
+  country: string | null;
+  version: number;
+  title: string;
+}
+
+export interface LegalAcceptanceRecord {
+  id: string;
+  acceptedAt: string;
+  document: LegalAcceptedDocument;
+}
+
+export interface LegalAcceptancesResponse {
+  acceptances: LegalAcceptanceRecord[];
+}
+
+export interface LegalAcceptResponse {
+  acceptance: {
+    id: string;
+    acceptedAt: string;
+    documentId: string;
+    kind: string;
+    /** The version travels on the record — evidence must not need a join. */
+    version: number;
+  };
+  document: LegalAcceptedDocument;
+  alreadyAccepted: boolean;
+}
+
+export interface TaxRule {
+  id: string;
+  country: string;
+  /** Null is the country-wide rule; a value is the more specific one. */
+  region: string | null;
+  /** Basis points: 700 = 7%. Integers only. */
+  rateBasisPoints: number;
+  inclusive: boolean;
+  label: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TaxRulesResponse {
+  rules: TaxRule[];
+  tenantCountry: string;
+  /** Which rule an order with no region would resolve — the answer, not an inference. */
+  wouldResolve: TaxRule | null;
+  /** The API's "this is one configured rate, not a tax engine" sentence, verbatim. */
+  disclosure: string;
+}
+
+export interface TaxUpsertResponse {
+  rule: TaxRule;
+  disclosure: string;
+}

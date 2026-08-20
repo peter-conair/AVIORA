@@ -60,6 +60,15 @@ function redirectToSignIn(): void {
 interface FetchOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
+  /**
+   * For a page that must render for a SIGNED-OUT reader — the legal documents
+   * are public by contract (docs/29 §6). A 401 there is an answer ("nobody is
+   * signed in"), not an interruption, so it is thrown rather than turned into a
+   * redirect that would eject an anonymous visitor from a terms page. The
+   * refresh attempt still happens first, so a signed-in member with a stale
+   * access token is renewed exactly as everywhere else.
+   */
+  anonymousOk?: boolean;
 }
 
 /** The locale segment of the current URL (/th/..., /en/...) — '' on the server. */
@@ -125,11 +134,11 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     if (refreshRes.ok) {
       res = await rawRequest(path, options);
       if (res.status === 401) {
-        redirectToSignIn();
+        if (!options.anonymousOk) redirectToSignIn();
         throw await toApiError(res);
       }
     } else {
-      redirectToSignIn();
+      if (!options.anonymousOk) redirectToSignIn();
       throw await toApiError(res);
     }
   }
@@ -143,6 +152,12 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
 
 export const api = {
   get: <T>(path: string): Promise<T> => apiFetch<T>(path),
+  /**
+   * A GET whose 401 means "nobody is signed in" and must be handled by the
+   * caller instead of redirecting. Used by pages that a signed-out reader is
+   * entitled to see.
+   */
+  getAnonymousOk: <T>(path: string): Promise<T> => apiFetch<T>(path, { anonymousOk: true }),
   post: <T>(path: string, body?: unknown): Promise<T> =>
     apiFetch<T>(path, { method: 'POST', body }),
   put: <T>(path: string, body?: unknown): Promise<T> => apiFetch<T>(path, { method: 'PUT', body }),
@@ -150,3 +165,33 @@ export const api = {
     apiFetch<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string): Promise<T> => apiFetch<T>(path, { method: 'DELETE' }),
 };
+
+/** One field-level complaint from the API's validator. */
+export interface ValidationIssue {
+  /** Dotted path into the request body, e.g. `supportedLocales.1`. */
+  path: string;
+  message: string;
+}
+
+/**
+ * The per-field reasons behind a VALIDATION_FAILED response.
+ *
+ * The API says exactly which field it refused and why ("defaultLocale must be
+ * one of supportedLocales"), and throwing that away in favour of a generic
+ * "something went wrong" turns a fixable mistake into a guessing game.
+ */
+export function validationIssues(err: unknown): ValidationIssue[] {
+  if (!(err instanceof ApiError) || !Array.isArray(err.details)) return [];
+  return (err.details as unknown[]).flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) return [];
+    const row = entry as Record<string, unknown>;
+    if (typeof row.message !== 'string') return [];
+    return [{ path: typeof row.path === 'string' ? row.path : '', message: row.message }];
+  });
+}
+
+/** The message for one field, when the API named that field. */
+export function issueFor(issues: readonly ValidationIssue[], field: string): string | undefined {
+  return issues.find((issue) => issue.path === field || issue.path.startsWith(`${field}.`))
+    ?.message;
+}

@@ -88,7 +88,10 @@ async function expectNoHorizontalScroll(page: Page) {
 test.describe('AVIORA in a phone browser', () => {
   test('signs in and lands on the dashboard without horizontal scrolling', async ({ page }) => {
     await signIn(page);
-    await expect(page.getByRole('link', { name: 'AVIORA' })).toBeVisible();
+    // The wordmark is the TENANT's app name once they set one, so this asserts
+    // the home link exists rather than what it happens to say — a white-label
+    // product cannot have its own name hard-coded into its tests.
+    await expect(page.locator('header a[href="/th/dashboard"]')).toBeVisible();
     await expectNoHorizontalScroll(page);
   });
 
@@ -304,9 +307,67 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('the branding tab says that hiding a feature is not access control', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'แบรนด์และประเทศ' }).click();
+
+    // The picker and this sentence are one control. An administrator who ticks
+    // a feature and believes they have secured it has been misled by the
+    // software, so the correction has to sit beside the checkbox — not in
+    // docs/29, which nobody opens while configuring a workspace.
+    await expect(
+      page.getByText('การซ่อนเป็นเรื่องการแสดงผลเท่านั้น ไม่ใช่การจำกัดสิทธิ์').first(),
+    ).toBeVisible();
+    await expect(page.getByText('เมนูที่ซ่อนจะหายไปจากการนำทาง').first()).toBeVisible();
+
+    // The workspace's country and currency live on the same tab, because
+    // opening a new country is one job rather than two screens.
+    await expect(page.getByText('ประเทศ สกุลเงิน เขตเวลา และภาษา').first()).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('the tax rate is labelled in basis points and refuses to be a tax engine', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'ร้านค้า' }).click();
+    await expect(page.getByText('อัตราภาษี').first()).toBeVisible();
+
+    // A field labelled "tax" that quietly gets it wrong is worse than one that
+    // admits it is a single configured rate, so the API's own disclosure is on
+    // the screen, and the unit is named rather than assumed to be percent.
+    await expect(page.getByText('not a tax engine').first()).toBeVisible();
+
+    // Typing 700 must read back as 7%, not 700%. The unit is the whole point of
+    // the field, so the screen converts it where the number is entered.
+    await page.getByLabel('อัตราเป็นเบสิสพอยต์').fill('700');
+    await expect(page.getByText('700 เบสิสพอยต์เท่ากับ 7%').first()).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('signing out leaves the authenticated area', async ({ page }) => {
     await signIn(page);
+    // On a phone the header carries only what is needed constantly; signing
+    // out lives in the menu, which is where someone looks for it.
+    await page.getByRole('button', { name: 'เมนู' }).click();
     await page.getByRole('button', { name: 'ออกจากระบบ' }).click();
     await page.waitForURL(/\/th(\/sign-in)?\/?$/);
+  });
+
+  test('every destination is at most two taps away, and the bar fits', async ({ page }) => {
+    await signIn(page);
+    // The whole point of the redesign: twenty destinations, none of them
+    // buried. Open the menu, tap a second-level entry, arrive.
+    await page.getByRole('button', { name: 'เมนู' }).click();
+    await expect(page.getByRole('dialog', { name: 'เมนูหลัก' })).toBeVisible();
+    await page.getByRole('link', { name: 'รายได้' }).click();
+    await page.waitForURL(/\/th\/earnings/);
+    await expectNoHorizontalScroll(page);
+
+    // and the sheet closed itself on the way — a menu left open over a new
+    // page is the small rudeness that makes an app feel unfinished
+    await expect(page.getByRole('dialog', { name: 'เมนูหลัก' })).toHaveCount(0);
   });
 });

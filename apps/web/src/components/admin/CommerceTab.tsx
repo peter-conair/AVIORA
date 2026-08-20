@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { TaxRulesCard } from '@/components/admin/TaxRulesCard';
 import { formatMoney } from '@/lib/format';
 
 /** Matches the API's code rule, so the mistake is caught before the request. */
@@ -560,6 +561,10 @@ export function CommerceTab() {
           </form>
         </Card>
       )}
+
+      {/* What a thing costs includes the rate charged on it, so the rate is
+          priced where the catalogue is priced (docs/29 §4). */}
+      <TaxRulesCard />
     </div>
   );
 }

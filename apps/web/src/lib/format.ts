@@ -130,3 +130,19 @@ export function formatMonth(value: string, locale: string): string {
     timeZone: 'UTC',
   }).format(date);
 }
+
+/**
+ * A rate stored in BASIS POINTS, shown as a percentage beside the integer.
+ *
+ * 700 basis points is 7%. The stored integer is never divided into a float that
+ * goes back into arithmetic — this produces a string for reading, and the API
+ * keeps doing the sums in basis points.
+ */
+export function formatBasisPoints(basisPoints: number | null | undefined, locale: string): string {
+  if (basisPoints === null || basisPoints === undefined || !Number.isFinite(basisPoints))
+    return '—';
+  return new Intl.NumberFormat(numberLocale(locale), {
+    style: 'percent',
+    maximumFractionDigits: 2,
+  }).format(basisPoints / 10_000);
+}
