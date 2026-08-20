@@ -2,6 +2,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { ERROR_CODES } from '@aviora/shared';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { tenantCountry } from '../../common/time/tenant-zone';
+import { isAvailableIn } from './availability';
 import { priceResolver, tenantCurrency } from './pricing';
 
 export interface CreateOfferingInput {
@@ -14,6 +16,8 @@ export interface CreateOfferingInput {
   priceMinor: number;
   intervalUnit?: string;
   intervalCount?: number;
+  /** Empty means everywhere (docs/29 §5). */
+  availableCountries?: string[];
 }
 
 export interface UpdateOfferingInput {
@@ -23,6 +27,7 @@ export interface UpdateOfferingInput {
   status?: 'active' | 'archived';
   intervalUnit?: string;
   intervalCount?: number;
+  availableCountries?: string[];
 }
 
 /**
@@ -38,16 +43,27 @@ export class OfferingService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Active catalogue with the price THIS caller would actually pay. */
-  list(memberId: string | null) {
+  /**
+   * Active catalogue with the price THIS caller would actually pay.
+   *
+   * A member is shown only what they could buy: a catalogue listing something
+   * unbuyable wastes their time (docs/29 §5). Whoever manages the catalogue
+   * sees everything, because they cannot edit a row they cannot see —
+   * `includeUnavailable` is that view, never a member's.
+   */
+  list(memberId: string | null, includeUnavailable = false) {
     return this.db.tx(async (tx) => {
       const offerings = await tx.offering.findMany({
         where: { status: 'active' },
         orderBy: { name: 'asc' },
       });
       const priceOf = await priceResolver(tx, memberId);
+      const country = await tenantCountry(tx, this.db.tenantId);
+      const visible = includeUnavailable
+        ? offerings
+        : offerings.filter((o) => isAvailableIn(o, country));
       return Promise.all(
-        offerings.map(async (o) => ({
+        visible.map(async (o) => ({
           id: o.id,
           code: o.code,
           name: o.name,
@@ -59,6 +75,13 @@ export class OfferingService {
           priceMinor: await priceOf(o),
           intervalUnit: o.intervalUnit,
           intervalCount: o.intervalCount,
+          availableCountries: o.availableCountries,
+          /**
+           * Stated here so a catalogue does not show something unbuyable
+           * (docs/29 §5). It is a HINT for rendering — checkout is what
+           * refuses, and it refuses on its own reading, not on this flag.
+           */
+          availableHere: isAvailableIn(o, country),
         })),
       );
     });
@@ -86,6 +109,7 @@ export class OfferingService {
           priceMinor: input.priceMinor,
           intervalUnit: input.intervalUnit,
           intervalCount: input.intervalCount,
+          availableCountries: normaliseCountries(input.availableCountries),
         },
       });
     });
@@ -112,7 +136,15 @@ export class OfferingService {
         input.intervalUnit ?? existing.intervalUnit ?? undefined,
         input.intervalCount ?? existing.intervalCount ?? undefined,
       );
-      const updated = await tx.offering.update({ where: { id: existing.id }, data: input });
+      const updated = await tx.offering.update({
+        where: { id: existing.id },
+        data: {
+          ...input,
+          ...(input.availableCountries !== undefined
+            ? { availableCountries: normaliseCountries(input.availableCountries) }
+            : {}),
+        },
+      });
       return { before: existing, after: updated };
     });
     await this.audit.record({
@@ -217,6 +249,11 @@ export class OfferingService {
     });
     return coupon;
   }
+}
+
+/** One stored form, so `th`, `TH` and a duplicate cannot disagree at checkout. */
+function normaliseCountries(countries?: string[]): string[] {
+  return [...new Set((countries ?? []).map((c) => c.toUpperCase()))];
 }
 
 function assertInterval(kind: string, unit?: string, count?: number): void {

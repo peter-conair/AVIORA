@@ -257,6 +257,49 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('leader analytics name their window and what "inactive" means', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/leader');
+    await expect(page.getByRole('heading', { name: 'วิเคราะห์ข้อมูลทีม' })).toBeVisible();
+
+    // A member who only logs health habits is reported here as inactive. That
+    // costs someone something real, so the sentence explaining it has to be on
+    // the screen next to the numbers — not in a document nobody opens.
+    await expect(
+      page.getByText(
+        'ตัวเลขชุดนี้ไม่นับกิจกรรมด้านสุขภาพโดยเจตนา สมาชิกที่บันทึกเฉพาะกิจวัตรสุขภาพจะปรากฏที่นี่ว่า',
+      ),
+    ).toBeVisible();
+
+    // A number without its window is a number that will be misquoted, so the
+    // dates the API resolved are shown, not just the key that was asked for.
+    await expect(page.getByText('ช่วงเวลาที่ใช้:')).toBeVisible();
+    await page.getByRole('button', { name: '90 วันล่าสุด' }).click();
+    await expect(page.getByText('ช่วงเวลาที่ใช้:')).toBeVisible();
+
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('the coach renders its correlation refusal as an answer, not an error', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/leader');
+    await expect(page.getByRole('heading', { name: 'โค้ชทีม AI' })).toBeVisible();
+
+    // The one question the platform declines. It never reaches a model, so this
+    // asserts the refusal itself — and that it is presented as a considered
+    // answer with its figures, rather than as something that went wrong.
+    await page.getByRole('button', { name: 'กิจกรรมใดสัมพันธ์กับการเติบโต' }).click();
+    await expect(page.getByText('ตอบโดยนโยบายของแพลตฟอร์ม')).toBeVisible();
+    await expect(
+      page.getByText('นี่คือคำตอบที่ตั้งใจให้เป็นเช่นนี้ ไม่ใช่ความผิดพลาด'),
+    ).toBeVisible();
+    await expect(page.getByText('ตัวเลขที่ใช้ตอบ')).toBeVisible();
+    // The generic failure wording must not be what a leader sees here.
+    await expect(page.getByText('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')).toHaveCount(0);
+
+    await expectNoHorizontalScroll(page);
+  });
+
   test('signing out leaves the authenticated area', async ({ page }) => {
     await signIn(page);
     await page.getByRole('button', { name: 'ออกจากระบบ' }).click();

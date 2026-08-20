@@ -8,8 +8,11 @@ import { ERROR_CODES, EVENTS } from '@aviora/shared';
 import { appendEvent, type Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { tenantCountry } from '../../common/time/tenant-zone';
+import { assertAvailable } from './availability';
 import { addInterval, todayUtc, withOrderNumber } from './billing';
 import { assertCouponUsable, discountMinorFor, priceResolver, tenantCurrency } from './pricing';
+import { computeTax, resolveTaxRule } from './tax';
 
 interface CartRow {
   id: string;
@@ -121,8 +124,12 @@ export class CartService {
    * Turns the cart into an order. Subscription offerings additionally create
    * the Subscription that will produce every later order, priced by the same
    * resolver that priced the cart line.
+   *
+   * Two country-shaped things happen here and nowhere else (docs/29 §4, §5):
+   * availability is REFUSED, and tax is RESOLVED ONCE and stored on the order.
+   * `region` is the customer's, and only narrows which single rule applies.
    */
-  async checkout(memberId: string | null, actorUserId: string) {
+  async checkout(memberId: string | null, actorUserId: string, options: { region?: string } = {}) {
     const me = requireMember(memberId);
     const result = await withOrderNumber((orderNumber) =>
       this.db.tx(async (tx) => {
@@ -139,6 +146,14 @@ export class CartService {
           });
         }
 
+        // Refused before anything is priced: telling somebody what an
+        // unbuyable basket would have cost is not useful information.
+        const country = await tenantCountry(tx, this.db.tenantId);
+        assertAvailable(
+          items.map((i) => i.offering),
+          country,
+        );
+
         const currency = items[0]!.offering.currency;
         const subtotalMinor = items.reduce((sum, i) => sum + i.unitPriceMinor * i.quantity, 0);
         const coupon = cart.couponId
@@ -146,6 +161,15 @@ export class CartService {
           : null;
         if (coupon) assertCouponUsable(coupon, subtotalMinor, currency);
         const discountMinor = coupon ? discountMinorFor(coupon, subtotalMinor) : 0;
+
+        // ONE rule, resolved on (tenant country, customer region), applied to
+        // what is actually payable — after the discount, because tax on money
+        // nobody paid is money nobody owes.
+        const rules = await tx.taxRule.findMany({ where: { country } });
+        const tax = computeTax(
+          subtotalMinor - discountMinor,
+          resolveTaxRule(rules, country, options.region),
+        );
 
         const order = await tx.order.create({
           data: {
@@ -155,7 +179,12 @@ export class CartService {
             currency,
             subtotalMinor,
             discountMinor,
-            totalMinor: subtotalMinor - discountMinor,
+            // Stored, never recomputed: an order carries what it was charged,
+            // and a rate change next month must not rewrite this receipt.
+            taxMinor: tax.taxMinor,
+            taxLabel: tax.label,
+            taxRateBasisPoints: tax.rule ? tax.rateBasisPoints : null,
+            totalMinor: tax.totalMinor,
             couponId: coupon?.id,
           },
         });
@@ -230,7 +259,7 @@ export class CartService {
             itemCount: items.length,
           },
         });
-        return { order, subscriptions };
+        return { order, subscriptions, tax, country };
       }),
     );
 
@@ -241,10 +270,26 @@ export class CartService {
       after: {
         number: result.order.number,
         totalMinor: result.order.totalMinor,
+        taxMinor: result.order.taxMinor,
         currency: result.order.currency,
       },
     });
-    return result;
+    return {
+      order: result.order,
+      subscriptions: result.subscriptions,
+      // The response states plainly what the tax figure is, because a field
+      // labelled "tax" that quietly gets it wrong is worse than one that says
+      // "single configured rate" (docs/29 §4).
+      tax: {
+        country: result.country,
+        region: options.region ?? null,
+        label: result.tax.label,
+        rateBasisPoints: result.tax.rule ? result.tax.rateBasisPoints : null,
+        inclusive: result.tax.inclusive,
+        amountMinor: result.tax.taxMinor,
+        disclosure: result.tax.disclosure,
+      },
+    };
   }
 
   private async openCart(tx: Tx, memberId: string): Promise<CartRow> {

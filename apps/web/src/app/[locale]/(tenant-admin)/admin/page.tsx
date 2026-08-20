@@ -12,6 +12,7 @@ import { CommerceTab } from '@/components/admin/CommerceTab';
 import { RanksTab } from '@/components/admin/RanksTab';
 import { CompensationTab } from '@/components/admin/CompensationTab';
 import { AutomationTab } from '@/components/admin/AutomationTab';
+import { AnalyticsTab } from '@/components/admin/AnalyticsTab';
 
 const TABS = [
   'plans',
@@ -23,6 +24,7 @@ const TABS = [
   'growth',
   'compensation',
   'automation',
+  'analytics',
   'audit',
 ] as const;
 type Tab = (typeof TABS)[number];
@@ -57,6 +59,7 @@ export default function AdminPage() {
       {tab === 'growth' ? <RanksTab /> : null}
       {tab === 'compensation' ? <CompensationTab /> : null}
       {tab === 'automation' ? <AutomationTab /> : null}
+      {tab === 'analytics' ? <AnalyticsTab /> : null}
       {tab === 'audit' ? <AuditTab /> : null}
     </div>
   );

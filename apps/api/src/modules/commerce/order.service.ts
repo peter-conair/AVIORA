@@ -5,6 +5,7 @@ import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
 import type { TeamActor } from '../team/team-scope.service';
 import { CommerceScopeService } from './commerce-scope.service';
+import { taxOnOrder } from './tax';
 
 export interface RecordPaymentInput {
   provider: string;
@@ -52,7 +53,8 @@ export class OrderService {
       if (!order || !this.scope.canAccess(members, order.memberId)) {
         throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Order not found' });
       }
-      return order;
+      // Read back from the order, never recomputed (docs/29 §4).
+      return { ...order, tax: taxOnOrder(order) };
     });
   }
 

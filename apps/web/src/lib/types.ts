@@ -2104,3 +2104,234 @@ export interface RewardGrantsResponse {
 export interface RewardGrantResponse {
   grant: RewardGrant;
 }
+
+// ---- Analytics OS & AI Team Coach (docs/28) ----
+
+export const ANALYTICS_WINDOWS = ['30d', '90d', 'month'] as const;
+export type AnalyticsWindow = (typeof ANALYTICS_WINDOWS)[number];
+
+export const DEFAULT_ANALYTICS_WINDOW: AnalyticsWindow = '30d';
+
+/**
+ * The window the API resolved and echoed back. Every response states it,
+ * because a number without its window is a number that will be misquoted
+ * (docs/28 §3) — so every screen here shows it rather than the key alone.
+ */
+export interface AnalyticsWindowEcho {
+  key: AnalyticsWindow;
+  from: string;
+  to: string;
+  days: number;
+  comparedWith: { from: string; to: string };
+}
+
+/**
+ * The §3 definitions, echoed by every response.
+ *
+ * `healthActivityExcluded` is present on the team, tenant and platform scopes
+ * and absent from the member's own — its presence is exactly the fact that
+ * this scope does not count health activity, so the UI keys the warning off
+ * the field rather than off the scope name.
+ */
+export interface AnalyticsDefinitions {
+  activeMember: string;
+  newMember: string;
+  retention: string;
+  churn: string;
+  growth: string;
+  engagement: string;
+  assignedCourse: string;
+  activitySignals: string[];
+  healthActivityExcluded?: string;
+}
+
+/** True when this scope's "inactive" means "no NON-HEALTH activity". */
+export function excludesHealthActivity(definitions: AnalyticsDefinitions | null): boolean {
+  return typeof definitions?.healthActivityExcluded === 'string';
+}
+
+export interface AnalyticsCohort {
+  month: string;
+  joined: number;
+  stillActive: number;
+  /** null when nobody joined that month — no data is not a 0% retention rate. */
+  rate: number | null;
+}
+
+export interface AnalyticsCourseMeasure {
+  courseId: string;
+  code: string;
+  title: string;
+  completedInWindow: number;
+  completedAllTime: number;
+  inProgress: number;
+}
+
+/** The §3 measures. Counts are counts; `volumeMinor` is integer minor units. */
+export interface AnalyticsMeasures {
+  totalMembers: number;
+  activeMembers: number;
+  inactiveMembers: number;
+  activeShare: number | null;
+  newMembers: number;
+
+  previousActiveMembers: number;
+  growth: number;
+  growthRate: number | null;
+
+  churnedMembers: number;
+  membersActiveAtWindowStart: number;
+  churnRate: number | null;
+
+  retentionCohorts: AnalyticsCohort[];
+
+  posts: number;
+  comments: number;
+  reactions: number;
+  engagementEvents: number;
+  engagementPerActiveMember: number | null;
+  previousEngagementPerActiveMember: number | null;
+  engagementChange: number | null;
+
+  courseCompletions: number;
+  courses: AnalyticsCourseMeasure[];
+
+  currency: string;
+  paidOrders: number;
+  volumeMinor: number;
+}
+
+export interface AnalyticsNamedMember {
+  memberId: string;
+  displayName: string;
+}
+
+export interface AnalyticsRankView {
+  code: string;
+  name: string;
+  level: number;
+}
+
+export interface AnalyticsMilestoneGap {
+  metric: string;
+  window: string;
+  threshold: number;
+  current: number;
+  remaining: number;
+}
+
+export interface AnalyticsMilestone extends AnalyticsNamedMember {
+  currentRank: AnalyticsRankView | null;
+  nextRank: AnalyticsRankView | null;
+  largestGapShare: number | null;
+  missing: AnalyticsMilestoneGap[];
+  /** Money thresholds are minor units of THIS code. */
+  currency: string;
+  evaluatedAt: string | null;
+}
+
+export interface MemberAnalyticsResponse {
+  scope: 'member';
+  window: AnalyticsWindowEcho;
+  definitions: AnalyticsDefinitions;
+  measures: AnalyticsMeasures;
+  milestone: AnalyticsMilestone | null;
+  /** Their own health record — it is theirs, so their own dashboard counts it. */
+  health: HealthSummary;
+}
+
+export interface TeamAnalyticsEntry {
+  team: { id: string; code: string; name: string };
+  leaders: AnalyticsNamedMember[];
+  memberCount: number;
+  measures: AnalyticsMeasures;
+  inactiveMembers: AnalyticsNamedMember[];
+  milestones: AnalyticsMilestone[];
+}
+
+export interface TeamAnalyticsResponse {
+  scope: 'team';
+  window: AnalyticsWindowEcho;
+  definitions: AnalyticsDefinitions;
+  measures: AnalyticsMeasures;
+  teams: TeamAnalyticsEntry[];
+}
+
+export interface TenantAnalyticsResponse {
+  scope: 'tenant';
+  window: AnalyticsWindowEcho;
+  definitions: AnalyticsDefinitions;
+  measures: AnalyticsMeasures;
+}
+
+export interface PlatformTenantAnalytics {
+  tenant: { id: string; code: string; name: string };
+  measures: AnalyticsMeasures;
+  ai: { requests: number; inputTokens: number; outputTokens: number };
+}
+
+/**
+ * Costs nothing meters yet. They arrive named as unmeasured rather than as 0,
+ * and the UI must not render them as a number (docs/28 §6).
+ */
+export interface AnalyticsNotMeasured {
+  status: 'not_measured';
+  reason: string;
+}
+
+export interface PlatformAnalyticsResponse {
+  scope: 'platform';
+  window: AnalyticsWindowEcho;
+  definitions: AnalyticsDefinitions;
+  perTenant: PlatformTenantAnalytics[];
+  totals: {
+    tenants: number;
+    totalMembers: number;
+    activeMembers: number;
+    newMembers: number;
+    aiRequests: number;
+    aiInputTokens: number;
+    aiOutputTokens: number;
+  };
+  notMeasured: {
+    aiCost: AnalyticsNotMeasured;
+    storage: AnalyticsNotMeasured;
+    infrastructureCost: AnalyticsNotMeasured;
+  };
+}
+
+/** The eight of docs/28 §4 — the only questions the coach answers. */
+export const COACH_QUESTIONS = [
+  'fastest_growing_team',
+  'team_needs_support',
+  'leader_needs_coaching',
+  'inactive_member',
+  'close_to_milestone',
+  'next_course',
+  'team_focus',
+  'growth_correlation',
+] as const;
+export type CoachQuestion = (typeof COACH_QUESTIONS)[number];
+
+/**
+ * `answeredBy` is the honest distinction between a model's answer and the
+ * platform's own considered refusal (docs/28 §6). A refusal is an ANSWER —
+ * never rendered as an error.
+ */
+export interface CoachAnswerResponse {
+  question: CoachQuestion;
+  questionText: string;
+  window: AnalyticsWindowEcho;
+  definitions: AnalyticsDefinitions;
+  teamsInScope: number;
+  /** One line per number the answer is allowed to use. */
+  facts: string[];
+  citations: AiCitation[];
+  data: unknown;
+  answer: string;
+  answeredBy: 'policy' | 'model';
+  provider: string | null;
+  model: string | null;
+  conversationId?: string;
+  remaining?: number;
+}

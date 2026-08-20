@@ -8,6 +8,8 @@ import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionService } from './subscription.service';
+import { TaxController } from './tax.controller';
+import { TaxService } from './tax.service';
 
 /**
  * Commerce OS (docs/24). Commerce supports the journey and is never the entry
@@ -21,6 +23,7 @@ import { SubscriptionService } from './subscription.service';
     CartController,
     OrderController,
     SubscriptionController,
+    TaxController,
   ],
   providers: [
     OfferingService,
@@ -28,6 +31,7 @@ import { SubscriptionService } from './subscription.service';
     OrderService,
     SubscriptionService,
     CommerceScopeService,
+    TaxService,
   ],
 })
 export class CommerceModule {}

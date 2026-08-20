@@ -76,6 +76,11 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'AutomationExecution',
   'RewardDefinition',
   'RewardGrant',
+  'TenantBranding',
+  'TenantLocalisation',
+  'LegalDocument',
+  'LegalAcceptance',
+  'TaxRule',
 ]);
 
 const LIST_OPS = new Set([

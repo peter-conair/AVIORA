@@ -21,6 +21,12 @@ const couponSchema = z.object({
   code: z.string().min(3).max(40),
 });
 
+/**
+ * The customer's region, which only narrows WHICH single tax rule applies
+ * (docs/29 §4). Optional: with no region, the country-wide rule resolves.
+ */
+const checkoutSchema = z.object({ region: z.string().min(1).max(80).optional() }).default({});
+
 @Controller('cart')
 @RequireEntitlements(ENTITLEMENTS.COMMERCE)
 export class CartController {
@@ -65,7 +71,10 @@ export class CartController {
 
   @Post('checkout')
   @RequirePermissions(PERMISSIONS.COMMERCE_CATALOG_VIEW)
-  async checkout(@CurrentUser() user: AuthenticatedUser) {
-    return await this.cart.checkout(this.memberId(), user.userId);
+  async checkout(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodPipe(checkoutSchema)) body: z.infer<typeof checkoutSchema>,
+  ) {
+    return await this.cart.checkout(this.memberId(), user.userId, body);
   }
 }

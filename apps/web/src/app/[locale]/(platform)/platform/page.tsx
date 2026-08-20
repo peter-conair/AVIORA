@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { PlatformAnalyticsSection } from '@/components/analytics/PlatformAnalyticsSection';
 
 interface TenantFormState {
   code: string;
@@ -105,6 +106,10 @@ export default function PlatformPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-slate-900">{t('title')}</h1>
+
+      {/* Cross-tenant measures, gated on the platform ROLE this page already
+          checked — and checked again by the API (docs/28 §1). */}
+      <PlatformAnalyticsSection />
 
       <Card title={t('tenantsTitle')}>
         {tenants.length === 0 ? (

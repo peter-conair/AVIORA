@@ -140,6 +140,7 @@ model Member {
   compDownline      CompensationRelationship[] @relation("compDownline")
   commissionEntries CommissionEntry[]
   rewardGrants      RewardGrant[]
+  legalAcceptances  LegalAcceptance[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
@@ -1136,22 +1137,26 @@ model MemberBadge {
 // (a coaching package, an event seat), which is why the link is optional.
 
 model Offering {
-  id            String  @id @default(uuid(7)) @db.Uuid
-  tenantId      String  @map("tenant_id") @db.Uuid
-  code          String
-  name          String
-  description   String?
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  code               String
+  name               String
+  description        String?
   /// Optional link to the brand-neutral knowledge product this sells.
-  productId     String? @map("product_id") @db.Uuid
+  productId          String?  @map("product_id") @db.Uuid
   /// 'one_time' | 'subscription'
-  kind          String  @default("one_time")
-  currency      String  @db.VarChar(3)
-  priceMinor    Int     @map("price_minor")
-  status        String  @default("active")
+  kind               String   @default("one_time")
+  currency           String   @db.VarChar(3)
+  priceMinor         Int      @map("price_minor")
+  status             String   @default("active")
   /// Subscription defaults; any interval, not a fixed enum of billing periods.
-  intervalUnit  String? @map("interval_unit")
-  intervalCount Int?    @map("interval_count")
-  translations  Json?
+  intervalUnit       String?  @map("interval_unit")
+  intervalCount      Int?     @map("interval_count")
+  translations       Json?
+  /// ISO-3166-1 alpha-2 codes this may be sold in. EMPTY MEANS EVERYWHERE —
+  /// the common case must not require every tenant to enumerate the world
+  /// (docs/29 §5). Checkout is where it refuses.
+  availableCountries String[] @default([]) @map("available_countries")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1244,21 +1249,25 @@ model CartItem {
 }
 
 model Order {
-  id             String    @id @default(uuid(7)) @db.Uuid
-  tenantId       String    @map("tenant_id") @db.Uuid
-  memberId       String    @map("member_id") @db.Uuid
-  number         String
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  memberId           String    @map("member_id") @db.Uuid
+  number             String
   /// 'pending' | 'paid' | 'cancelled' | 'refunded'
-  status         String    @default("pending")
-  currency       String    @db.VarChar(3)
-  subtotalMinor  Int       @map("subtotal_minor")
-  discountMinor  Int       @default(0) @map("discount_minor")
-  totalMinor     Int       @map("total_minor")
-  couponId       String?   @map("coupon_id") @db.Uuid
-  subscriptionId String?   @map("subscription_id") @db.Uuid
-  placedAt       DateTime  @default(now()) @map("placed_at") @db.Timestamptz(6)
-  paidAt         DateTime? @map("paid_at") @db.Timestamptz(6)
-  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  status             String    @default("pending")
+  currency           String    @db.VarChar(3)
+  subtotalMinor      Int       @map("subtotal_minor")
+  discountMinor      Int       @default(0) @map("discount_minor")
+  totalMinor         Int       @map("total_minor")
+  /// What this order was actually charged — never recomputed later.
+  taxMinor           Int       @default(0) @map("tax_minor")
+  taxLabel           String?   @map("tax_label")
+  taxRateBasisPoints Int?      @map("tax_rate_basis_points")
+  couponId           String?   @map("coupon_id") @db.Uuid
+  subscriptionId     String?   @map("subscription_id") @db.Uuid
+  placedAt           DateTime  @default(now()) @map("placed_at") @db.Timestamptz(6)
+  paidAt             DateTime? @map("paid_at") @db.Timestamptz(6)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
 
   member       Member        @relation(fields: [memberId], references: [id])
   coupon       Coupon?       @relation(fields: [couponId], references: [id])
@@ -1681,4 +1690,103 @@ model RewardGrant {
 
   @@index([tenantId, memberId, grantedAt])
   @@map("reward_grants")
+}
+
+// ── White label & multi-country (docs/29, spec §54–§56) ──
+
+/// Presentation only. `hiddenFeatures` hides navigation and is NOT access
+/// control — the permission and entitlement guards refuse; hiding is tidiness.
+model TenantBranding {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @unique @map("tenant_id") @db.Uuid
+  appName        String?  @map("app_name")
+  logoUrl        String?  @map("logo_url")
+  /// { "primary": "#0f766e", "surface": "#f8fafc", … } — data, never CSS.
+  colors         Json?
+  fontFamily     String?  @map("font_family")
+  landing        Json?
+  emailFromName  String?  @map("email_from_name")
+  emailFooter    String?  @map("email_footer")
+  hiddenFeatures String[] @default([]) @map("hidden_features")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("tenant_branding")
+}
+
+model TenantLocalisation {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  tenantId         String   @unique @map("tenant_id") @db.Uuid
+  /// ISO-3166-1 alpha-2.
+  country          String   @db.VarChar(2)
+  defaultLocale    String   @default("th") @map("default_locale")
+  supportedLocales String[] @default(["th", "en"]) @map("supported_locales")
+  currency         String   @db.VarChar(3)
+  /// IANA zone. What a "day" means here; storage stays UTC.
+  timezone         String   @default("Asia/Bangkok")
+  addressFormat    Json?    @map("address_format")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("tenant_localisation")
+}
+
+/// Immutable once published: an edit is a new version, because rewriting what
+/// somebody agreed to after they agreed to it is not an edit.
+model LegalDocument {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  /// terms | privacy | refund | custom
+  kind        String
+  locale      String
+  country     String?  @db.VarChar(2)
+  version     Int
+  title       String
+  body        String
+  publishedAt DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+
+  acceptances LegalAcceptance[]
+
+  @@unique([tenantId, kind, locale, country, version])
+  @@index([tenantId, kind, locale])
+  @@map("legal_documents")
+}
+
+/// Records WHICH VERSION was accepted. "They accepted the terms" is worthless
+/// evidence if nobody can say which terms.
+model LegalAcceptance {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  memberId   String   @map("member_id") @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  acceptedAt DateTime @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  /// Hashed, never the address itself.
+  ipHash     String?  @map("ip_hash")
+
+  document LegalDocument @relation(fields: [documentId], references: [id])
+  member   Member        @relation(fields: [memberId], references: [id])
+
+  @@unique([memberId, documentId])
+  @@index([tenantId, acceptedAt])
+  @@map("legal_acceptances")
+}
+
+/// A single configured rate — not a tax engine (docs/29 §4).
+model TaxRule {
+  id              String  @id @default(uuid(7)) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  country         String  @db.VarChar(2)
+  region          String?
+  /// Basis points: 700 = 7%. Integers only, like every other rate here.
+  rateBasisPoints Int     @map("rate_basis_points")
+  inclusive       Boolean @default(false)
+  label           String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, country, region])
+  @@map("tax_rules")
 }

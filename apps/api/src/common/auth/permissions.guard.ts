@@ -10,6 +10,13 @@ import {
 } from './decorators';
 
 export const CLS_MEMBER_ID = 'memberId';
+/**
+ * The permission keys this caller actually holds. The guard has already paid
+ * for the lookup; a handler that needs to widen or narrow a RESPONSE (never a
+ * decision about access — that is the guard's) can read it instead of asking
+ * the database the same question again.
+ */
+export const CLS_PERMISSIONS = 'permissionKeys';
 const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
 
 /**
@@ -47,7 +54,19 @@ export class PermissionsGuard implements CanActivate {
       ctx.getHandler(),
       ctx.getClass(),
     ]);
-    if (!required?.length) return true;
+    // A route that requires no permission still requires BELONGING when it is
+    // tenant-scoped. Otherwise any signed-in person reads another tenant's data
+    // by changing one header, and "no permission needed" quietly becomes "no
+    // tenant needed". RLS does not save us: the request sets app.tenant_id to
+    // whatever was asked for.
+    if (!required?.length) {
+      if (!user) return true; // public route — JwtAuthGuard already decided
+      if (user.platformRole && PLATFORM_BYPASS.has(user.platformRole)) return true;
+      if (!this.db.tenantIdOrNull) return true; // not tenant-scoped
+      await this.assertMember(user);
+      return true;
+    }
+
     if (!user) return false; // JwtAuthGuard already rejected public-less routes
 
     if (user.platformRole && PLATFORM_BYPASS.has(user.platformRole)) return true;
@@ -80,6 +99,7 @@ export class PermissionsGuard implements CanActivate {
       const keys = new Set(
         rows.flatMap((r) => r.role.rolePermissions.map((rp) => rp.permission.key)),
       );
+      this.cls.set(CLS_PERMISSIONS, keys);
       return keys;
     });
 
@@ -91,5 +111,22 @@ export class PermissionsGuard implements CanActivate {
       });
     }
     return true;
+  }
+
+  /** Membership in the tenant this request names — belonging, not permission. */
+  private async assertMember(user: AuthenticatedUser): Promise<void> {
+    const member = await this.db.tx((tx) =>
+      tx.member.findFirst({
+        where: { userId: user.userId, status: 'active' },
+        select: { id: true },
+      }),
+    );
+    if (!member) {
+      throw new ForbiddenException({
+        code: ERROR_CODES.FORBIDDEN,
+        message: 'You are not a member of this tenant',
+      });
+    }
+    this.cls.set(CLS_MEMBER_ID, member.id);
   }
 }

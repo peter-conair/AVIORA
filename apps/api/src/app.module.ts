@@ -70,6 +70,7 @@ import { RewardService } from './modules/reward/reward.service';
 import { CommerceModule } from './modules/commerce/commerce.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { CompensationModule } from './modules/compensation/compensation.module';
+import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
 
 @Module({
   imports: [
@@ -104,6 +105,7 @@ import { CompensationModule } from './modules/compensation/compensation.module';
     CommerceModule,
     GrowthModule,
     CompensationModule,
+    TenantConfigModule,
   ],
   controllers: [
     HealthCheckController,

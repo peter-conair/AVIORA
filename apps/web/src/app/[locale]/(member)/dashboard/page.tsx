@@ -7,6 +7,7 @@ import { api, ApiError } from '@/lib/api-client';
 import type { DashboardResponse } from '@/lib/types';
 import { Badge, statusTone } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { MemberAnalyticsSection } from '@/components/analytics/MemberAnalyticsSection';
 import { formatDate } from '@/lib/format';
 
 export default function DashboardPage() {
@@ -33,11 +34,20 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  // The member's own analytics are their own request and their own permission,
+  // so they render whether or not the summary above loaded.
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        <p className="text-sm text-red-600">{error}</p>
+        <MemberAnalyticsSection />
+      </div>
+    );
+  }
   if (!data) return <p className="py-10 text-center text-sm text-slate-500">{tc('loading')}</p>;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-slate-900">{t('title')}</h1>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card title={t('membership.title')}>
@@ -146,6 +156,8 @@ export default function DashboardPage() {
           )}
         </Card>
       </div>
+
+      <MemberAnalyticsSection />
     </div>
   );
 }

@@ -554,6 +554,7 @@
       "members": "Members",
       "gamification": "Points & challenges",
       "commerce": "Shop",
+      "analytics": "Analytics",
       "audit": "Audit",
       "growth": "Ranks & referrals",
       "compensation": "Compensation",
@@ -1220,5 +1221,188 @@
     "typeCertificate": "Certificate",
     "typeCash": "Cash award",
     "cashNote": "A cash reward is recorded here, not paid — paying happens through a separate payout process."
+  },
+  "analytics": {
+    "notMeasured": "Not measured",
+    "healthExcluded": "Health activity is deliberately not counted in these numbers. A member who only logs health habits appears here as inactive — \"inactive\" means no non-health activity, not an idle member.",
+    "inactiveMeaning": "\"Inactive\" means no non-health activity in this window. Health habit logs are not counted here.",
+    "window": {
+      "label": "Reporting window",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days",
+      "month": "This month",
+      "resolved": "Window used: {from} – {to} ({days} days)",
+      "comparedWith": "compared with {from} – {to}"
+    },
+    "measures": {
+      "totalMembers": "Members",
+      "activeMembers": "Active members",
+      "activeShareHint": "{share} of {total} members",
+      "inactiveMembers": "Inactive members",
+      "inactiveHint": "No recorded non-health action in this window.",
+      "newMembers": "New members",
+      "newMembersHint": "Joined inside this window.",
+      "growth": "Growth",
+      "growthHint": "{previous} active in the previous window ({rate})",
+      "engagementPerActive": "Engagement per active member",
+      "engagementHint": "Previously {previous} · change {change}",
+      "engagementEvents": "Engagement events",
+      "engagementEventsHint": "{posts} posts · {comments} comments · {reactions} reactions",
+      "churn": "Churn",
+      "churnHint": "{ended} of {atStart} memberships ended",
+      "courseCompletions": "Course completions",
+      "courseCompletionsHint": "Completed inside this window.",
+      "paidOrders": "Paid orders",
+      "paidOrdersHint": "Orders paid inside this window.",
+      "volume": "Volume",
+      "volumeHint": "Paid orders, in {currency}.",
+      "ofTotal": "of {total}"
+    },
+    "retention": {
+      "empty": "No cohort has enough history yet.",
+      "month": "Joined in",
+      "joined": "Joined",
+      "stillActive": "Still active",
+      "rate": "Retention"
+    },
+    "definitions": {
+      "title": "How these numbers are defined",
+      "activitySignals": "What counts as activity",
+      "healthExcludedLabel": "Health activity",
+      "healthIncludedLabel": "Health activity",
+      "healthIncluded": "Your own health habit logs count as activity here, because this record is yours.",
+      "terms": {
+        "activeMember": {
+          "label": "Active member",
+          "text": "A member with at least one recorded action in the window — the existence of the action, never its content."
+        },
+        "newMember": {
+          "label": "New member",
+          "text": "A member who joined inside the window."
+        },
+        "retention": {
+          "label": "Retention",
+          "text": "Of the members who joined in a given month, the share still active in the window."
+        },
+        "churn": {
+          "label": "Churn",
+          "text": "Memberships that ended or lapsed in the window, over the memberships active at its start."
+        },
+        "growth": {
+          "label": "Growth",
+          "text": "The change in active members between two equal, adjacent windows — a count, not a rate."
+        },
+        "engagement": {
+          "label": "Engagement",
+          "text": "Posts, comments and reactions per active member."
+        }
+      },
+      "signals": {
+        "goal": "Goals",
+        "learning": "Learning",
+        "order": "Orders",
+        "post": "Posts, comments and reactions",
+        "habit_log": "Health habit logs"
+      }
+    },
+    "member": {
+      "title": "My numbers",
+      "intro": "What you did in this window, and how close your next rank is.",
+      "activityTitle": "My activity",
+      "active": "Activity",
+      "activeYes": "Active",
+      "activeNo": "No activity",
+      "activeHint": "At least one recorded action in this window.",
+      "spend": "Paid",
+      "engagementPerActive": "Engagement",
+      "engagementPerActiveHint": "Change since the previous window: {change}",
+      "healthCounted": "Your health habit logs count towards your activity here, because this record is yours. They are not visible in any team, workspace or platform figure.",
+      "milestoneTitle": "Next milestone",
+      "milestoneNone": "No rank ladder applies to you yet.",
+      "milestoneMet": "You meet every requirement for this rank.",
+      "milestoneRemaining": "{amount} to go",
+      "currentRank": "Now: {name}",
+      "milestoneEvaluatedAt": "Evaluated {date}",
+      "healthTitle": "My health record",
+      "healthIntro": "Yours, and shown here only to you."
+    },
+    "team": {
+      "title": "Team analytics",
+      "intro": "The teams you lead, measured over one window.",
+      "forbidden": "Team analytics are outside your authorized scope.",
+      "empty": "No team is in scope for you yet.",
+      "overallTitle": "All your teams",
+      "overallHint": "Across {count} team(s) in scope, counting each member once.",
+      "leaders": "Led by {names}",
+      "noLeader": "no active leader",
+      "memberCount": "{count} members",
+      "inactiveTitle": "Inactive members ({count})",
+      "inactiveNone": "Every member recorded an action in this window.",
+      "inactiveMore": "and {count} more",
+      "milestonesTitle": "Closest to the next rank",
+      "milestonesNone": "No member here has been evaluated against a rank ladder.",
+      "milestoneMember": "{name} → {rank}",
+      "milestoneMet": "Meets every requirement.",
+      "milestoneGap": "{metric}: {remaining} to go ({window})"
+    },
+    "tenant": {
+      "intro": "The whole workspace, measured over one window.",
+      "forbidden": "Workspace analytics are outside your authorized scope.",
+      "measuresTitle": "Workspace measures",
+      "churnTitle": "Churn",
+      "churnEnded": "Memberships ended",
+      "churnAtStart": "Active at window start",
+      "churnHint": "A membership that was cancelled or lapsed inside the window counts once.",
+      "retentionTitle": "Retention cohorts",
+      "retentionHint": "Of the members who joined in each month, the share still active in this window.",
+      "coursesTitle": "Courses",
+      "coursesEmpty": "This workspace has published no courses.",
+      "course": "Course",
+      "courseInWindow": "In window",
+      "courseAllTime": "All time",
+      "courseInProgress": "In progress"
+    },
+    "platform": {
+      "title": "Platform analytics",
+      "intro": "Across every workspace, measured over one window.",
+      "forbidden": "Platform analytics are outside your authorized scope.",
+      "totalsTitle": "Across all workspaces",
+      "tenants": "Workspaces",
+      "aiRequests": "AI requests",
+      "aiTokens": "AI tokens",
+      "aiTokensHint": "{input} in · {output} out",
+      "perTenantTitle": "By workspace",
+      "perTenantEmpty": "No active workspace yet.",
+      "tenant": "Workspace",
+      "notMeasuredTitle": "Not measured yet",
+      "notMeasuredIntro": "Nothing meters these, so they are named rather than shown as zero — a fabricated cost is worse than a missing one.",
+      "notMeasuredItems": {
+        "aiCost": "AI cost",
+        "storage": "Storage",
+        "infrastructureCost": "Infrastructure cost"
+      }
+    },
+    "coach": {
+      "title": "AI Team Coach",
+      "intro": "Pick a question. The answer comes from the same numbers as the dashboard above, for the same teams, and it names the figures it used.",
+      "thinking": "Working through the numbers…",
+      "notEntitled": "The coach is outside your authorized scope.",
+      "factsTitle": "The numbers used",
+      "factsEmpty": "No number was available for this question.",
+      "answeredByModel": "Answered by {model}",
+      "answeredByPolicy": "Answered by the platform",
+      "policyNote": "This is a considered answer, not a failure: the platform declines to infer this one and hands you the underlying figures instead.",
+      "teamsInScope": "{count} team(s) in scope",
+      "questions": {
+        "fastest_growing_team": "Which team is growing fastest?",
+        "team_needs_support": "Which team needs support?",
+        "leader_needs_coaching": "Which leader needs coaching?",
+        "inactive_member": "Which member is inactive?",
+        "close_to_milestone": "Who is close to the next milestone?",
+        "next_course": "Which course should the team take next?",
+        "team_focus": "What should this team focus on?",
+        "growth_correlation": "What activities correlate with growth?"
+      }
+    }
   }
 }

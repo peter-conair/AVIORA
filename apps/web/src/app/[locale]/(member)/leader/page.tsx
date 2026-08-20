@@ -7,6 +7,7 @@ import { api, ApiError } from '@/lib/api-client';
 import type { LeaderDashboardResponse, LeaderTeamSummary } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { TeamAnalyticsSection } from '@/components/analytics/TeamAnalyticsSection';
 import { formatDate } from '@/lib/format';
 
 export default function LeaderPage() {
@@ -40,7 +41,7 @@ export default function LeaderPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-slate-900">{t('title')}</h1>
 
       {forbidden ? (
@@ -96,6 +97,11 @@ export default function LeaderPage() {
           ))}
         </div>
       )}
+
+      {/* Team analytics live here rather than at a route of their own: this page
+          is already "the teams I lead", and a second route would be a second
+          place to decide what that scope is (docs/28 §1). */}
+      <TeamAnalyticsSection />
     </div>
   );
 }

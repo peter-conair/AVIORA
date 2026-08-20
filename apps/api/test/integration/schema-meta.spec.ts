@@ -74,6 +74,11 @@ const TENANT_OWNED_TABLES = [
   'automation_executions',
   'reward_definitions',
   'reward_grants',
+  'tenant_branding',
+  'tenant_localisation',
+  'legal_documents',
+  'legal_acceptances',
+  'tax_rules',
 ];
 
 /**

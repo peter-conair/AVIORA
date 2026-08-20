@@ -3,11 +3,17 @@ import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { PERMISSIONS } from '@aviora/shared';
 import { RequirePermissions } from '../../common/auth/decorators';
-import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
+import { CLS_MEMBER_ID, CLS_PERMISSIONS } from '../../common/auth/permissions.guard';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import { INTERVAL_UNITS } from './billing';
 import { COUPON_KINDS, OFFERING_KINDS } from './pricing';
 import { OfferingService } from './offering.service';
+
+/**
+ * Where this may be sold (docs/29 §5). AN EMPTY ARRAY MEANS EVERYWHERE — the
+ * common case is not made to enumerate the world.
+ */
+const countriesSchema = z.array(z.string().regex(/^[A-Za-z]{2}$/)).max(250);
 
 const createSchema = z.object({
   code: z.string().regex(/^[a-z0-9-]{2,40}$/),
@@ -22,6 +28,7 @@ const createSchema = z.object({
   priceMinor: z.number().int().min(0).max(1_000_000_000),
   intervalUnit: z.enum(INTERVAL_UNITS).optional(),
   intervalCount: z.number().int().positive().max(365).optional(),
+  availableCountries: countriesSchema.optional(),
 });
 
 const updateSchema = z
@@ -32,6 +39,7 @@ const updateSchema = z
     status: z.enum(['active', 'archived']).optional(),
     intervalUnit: z.enum(INTERVAL_UNITS).optional(),
     intervalCount: z.number().int().positive().max(365).optional(),
+    availableCountries: countriesSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'No fields to update' });
 
@@ -72,7 +80,13 @@ export class OfferingController {
   @RequirePermissions(PERMISSIONS.COMMERCE_CATALOG_VIEW)
   async list() {
     const memberId = (this.cls.get(CLS_MEMBER_ID) as string | undefined) ?? null;
-    return { offerings: await this.offerings.list(memberId) };
+    // Whoever manages the catalogue sees every row, including the ones this
+    // country cannot buy — they cannot edit what they cannot see. Everyone
+    // else sees what they could actually buy (docs/29 §5).
+    const canManage = (
+      (this.cls.get(CLS_PERMISSIONS) as Set<string> | undefined) ?? new Set<string>()
+    ).has(PERMISSIONS.COMMERCE_CATALOG_MANAGE);
+    return { offerings: await this.offerings.list(memberId, canManage) };
   }
 
   @Post()

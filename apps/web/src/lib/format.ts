@@ -73,3 +73,60 @@ export function shortId(value: string | null | undefined): string {
   if (!value) return '—';
   return value.length > 8 ? `${value.slice(0, 8)}…` : value;
 }
+
+function numberLocale(locale: string): string {
+  return locale === 'th' ? 'th-TH' : 'en-GB';
+}
+
+/**
+ * A count, formatted with grouping only. Counts are never divided by 100 —
+ * that is what money does, and 3 members are not 0.03 members.
+ */
+export function formatCount(value: number | null | undefined, locale: string): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  return new Intl.NumberFormat(numberLocale(locale)).format(value);
+}
+
+/**
+ * A 0–1 ratio as a percentage. `null` means there was no denominator, which is
+ * not the same as 0% — it is rendered as "not measured" by the caller's
+ * fallback rather than invented.
+ */
+export function formatRatio(
+  value: number | null | undefined,
+  locale: string,
+  fallback = '—',
+): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return fallback;
+  return new Intl.NumberFormat(numberLocale(locale), {
+    style: 'percent',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+/** A change, always signed: +2 and −2 must not read alike at a glance. */
+export function formatSigned(value: number | null | undefined, locale: string): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  return new Intl.NumberFormat(numberLocale(locale), { signDisplay: 'exceptZero' }).format(value);
+}
+
+/** A rate such as engagement per active member — two decimals, no rounding to 0. */
+export function formatDecimal(
+  value: number | null | undefined,
+  locale: string,
+  fallback = '—',
+): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return fallback;
+  return new Intl.NumberFormat(numberLocale(locale), { maximumFractionDigits: 2 }).format(value);
+}
+
+/** A cohort key of the form `2026-03`, shown as a month and year. */
+export function formatMonth(value: string, locale: string): string {
+  const date = new Date(`${value}-01T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(numberLocale(locale), {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+}

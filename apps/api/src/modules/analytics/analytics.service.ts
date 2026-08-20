@@ -3,6 +3,7 @@ import { ERROR_CODES, PERMISSIONS } from '@aviora/shared';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { PrismaService } from '../../common/db/prisma.service';
 import { tenantCurrency } from '../../common/money/currency';
+import { tenantTimezone } from '../../common/time/tenant-zone';
 import { HealthService } from '../health/health.service';
 import { requirementKey } from '../growth/metrics';
 import { TeamScopeService, type TeamActor } from '../team/team-scope.service';
@@ -89,7 +90,7 @@ export class AnalyticsService {
   /** The member's own dashboard — health included, because it is theirs. */
   async me(actor: TeamActor, windowKey: AnalyticsWindow, locale = 'en') {
     const memberId = requireMember(actor);
-    const window = resolveWindow(windowKey);
+    const window = resolveWindow(windowKey, await this.timezone());
 
     // Read before the measures transaction rather than inside it: a nested
     // tenant transaction would take a second connection while holding the first.
@@ -126,7 +127,7 @@ export class AnalyticsService {
 
   /** The leader dashboard — the teams they actually lead, and no health. */
   async team(actor: TeamActor, windowKey: AnalyticsWindow): Promise<TeamScopeAnalytics> {
-    const window = resolveWindow(windowKey);
+    const window = resolveWindow(windowKey, await this.timezone());
     return this.healthFree(async (reader) => {
       const allowed = await this.teamScope.accessibleTeamIds(
         reader,
@@ -208,7 +209,7 @@ export class AnalyticsService {
 
   /** The whole tenant. No health, for the same reason as the leader scope. */
   async tenant(windowKey: AnalyticsWindow) {
-    const window = resolveWindow(windowKey);
+    const window = resolveWindow(windowKey, await this.timezone());
     const result = await this.healthFree((reader) =>
       computeMeasures({ reader, tenantId: this.db.tenantId, memberIds: null, window }),
     );
@@ -227,7 +228,11 @@ export class AnalyticsService {
    * be reachable.
    */
   async platform(windowKey: AnalyticsWindow) {
-    const window = resolveWindow(windowKey);
+    // UTC, and the echo says so. Tenant zones differ, so there is no single
+    // zone in which a cross-tenant "this month" is true; naming one tenant's
+    // month as the platform's would be a quiet lie about the other rows
+    // (docs/29 §2).
+    const window = resolveWindow(windowKey, 'UTC');
     const reader: HealthFreeReader = this.prisma.owner;
     const tenants = await this.prisma.owner.tenant.findMany({
       where: { status: 'active' },
@@ -282,6 +287,14 @@ export class AnalyticsService {
    */
   private healthFree<T>(fn: (reader: HealthFreeReader) => Promise<T>): Promise<T> {
     return this.db.tx((tx) => fn(withoutHealth(tx)));
+  }
+
+  /**
+   * The tenant's zone, resolved before the measures transaction opens — window
+   * boundaries are an input to the query, not something computed inside it.
+   */
+  private timezone(): Promise<string> {
+    return this.db.tx((tx) => tenantTimezone(tx, this.db.tenantId));
   }
 
   /**
