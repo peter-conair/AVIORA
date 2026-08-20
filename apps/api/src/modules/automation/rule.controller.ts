@@ -23,7 +23,7 @@ export class RuleController {
   @Get('rules')
   @RequirePermissions(PERMISSIONS.AUTOMATION_MANAGE)
   async list() {
-    return { rules: await this.rules.list() };
+    return await this.rules.list();
   }
 
   @Post('rules')

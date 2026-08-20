@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ERROR_CODES } from '@aviora/shared';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { tenantCurrency } from '../../common/money/currency';
 import { AuditService } from '../../common/audit/audit.service';
 import {
   actionProblem,
@@ -38,10 +39,15 @@ export class RuleService {
     private readonly audit: AuditService,
   ) {}
 
+  /** Rules, with the currency their money thresholds are quoted in. */
   list() {
-    return this.db.tx((tx) =>
-      tx.automationRule.findMany({ orderBy: [{ priority: 'asc' }, { code: 'asc' }] }),
-    );
+    return this.db.tx(async (tx) => {
+      const [rules, currency] = await Promise.all([
+        tx.automationRule.findMany({ orderBy: [{ priority: 'asc' }, { code: 'asc' }] }),
+        tenantCurrency(tx),
+      ]);
+      return { rules, currency };
+    });
   }
 
   async create(input: RuleInput) {

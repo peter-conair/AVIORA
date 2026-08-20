@@ -1735,3 +1735,372 @@ export function toEntryBasis(value: unknown): EntryBasis {
     capApplied: payoutRow?.capApplied === true,
   };
 }
+
+// ---- Automation & rewards (docs/27) ----
+
+/**
+ * The events a rule may name, mirroring the shared `EVENTS` catalog. A rule
+ * naming anything else is refused at creation, so the picker offers exactly
+ * this list and nothing else (docs/27 §1).
+ *
+ * `RewardGranted` and `RewardRevoked` are legal triggers, but an event PRODUCED
+ * by an automation action never triggers a rule — that is what stops a rule
+ * granting a reward on `RewardGranted` from chaining for ever (docs/27 §1).
+ */
+export const TRIGGER_EVENTS = [
+  'TenantCreated',
+  'MemberRegistered',
+  'MemberInvited',
+  'MembershipActivated',
+  'MembershipExpiring',
+  'MembershipExpired',
+  'TeamCreated',
+  'TeamMoved',
+  'TeamArchived',
+  'LeaderAssigned',
+  'MemberJoinedTeam',
+  'GoalCreated',
+  'GoalCompleted',
+  'CourseStarted',
+  'CourseCompleted',
+  'CustomerConverted',
+  'LeadCreated',
+  'LeadStageChanged',
+  'FollowUpDue',
+  'HabitLogged',
+  'ChallengeJoined',
+  'ChallengeCompleted',
+  'PostPublished',
+  'OrderPlaced',
+  'OrderCompleted',
+  'SubscriptionCreated',
+  'SubscriptionRenewed',
+  'SubscriptionPaused',
+  'SubscriptionResumed',
+  'SubscriptionCancelled',
+  'ReferralCreated',
+  'ReferralEnded',
+  'RankAchieved',
+  'RankLost',
+  'CompensationPlacementCreated',
+  'CompensationPlacementEnded',
+  'CommissionRunCreated',
+  'CommissionRunApproved',
+  'CommissionEarned',
+  'RewardGranted',
+  'RewardRevoked',
+] as const;
+export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
+
+const TRIGGER_EVENT_SET: ReadonlySet<string> = new Set(TRIGGER_EVENTS);
+
+/** `admin.automation.events.*` key, or null for an event this build cannot name. */
+export function triggerEventKey(eventName: string): string | null {
+  return TRIGGER_EVENT_SET.has(eventName) ? `events.${eventName}` : null;
+}
+
+/**
+ * The four actions with a real adapter. The rest of spec §51's list —
+ * `send_email`, `send_line`, `run_ai`, `assign_coach`, `update_segment`,
+ * `create_task`, `trigger_workflow` — is refused by the API at creation, so
+ * offering any of them here would be offering a rule that cannot be saved.
+ */
+export const AUTOMATION_ACTION_TYPES = [
+  'send_notification',
+  'grant_reward',
+  'create_followup',
+  'assign_course',
+] as const;
+export type AutomationActionType = (typeof AUTOMATION_ACTION_TYPES)[number];
+
+export function isAutomationActionType(type: string): type is AutomationActionType {
+  return (AUTOMATION_ACTION_TYPES as readonly string[]).includes(type);
+}
+
+/** Enable, disable, reprioritise — the only edits a saved rule allows. */
+export const AUTOMATION_RULE_STATUSES = ['active', 'disabled', 'archived'] as const;
+export type AutomationRuleStatus = (typeof AUTOMATION_RULE_STATUSES)[number];
+
+/** `running` is a row still settling; the other three are final. */
+export const AUTOMATION_EXECUTION_STATUSES = ['success', 'failed', 'skipped', 'running'] as const;
+export type AutomationExecutionStatus = (typeof AUTOMATION_EXECUTION_STATUSES)[number];
+
+export interface AutomationMetricCondition {
+  metric: string;
+  comparator: string;
+  threshold: number;
+  window: string;
+  graph?: string;
+}
+
+/**
+ * A matcher on the OCCURRENCE rather than the member: the value at `payloadPath`
+ * in the event body equals `value`. Equality only — ordering arbitrary JSON is a
+ * meaning this contract does not have (docs/27 §1).
+ */
+export interface AutomationPayloadCondition {
+  payloadPath: string;
+  comparator: 'eq';
+  value: string | number | boolean | null;
+}
+
+export type AutomationCondition = AutomationMetricCondition | AutomationPayloadCondition;
+
+export function isAutomationPayloadCondition(
+  condition: AutomationCondition,
+): condition is AutomationPayloadCondition {
+  return 'payloadPath' in condition;
+}
+
+/** An action is `{ type, ...config }`, exactly as the API stores it. */
+export interface AutomationAction {
+  type: string;
+  [key: string]: unknown;
+}
+
+/** Narrow a rule's stored `conditions` column to something renderable. */
+export function toAutomationConditions(value: unknown): AutomationCondition[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): AutomationCondition[] => {
+    const row = asRecord(item);
+    if (!row) return [];
+    if (typeof row.payloadPath === 'string') {
+      const raw = row.value;
+      const literal =
+        typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean' ? raw : null;
+      return [{ payloadPath: row.payloadPath, comparator: 'eq', value: literal }];
+    }
+    if (typeof row.metric !== 'string') return [];
+    return [
+      {
+        metric: row.metric,
+        comparator: asString(row.comparator, 'gte'),
+        threshold: asNumber(row.threshold) ?? 0,
+        window: asString(row.window, 'lifetime'),
+        graph: typeof row.graph === 'string' ? row.graph : undefined,
+      },
+    ];
+  });
+}
+
+/** Narrow a rule's stored `actions` column; rows without a type are dropped. */
+export function toAutomationActions(value: unknown): AutomationAction[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): AutomationAction[] => {
+    const row = asRecord(item);
+    if (!row || typeof row.type !== 'string') return [];
+    return [{ ...row, type: row.type }];
+  });
+}
+
+export interface AutomationRule {
+  id: string;
+  code: string;
+  name: string;
+  triggerEvent: string;
+  /** JSON columns — narrow with `toAutomationConditions()` / `toAutomationActions()`. */
+  conditions: unknown;
+  actions: unknown;
+  priority: number;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * The rules, with the currency their money-valued thresholds are quoted in —
+ * the same shape `/ranks` uses, so nothing has to infer one from elsewhere.
+ */
+export interface AutomationRulesResponse {
+  rules: AutomationRule[];
+  currency: string;
+}
+
+export interface AutomationRuleResponse {
+  rule: AutomationRule;
+}
+
+export interface AutomationExecution {
+  id: string;
+  ruleId: string;
+  /** The outbox event that fired it; `(ruleId, eventId)` is unique. */
+  eventId: string;
+  memberId: string | null;
+  status: string;
+  result: unknown;
+  error: string | null;
+  createdAt: string;
+  rule?: { code: string; name: string; triggerEvent: string };
+}
+
+export interface AutomationExecutionsResponse {
+  executions: AutomationExecution[];
+}
+
+/** One action as the execution recorded it. */
+export interface ExecutionActionOutcome {
+  type: string;
+  status: string;
+  error: string | null;
+}
+
+export interface ExecutionResult {
+  eventName: string | null;
+  /** Why a matching rule did not run; only set on a skipped execution. */
+  skippedBecause: string | null;
+  actions: ExecutionActionOutcome[];
+}
+
+/**
+ * Narrow an execution's `result` column. It is written when the execution
+ * settles and never recomputed, so this only reads — an explanation derived
+ * here would be an explanation of nothing.
+ */
+export function toExecutionResult(value: unknown): ExecutionResult {
+  const row = asRecord(value);
+  const actions = Array.isArray(row?.actions) ? row.actions : [];
+  return {
+    eventName: typeof row?.eventName === 'string' ? row.eventName : null,
+    skippedBecause: typeof row?.skippedBecause === 'string' ? row.skippedBecause : null,
+    actions: actions.flatMap((item): ExecutionActionOutcome[] => {
+      const action = asRecord(item);
+      if (!action || typeof action.type !== 'string') return [];
+      return [
+        {
+          type: action.type,
+          status: asString(action.status, 'success'),
+          error: typeof action.error === 'string' ? action.error : null,
+        },
+      ];
+    }),
+  };
+}
+
+/**
+ * Reward types (docs/27 §2). `cash` is on the list and is still only ever
+ * RECORDED — paying is compensation's job, so every screen that shows one says
+ * so beside it.
+ */
+export const REWARD_TYPES = [
+  'points',
+  'badge',
+  'course_access',
+  'coupon',
+  'membership_upgrade',
+  'product',
+  'event_ticket',
+  'recognition',
+  'certificate',
+  'cash',
+] as const;
+export type RewardType = (typeof REWARD_TYPES)[number];
+
+/** The types that DO something on the platform; the rest are recorded grants. */
+const FULFILLED_REWARD_TYPES: readonly string[] = ['points', 'badge', 'course_access', 'coupon'];
+
+export function isFulfilledRewardType(type: string): boolean {
+  return FULFILLED_REWARD_TYPES.includes(type);
+}
+
+const REWARD_TYPE_KEYS: Record<string, string> = {
+  points: 'typePoints',
+  badge: 'typeBadge',
+  course_access: 'typeCourseAccess',
+  coupon: 'typeCoupon',
+  membership_upgrade: 'typeMembershipUpgrade',
+  product: 'typeProduct',
+  event_ticket: 'typeEventTicket',
+  recognition: 'typeRecognition',
+  certificate: 'typeCertificate',
+  cash: 'typeCash',
+};
+
+/** `myRewards.type*` message key, or null when this build has no wording for it. */
+export function rewardTypeKey(type: string): string | null {
+  return REWARD_TYPE_KEYS[type] ?? null;
+}
+
+export interface RewardDefinition {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  /** Type-specific JSON — narrow with `toRewardConfig()`. */
+  config: unknown;
+  status: string;
+  createdAt?: string;
+}
+
+export interface RewardDefinitionsResponse {
+  definitions: RewardDefinition[];
+}
+
+export interface RewardDefinitionResponse {
+  definition: RewardDefinition;
+}
+
+/**
+ * A reward definition's config, read for display. `coupon.value` is a
+ * percentage when the kind is `percent` and MINOR units of `currency` when it
+ * is `fixed`; `points` is a count and is never divided.
+ */
+export interface RewardConfigView {
+  points: number | null;
+  badgeCode: string | null;
+  courseId: string | null;
+  coupon: {
+    kind: string;
+    value: number;
+    currency: string | null;
+    minSubtotalMinor: number | null;
+  } | null;
+}
+
+export function toRewardConfig(value: unknown): RewardConfigView {
+  const row = asRecord(value);
+  const kind = typeof row?.kind === 'string' ? row.kind : null;
+  const couponValue = asNumber(row?.value);
+  return {
+    points: asNumber(row?.points),
+    badgeCode: typeof row?.badgeCode === 'string' ? row.badgeCode : null,
+    courseId: typeof row?.courseId === 'string' ? row.courseId : null,
+    coupon:
+      kind && couponValue !== null
+        ? {
+            kind,
+            value: couponValue,
+            currency: typeof row?.currency === 'string' ? row.currency : null,
+            minSubtotalMinor: asNumber(row?.minSubtotalMinor),
+          }
+        : null,
+  };
+}
+
+/**
+ * A grant is revocable and never deleted: `status = 'revoked'` keeps the history
+ * of what was given and taken back (docs/27 §2).
+ */
+export interface RewardGrant {
+  id: string;
+  rewardId: string;
+  memberId: string;
+  /** `automation` | `manual`. */
+  sourceType: string;
+  /** The rule code for an automated grant; the actor for a manual one. */
+  sourceRef: string | null;
+  status: string;
+  grantedAt: string;
+  revokedAt: string | null;
+  metadata?: unknown;
+  reward: { code: string; name: string; type: string };
+  /** Named on the tenant-wide list; a member's own grants do not repeat them. */
+  member?: { displayName: string };
+}
+
+export interface RewardGrantsResponse {
+  grants: RewardGrant[];
+}
+
+export interface RewardGrantResponse {
+  grant: RewardGrant;
+}

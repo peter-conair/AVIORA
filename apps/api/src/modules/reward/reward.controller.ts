@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
@@ -87,6 +88,23 @@ export class RewardController {
         sourceType: 'manual',
         sourceRef: user.userId,
         actorUserId: user.userId,
+      }),
+    };
+  }
+
+  @Get('grants')
+  @RequirePermissions(PERMISSIONS.REWARD_MANAGE)
+  async grants(
+    @Query('memberId') memberId?: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsed = Number.parseInt(limit ?? '', 10);
+    return {
+      grants: await this.rewards.list({
+        memberId,
+        status,
+        limit: Number.isFinite(parsed) ? parsed : undefined,
       }),
     };
   }

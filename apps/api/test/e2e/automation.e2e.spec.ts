@@ -1681,6 +1681,38 @@ describe('The growth journey is the rank ladder, with the learning attached (doc
   });
 });
 
+describe('An administrator can find what they may revoke', () => {
+  it('lists every grant in the tenant, and a member cannot', async () => {
+    // Revoking without a listing is a button with nothing to point at.
+    const admin = await login(`admin-a-${RUN}@test.local`);
+    const res = await api('/api/v1/rewards/grants', { token: admin, tenant: tenantA });
+    expect(res.status).toBe(200);
+    expect(res.body.grants.length).toBeGreaterThan(0);
+    expect(res.body.grants[0]).toHaveProperty('reward');
+
+    const filtered = await api(`/api/v1/rewards/grants?memberId=${m.iva}`, {
+      token: admin,
+      tenant: tenantA,
+    });
+    expect(filtered.status).toBe(200);
+    expect(filtered.body.grants.every((g: { memberId: string }) => g.memberId === m.iva)).toBe(
+      true,
+    );
+
+    const iva = await login(`iva-${RUN}@test.local`);
+    const denied = await api('/api/v1/rewards/grants', { token: iva, tenant: tenantA });
+    expect(denied.status).toBe(403);
+  });
+
+  it('rules say which currency their money thresholds are in', async () => {
+    const admin = await login(`admin-a-${RUN}@test.local`);
+    const res = await api('/api/v1/automation/rules', { token: admin, tenant: tenantA });
+    expect(res.status).toBe(200);
+    expect(res.body.currency).toMatch(/^[A-Z]{3}$/);
+    expect(Array.isArray(res.body.rules)).toBe(true);
+  });
+});
+
 describe('Automation does not react to its own output', () => {
   it('a reward granted BY a rule does not trigger a rule watching RewardGranted', async () => {
     // Rewards emit events and any event is a legal trigger, so a rule granting

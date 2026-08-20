@@ -99,6 +99,28 @@ export class RewardService {
   }
 
   /** The caller's own grants, newest first (docs/27 §5). */
+  /**
+   * Every grant in the tenant, for the people who administer them. Without it
+   * an administrator can revoke a grant but has no way to find one — the same
+   * gap the referral graph had in Sprint 9.
+   */
+  list(input: { memberId?: string; status?: string; limit?: number }) {
+    return this.db.tx((tx) =>
+      tx.rewardGrant.findMany({
+        where: {
+          ...(input.memberId ? { memberId: input.memberId } : {}),
+          ...(input.status ? { status: input.status } : {}),
+        },
+        orderBy: { grantedAt: 'desc' },
+        take: Math.min(Math.max(input.limit ?? 200, 1), 500),
+        include: {
+          reward: { select: { code: true, name: true, type: true } },
+          member: { select: { displayName: true } },
+        },
+      }),
+    );
+  }
+
   mine(memberId: string) {
     return this.db.tx((tx) =>
       tx.rewardGrant.findMany({

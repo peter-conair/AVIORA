@@ -78,6 +78,8 @@ export const PERMISSIONS = {
   COMPENSATION_VIEW: 'compensation.view',
   COMPENSATION_MANAGE: 'compensation.manage',
   AUTOMATION_MANAGE: 'automation.manage',
+  ANALYTICS_SELF_VIEW: 'analytics.self.view',
+  ANALYTICS_TENANT_VIEW: 'analytics.tenant.view',
   REWARD_VIEW: 'reward.view',
   REWARD_MANAGE: 'reward.manage',
 

@@ -19,6 +19,7 @@ interface NavItem {
     | 'community'
     | 'challenges'
     | 'rewards'
+    | 'myRewards'
     | 'growth'
     | 'earnings'
     | 'goals'
@@ -41,6 +42,9 @@ const BASE_NAV: NavItem[] = [
   { href: '/community', key: 'community' },
   { href: '/challenges', key: 'challenges' },
   { href: '/rewards', key: 'rewards' },
+  // Points and badges live under /rewards; what a member was GIVEN is its own
+  // page, because a revoked grant and a points balance answer different questions.
+  { href: '/my-rewards', key: 'myRewards' },
   { href: '/growth', key: 'growth' },
   { href: '/earnings', key: 'earnings' },
   { href: '/goals', key: 'goals' },

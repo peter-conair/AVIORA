@@ -223,6 +223,31 @@ test.describe('AVIORA in a phone browser', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  test('my rewards renders on a phone, cash note and all', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/my-rewards');
+    // The page is the member's own grants, so an account holding none still has
+    // to be a page — the heading is what says the screen loaded rather than
+    // failed.
+    await expect(page.getByRole('heading', { name: 'รางวัลของฉัน' })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('the automation tab is where a tenant writes its rules', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/th/admin');
+    await page.getByRole('button', { name: 'อัตโนมัติและรางวัล' }).click();
+    await expect(page.getByText('กติกาอัตโนมัติ').first()).toBeVisible();
+    // Rules that fire rules are the loop nobody can trace, and the screen says
+    // so rather than leaving it to a document.
+    await expect(
+      page.getByText(
+        'เหตุการณ์ที่เกิดจากการทำงานอัตโนมัติจะไม่ไปกระตุ้นกติกาข้ออื่นอีก กติกาจึงต่อกันเป็นลูกโซ่ไม่ได้',
+      ),
+    ).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('the gamification tab explains that points are configuration', async ({ page }) => {
     await signIn(page);
     await page.goto('/th/admin');
