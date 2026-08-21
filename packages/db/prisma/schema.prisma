@@ -1929,3 +1929,32 @@ model TenantDatabase {
 
   @@map("tenant_databases")
 }
+
+// ── Scheduler (docs/35) ──
+
+/// One row per (job, tenant, occurrence). The unique key is what stops a
+/// restart mid-run from billing anybody twice, and the row existing at all is
+/// what makes "did renewals run last night?" a query rather than a guess.
+model ScheduledJobRun {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  job          String
+  /// Null for platform-wide jobs.
+  tenantId     String?   @map("tenant_id") @db.Uuid
+  /// The occurrence this run is FOR — not the moment work began. A late run
+  /// still belongs to the slot it missed.
+  scheduledFor DateTime  @map("scheduled_for") @db.Timestamptz(6)
+  /// claimed | succeeded | failed | skipped
+  status       String    @default("claimed")
+  attempts     Int       @default(0)
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime? @map("finished_at") @db.Timestamptz(6)
+  /// What the job actually did, in its own words.
+  outcome      Json?
+  error        String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([job, tenantId, scheduledFor])
+  @@index([job, scheduledFor])
+  @@index([status, scheduledFor])
+  @@map("scheduled_job_runs")
+}

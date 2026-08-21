@@ -33,5 +33,8 @@ import { TaxService } from './tax.service';
     CommerceScopeService,
     TaxService,
   ],
+  // The scheduler's `subscription.renew` calls `runDue` — the same method the
+  // administrator's button calls (docs/35 §3).
+  exports: [SubscriptionService],
 })
 export class CommerceModule {}

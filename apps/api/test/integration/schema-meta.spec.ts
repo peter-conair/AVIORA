@@ -84,8 +84,9 @@ const TENANT_OWNED_TABLES = [
   'api_keys',
   'tenant_identity_providers',
   'sso_logins',
-  // tenant_databases is platform scope, not tenant-owned: it records WHERE a
-  // tenant lives, which the tenant itself must not be able to read or change.
+  // tenant_databases and scheduled_job_runs are platform scope, not
+  // tenant-owned: one records WHERE a tenant lives, the other records what the
+  // platform ran across every tenant. Neither may be read or forged by a tenant.
 ];
 
 /**

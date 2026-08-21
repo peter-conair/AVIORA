@@ -76,6 +76,7 @@ import { CompensationModule } from './modules/compensation/compensation.module';
 import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { SsoModule } from './modules/sso/sso.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { WebhookHandlers } from './modules/integration/webhook.handlers';
 
 @Module({
@@ -114,6 +115,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     TenantConfigModule,
     IntegrationModule,
     SsoModule,
+    SchedulerModule,
   ],
   controllers: [
     HealthCheckController,

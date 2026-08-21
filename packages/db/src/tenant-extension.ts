@@ -86,8 +86,9 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'ApiKey',
   'TenantIdentityProvider',
   'SsoLogin',
-  // TenantDatabase is deliberately absent: it is platform scope, and a tenant
-  // must not be able to read or change where it lives.
+  // TenantDatabase and ScheduledJobRun are deliberately absent: both are
+  // platform scope. A tenant must not read where it lives, nor what the
+  // platform ran for everybody else.
 ]);
 
 const LIST_OPS = new Set([

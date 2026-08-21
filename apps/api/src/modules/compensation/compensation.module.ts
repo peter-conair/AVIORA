@@ -21,5 +21,8 @@ import { RunService } from './run.service';
 @Module({
   controllers: [PlacementController, PlanController, RunController],
   providers: [PlacementService, PlanService, RunService],
+  // The scheduler's `commission.draft` calls `create`, which drafts and stops
+  // — approval is not exported and not reachable from a timer (docs/35 §3).
+  exports: [RunService],
 })
 export class CompensationModule {}

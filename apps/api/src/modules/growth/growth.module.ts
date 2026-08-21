@@ -15,5 +15,7 @@ import { ReferralService } from './referral.service';
 @Module({
   controllers: [ReferralController, RankController],
   providers: [ReferralService, RankService],
+  // The scheduler's `rank.evaluate` calls the tenant-wide evaluate (docs/35 §3).
+  exports: [RankService],
 })
 export class GrowthModule {}
