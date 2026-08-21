@@ -50,11 +50,24 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U aviora_owner -d aviora"
           --health-interval 5s --health-timeout 3s --health-retries 10
+      # The shared rate-limit budget (docs/38 §2) is the one thing here that
+      # cannot be tested without real infrastructure: the claim is that two
+      # processes spend ONE allowance, and a mock cannot demonstrate sharing.
+      # Its spec skips when AVIORA_REDIS_URL is unset, so without this service
+      # the test would pass by never running.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       AVIORA_DATABASE_URL: postgresql://aviora_owner:ci-owner-pw@localhost:5439/aviora
       AVIORA_APP_DATABASE_URL: postgresql://aviora_app:ci-app-pw@localhost:5439/aviora
       AVIORA_JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-credential-x1
       AVIORA_JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-credential-1
+      AVIORA_REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

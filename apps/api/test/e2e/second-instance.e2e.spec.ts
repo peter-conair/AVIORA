@@ -120,15 +120,23 @@ afterAll(async () => {
 
 describe('Two instances, one occurrence (docs/38 §3)', () => {
   it('both tick at the same moment and exactly one run row exists per occurrence', async () => {
-    const before = await owner.scheduledJobRun.count();
+    // Only rows THESE two instances create are evidence about them. An earlier
+    // file in the same run leaves rows of its own behind — including, quite
+    // legitimately, ones left `claimed` on purpose — so judging this race by a
+    // window of "the most recent N rows" fails on somebody else's fixture. It
+    // also passes for the wrong reason on a developer's database, where the
+    // recent rows are old and settled. That is exactly how this test passed
+    // locally and failed in CI.
+    const since = new Date();
+    await new Promise((r) => setTimeout(r, 5));
 
     // Started together, deliberately: the interesting window is the one where
     // both are inside `claim` for the same occurrence at the same time.
     await Promise.all([one.get(SchedulerService).tick(), two.get(SchedulerService).tick()]);
 
     const runs = await owner.scheduledJobRun.findMany({
+      where: { createdAt: { gte: since } },
       orderBy: { createdAt: 'desc' },
-      take: Math.max((await owner.scheduledJobRun.count()) - before, 0) + 20,
       select: { job: true, tenantId: true, scheduledFor: true, status: true, attempts: true },
     });
 
@@ -204,9 +212,18 @@ describe('Two relays, one backlog (docs/38 §3)', () => {
       ids.push(row.id);
     }
 
-    // Both relays, at once, over the same backlog.
-    for (let pass = 0; pass < 4; pass += 1) {
+    // Both relays, at once, and kept going until MY events are done rather than
+    // for a fixed number of passes. The relay takes a bounded batch in
+    // occurred-at order, so on a database where earlier suites left a backlog
+    // these events sit behind it: a fixed pass count would report "undelivered"
+    // for events the relay had simply not reached yet, which is a statement
+    // about queue depth and not about locking.
+    for (let pass = 0; pass < 60; pass += 1) {
       await Promise.all([one.get(OutboxRelayService).tick(), two.get(OutboxRelayService).tick()]);
+      const left = await owner.domainEvent.count({
+        where: { id: { in: ids }, processedAt: null },
+      });
+      if (left === 0) break;
     }
 
     const rows = await owner.domainEvent.findMany({
@@ -234,6 +251,11 @@ describe('Two relays, one backlog (docs/38 §3)', () => {
       'no handler recorded any of these events, so "exactly once" was not tested',
     ).toBeGreaterThan(0);
 
+    expect(
+      ledger.length,
+      'no handler ran for any of these events, so "each handler ran once" is ' +
+        'true of nothing — the ledger must have something in it to be evidence',
+    ).toBeGreaterThan(0);
     const twice = ledger.filter((l) => l._count._all > 1);
     expect(
       twice,
