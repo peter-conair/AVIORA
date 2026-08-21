@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@aviora/web", "dev"],
       "port": 3020
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aviora/api", "dev"],
+      "port": 3021
     }
   ]
 }
