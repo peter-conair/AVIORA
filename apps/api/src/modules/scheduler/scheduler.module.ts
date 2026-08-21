@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CommerceModule } from '../commerce/commerce.module';
 import { CompensationModule } from '../compensation/compensation.module';
 import { GrowthModule } from '../growth/growth.module';
+import { ObservabilityModule } from '../observability/observability.module';
 import { SchedulerController } from './scheduler.controller';
 import { SchedulerService } from './scheduler.service';
 
@@ -12,7 +13,7 @@ import { SchedulerService } from './scheduler.service';
  * way to keep it that way.
  */
 @Module({
-  imports: [CommerceModule, GrowthModule, CompensationModule],
+  imports: [CommerceModule, GrowthModule, CompensationModule, ObservabilityModule],
   controllers: [SchedulerController],
   providers: [SchedulerService],
 })

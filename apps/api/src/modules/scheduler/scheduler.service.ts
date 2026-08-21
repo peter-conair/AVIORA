@@ -9,6 +9,7 @@ import { DEFAULT_TIMEZONE, isValidTimeZone } from '../../common/time/zone';
 import { SubscriptionService } from '../commerce/subscription.service';
 import { RankService } from '../growth/rank.service';
 import { RunService } from '../compensation/run.service';
+import { AlertsService } from '../observability/alerts.service';
 import {
   CATCHUP_DAYS,
   MAX_SKIP_ROWS,
@@ -36,6 +37,7 @@ export const SCHEDULER_JOBS = [
   'rank.evaluate',
   'commission.draft',
   'webhook.sweep',
+  'alert.sweep',
 ] as const;
 export type SchedulerJob = (typeof SCHEDULER_JOBS)[number];
 
@@ -124,6 +126,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     private readonly subscriptions: SubscriptionService,
     private readonly ranks: RankService,
     private readonly runs: RunService,
+    private readonly alerts: AlertsService,
   ) {}
 
   onModuleInit() {
@@ -218,6 +221,11 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       );
     }
     add('webhook.sweep', null, 'UTC', (floor) => planSweep(now, floor));
+    // Alerting rides the scheduler rather than a timer of its own (docs/42 §3),
+    // so it inherits one run per occurrence and leaves a row saying it
+    // happened — and if the sweep itself dies mid-run, the stale `claimed` row
+    // is visible in exactly the place an operator already looks.
+    add('alert.sweep', null, 'UTC', (floor) => planSweep(now, floor));
     return planned;
   }
 
@@ -227,7 +235,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
    * occurrence it declined is the whole point of the override (docs/35 §5).
    */
   private currentOccurrence(job: SchedulerJob, timeZone: string, now: Date): Date {
-    if (job === 'webhook.sweep') return currentSweepSlot(now);
+    if (job === 'webhook.sweep' || job === 'alert.sweep') return currentSweepSlot(now);
     if (job === 'commission.draft') return currentMonthlySlot(timeZone, now);
     return currentDailySlot(timeZone, now);
   }
@@ -433,6 +441,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
   private async execute(item: PlannedOccurrence, now: Date): Promise<JobResult> {
     if (item.job === 'webhook.sweep') return this.sweep(now);
+    if (item.job === 'alert.sweep') {
+      return { status: 'succeeded' as const, outcome: await this.alerts.sweep() };
+    }
 
     const tenantId = item.tenantId!;
     // The same refusal the API edge makes for a tenant mid-move (docs/31 §2).

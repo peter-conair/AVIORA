@@ -4,6 +4,7 @@ import { ERROR_CODES, PERMISSIONS } from '@aviora/shared';
 import { RequirePermissions, RequirePlatformRoles } from '../../common/auth/decorators';
 import { CLS_TENANT_ID } from '../../common/tenant/tenant-context.middleware';
 import { ObservabilityService } from './observability.service';
+import { AlertsService } from './alerts.service';
 
 const days = (raw?: string) => (raw ? Number(raw) : undefined);
 
@@ -17,7 +18,39 @@ const days = (raw?: string) => (raw ? Number(raw) : undefined);
 @RequirePlatformRoles('PLATFORM_OWNER', 'SUPER_ADMIN')
 @Controller('platform/observability')
 export class ObservabilityController {
-  constructor(private readonly observability: ObservabilityService) {}
+  constructor(
+    private readonly observability: ObservabilityService,
+    private readonly alerts: AlertsService,
+  ) {}
+
+  /**
+   * What is firing, and — always — when the checks last ran (docs/42 §1).
+   *
+   * `lastCheckedAt` is not decoration. "Nothing is firing" from a sweep ninety
+   * seconds old means health; the same words from a sweep that last ran
+   * yesterday mean the checking stopped, which is the more dangerous state and
+   * the one that looks identical without this field.
+   */
+  @Get('alerts')
+  async alerts_(): Promise<unknown> {
+    const [checks, lastCheckedAt] = await Promise.all([
+      this.alerts.evaluate(),
+      this.alerts.lastCheckedAt(),
+    ]);
+    const firing = checks.filter((c) => c.firing);
+    return {
+      firing,
+      quiet: checks.filter((c) => !c.firing),
+      lastCheckedAt,
+      thresholds: this.alerts.thresholds,
+      note:
+        lastCheckedAt === null
+          ? 'the sweep has never run: this is what is firing NOW, but nothing is ' +
+            'watching between requests'
+          : 'firing is evaluated live; lastCheckedAt is when the sweep last ran and ' +
+            'could have emailed somebody',
+    };
+  }
 
   @Get('queue')
   queue(@Query('days') d?: string) {

@@ -1940,6 +1940,27 @@ model TenantDatabase {
 /// One row per (job, tenant, occurrence). The unique key is what stops a
 /// restart mid-run from billing anybody twice, and the row existing at all is
 /// what makes "did renewals run last night?" a query rather than a guess.
+/// What an alert check last saw (docs/42 §3).
+///
+/// Platform scope, like `scheduled_job_runs`: alerts are about the platform's
+/// own health across every tenant, and a tenant must not read or forge them.
+/// It exists only so a check that keeps firing does not send the same email
+/// every five minutes — the fastest way to teach somebody to filter alerts
+/// into a folder they never open.
+model AlertState {
+  check         String    @id
+  firing        Boolean   @default(false)
+  /// The measured value that decided it, kept so an email can say what changed.
+  value         String?
+  /// When this check first went from quiet to firing in the current episode.
+  firingSince   DateTime? @map("firing_since") @db.Timestamptz(6)
+  /// When somebody was last told about it — starting, reminding, or clearing.
+  lastNotifiedAt DateTime? @map("last_notified_at") @db.Timestamptz(6)
+  checkedAt     DateTime  @default(now()) @map("checked_at") @db.Timestamptz(6)
+
+  @@map("alert_states")
+}
+
 model ScheduledJobRun {
   id           String    @id @default(uuid(7)) @db.Uuid
   job          String

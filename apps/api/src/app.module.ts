@@ -16,7 +16,7 @@ import { EntitlementsGuard } from './common/auth/entitlements.guard';
 import { TenantDatabaseGuard } from './common/db/tenant-database.guard';
 import { EventBus } from './common/events/event-bus';
 import { OutboxRelayService } from './common/events/outbox-relay.service';
-import { EmailService } from './common/email/email.service';
+import { EmailModule } from './common/email/email.module';
 
 import { AuthController } from './modules/identity/auth.controller';
 import { AuthService } from './modules/identity/auth.service';
@@ -118,6 +118,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     IntegrationModule,
     SsoModule,
     SchedulerModule,
+    EmailModule,
     ObservabilityModule,
   ],
   controllers: [
@@ -162,7 +163,6 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     TenantContextAccessor,
     EventBus,
     OutboxRelayService,
-    EmailService,
     AuthService,
     ProvisioningService,
     TenantDatabaseService,
