@@ -392,6 +392,71 @@ model SponsoredSeat {
   @@map("sponsored_seats")
 }
 
+/// A partner organisation (docs/46). Not a member, and deliberately not
+/// modelled as one: partner staff must not appear in member counts, receive
+/// member communications, or reach a route that returns member data.
+model Partner {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  contactEmail String?  @map("contact_email")
+  status       String   @default("active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users     PartnerUser[]
+  referrals PartnerReferral[]
+
+  @@unique([tenantId, code])
+  @@map("partners")
+}
+
+/// A person at the partner who can sign in to the portal. They have a User row
+/// — that is how they log in — and no Member row, which is the entire point.
+model PartnerUser {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, partnerId])
+  @@map("partner_users")
+}
+
+/// Who a partner invited, and who actually joined.
+///
+/// A row is written when the partner sends the invitation, with `member_id`
+/// null — invited but not yet joined, the same reserve-then-assign shape
+/// sponsored seats use. An outbox handler fills `member_id` in when the
+/// invitation is accepted. There is no route by which a partner claims somebody
+/// they did not bring, because these numbers are the basis of what they get
+/// paid (docs/46 §2).
+model PartnerReferral {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  partnerId    String   @map("partner_id") @db.Uuid
+  /// Null while the invitation is outstanding.
+  memberId     String?  @map("member_id") @db.Uuid
+  invitationId String?  @map("invitation_id") @db.Uuid
+  joinedAt     DateTime? @map("joined_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  /// One member is attributed to one partner. Two partners claiming the same
+  /// person is an argument about money that nobody can settle afterwards.
+  @@unique([tenantId, memberId])
+  @@index([tenantId, partnerId])
+  @@map("partner_referrals")
+}
+
 model Team {
   id           String   @id @default(uuid(7)) @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid

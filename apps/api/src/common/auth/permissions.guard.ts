@@ -4,12 +4,19 @@ import { ClsService } from 'nestjs-cls';
 import { ERROR_CODES } from '@aviora/shared';
 import { TenantDb } from '../db/tenant-db.service';
 import {
+  REQUIRE_PARTNER,
   REQUIRED_PERMISSIONS,
   REQUIRED_PLATFORM_ROLES,
   type AuthenticatedUser,
 } from './decorators';
 
 export const CLS_MEMBER_ID = 'memberId';
+/**
+ * The partner this caller acts as, on a `@RequirePartner()` route (docs/46 §1).
+ * Every partner route scopes to THIS value; none of them accepts a partner id
+ * from the request, which is what keeps a third principal from becoming a hole.
+ */
+export const CLS_PARTNER_ID = 'partnerId';
 /**
  * The permission keys this caller actually holds. The guard has already paid
  * for the lookup; a handler that needs to widen or narrow a RESPONSE (never a
@@ -60,6 +67,25 @@ export class PermissionsGuard implements CanActivate {
       ctx.getHandler(),
       ctx.getClass(),
     ]);
+
+    const partnerRoute = this.reflector.getAllAndOverride<boolean>(REQUIRE_PARTNER, [
+      ctx.getHandler(),
+      ctx.getClass(),
+    ]);
+    if (partnerRoute) {
+      // Refused here rather than at startup because Nest gives a guard no
+      // startup hook, but refused nonetheless: a route whose principal depends
+      // on who called it has no principal (docs/46 §1).
+      if (required?.length) {
+        throw new ForbiddenException({
+          code: ERROR_CODES.FORBIDDEN,
+          message: 'A route cannot be both partner-facing and permission-gated',
+        });
+      }
+      if (!user) return false;
+      await this.assertPartner(user);
+      return true;
+    }
     // A route that requires no permission still requires BELONGING when it is
     // tenant-scoped. Otherwise any signed-in person reads another tenant's data
     // by changing one header, and "no permission needed" quietly becomes "no
@@ -120,6 +146,36 @@ export class PermissionsGuard implements CanActivate {
   }
 
   /** Membership in the tenant this request names — belonging, not permission. */
+  /**
+   * Resolves the partner this user acts as, INSIDE the current tenant.
+   *
+   * Note what is not here: no id from the request, no platform bypass, no
+   * fallback to membership. A platform owner is not a partner, and letting them
+   * act as one would make the portal's "you only ever see your own numbers"
+   * depend on who is asking.
+   */
+  private async assertPartner(user: AuthenticatedUser): Promise<void> {
+    if (!this.db.tenantIdOrNull) {
+      throw new ForbiddenException({
+        code: ERROR_CODES.FORBIDDEN,
+        message: 'The partner portal is tenant-scoped',
+      });
+    }
+    const link = await this.db.tx((tx) =>
+      tx.partnerUser.findFirst({
+        where: { userId: user.userId, status: 'active', partner: { status: 'active' } },
+        select: { partnerId: true },
+      }),
+    );
+    if (!link) {
+      throw new ForbiddenException({
+        code: ERROR_CODES.FORBIDDEN,
+        message: 'You do not have partner access to this tenant',
+      });
+    }
+    this.cls.set(CLS_PARTNER_ID, link.partnerId);
+  }
+
   private async assertMember(user: AuthenticatedUser): Promise<void> {
     const member = await this.db.tx((tx) =>
       tx.member.findFirst({

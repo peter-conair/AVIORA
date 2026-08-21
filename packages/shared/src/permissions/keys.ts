@@ -38,6 +38,8 @@ export const PERMISSIONS = {
   KNOWLEDGE_TEAM_MANAGE: 'knowledge.team.manage',
   /** Running a corporate wellness sponsorship: seats, invitations, participation (docs/45). */
   SPONSORSHIP_MANAGE: 'sponsorship.manage',
+  /** Managing partner organisations and who at them may sign in (docs/46). */
+  PARTNER_MANAGE: 'partner.manage',
 
   // goals
   GOAL_VIEW: 'goal.view',

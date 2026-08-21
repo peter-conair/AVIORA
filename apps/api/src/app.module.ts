@@ -19,6 +19,7 @@ import { OutboxRelayService } from './common/events/outbox-relay.service';
 import { EmailModule } from './common/email/email.module';
 import { MembershipModule } from './modules/membership/membership.module';
 import { SponsorshipModule } from './modules/sponsorship/sponsorship.module';
+import { PartnerModule } from './modules/partner/partner.module';
 
 import { AuthController } from './modules/identity/auth.controller';
 import { AuthService } from './modules/identity/auth.service';
@@ -120,6 +121,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     EmailModule,
     MembershipModule,
     SponsorshipModule,
+    PartnerModule,
     ObservabilityModule,
   ],
   controllers: [
