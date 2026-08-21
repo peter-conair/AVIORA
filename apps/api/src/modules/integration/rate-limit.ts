@@ -1,8 +1,9 @@
 import * as crypto from 'node:crypto';
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, NestMiddleware, OnModuleDestroy } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { ClsService } from 'nestjs-cls';
 import { ERROR_CODES } from '@aviora/shared';
+import { RedisRateLimitStore } from './redis-rate-limit';
 
 const WINDOW_MS = 60_000;
 const DEFAULT_LIMIT = 120;
@@ -14,17 +15,20 @@ interface Bucket {
   resetAt: number;
 }
 
+export interface RateVerdict {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
+}
+
 /**
  * In-memory fixed-window limiter for the public API (docs/30 §4).
  *
- * IN MEMORY IS DELIBERATE AND TEMPORARY. It counts per process, so N API
- * instances allow N times the stated limit — acceptable while the public
- * surface is small and read-only, dishonest the moment it is not. The upgrade
- * path is the same one the outbox relay names for itself: move the counter to
- * Redis (`INCR` + `EXPIRE` on the same key this class builds, or a sorted-set
- * sliding window) so every instance decrements one shared budget. The header
- * contract below does not change when that happens, which is the point of
- * stating the limit in the response rather than in documentation.
+ * Still here, and still correct for a single instance — but it counts PER
+ * PROCESS, so two API instances allow twice the stated limit. Sprint 19 moved
+ * the counter to Redis for exactly that reason (docs/38 §2); this remains the
+ * fallback when no Redis is configured, and the honest one to fall back TO
+ * when Redis is unreachable.
  */
 export class RateLimiter {
   private readonly buckets = new Map<string, Bucket>();
@@ -32,7 +36,7 @@ export class RateLimiter {
 
   constructor(private readonly limit: number = DEFAULT_LIMIT) {}
 
-  take(key: string, now = Date.now()): { allowed: boolean; remaining: number; resetAt: number } {
+  take(key: string, now = Date.now()): RateVerdict {
     this.maybeSweep(now);
     const existing = this.buckets.get(key);
     const bucket =
@@ -70,15 +74,33 @@ export class RateLimiter {
  * long-lived map; callers with no credential at all share a per-IP bucket.
  */
 @Injectable()
-export class PublicRateLimitMiddleware implements NestMiddleware {
+export class PublicRateLimitMiddleware implements NestMiddleware, OnModuleDestroy {
   private readonly limiter = new RateLimiter(
     Number(process.env.AVIORA_PUBLIC_RATE_LIMIT ?? DEFAULT_LIMIT),
   );
+  /**
+   * One budget across every instance when Redis is configured (docs/38 §2).
+   * Absent it, the in-memory limiter is still correct for a single instance —
+   * so this is optional rather than required, and the deployment that needs it
+   * is the one that runs more than one process.
+   */
+  private readonly shared = process.env.AVIORA_REDIS_URL
+    ? new RedisRateLimitStore(process.env.AVIORA_REDIS_URL, WINDOW_MS)
+    : null;
 
   constructor(private readonly cls: ClsService) {}
 
-  use(req: Request, res: Response, next: NextFunction): void {
-    const verdict = this.limiter.take(this.bucketKey(req));
+  async onModuleDestroy(): Promise<void> {
+    await this.shared?.close();
+  }
+
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const key = this.bucketKey(req);
+    // The in-memory limiter is still consulted when Redis answers, so a Redis
+    // that starts failing mid-window falls back to a counter that has been
+    // counting all along rather than to an empty one.
+    const local = this.limiter.take(key);
+    const verdict = (await this.shared?.take(key, this.limiter.max)) ?? local;
     const resetSeconds = Math.ceil(verdict.resetAt / 1000);
 
     res.setHeader('X-RateLimit-Limit', String(this.limiter.max));
