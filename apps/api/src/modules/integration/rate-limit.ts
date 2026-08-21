@@ -7,6 +7,13 @@ import { RedisRateLimitStore } from './redis-rate-limit';
 
 const WINDOW_MS = 60_000;
 const DEFAULT_LIMIT = 120;
+/**
+ * Exported so the API's self-description reports the limit this file actually
+ * enforces (docs/47 §2) rather than a number copied into a document that then
+ * drifts away from it.
+ */
+export const PUBLIC_RATE_LIMIT_WINDOW_MS = WINDOW_MS;
+export const PUBLIC_RATE_LIMIT_DEFAULT = DEFAULT_LIMIT;
 /** Stop the map growing without bound on a long-lived process. */
 const SWEEP_EVERY = 500;
 

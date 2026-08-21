@@ -1,10 +1,13 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
 import { TenantConfigModule } from '../tenant-config/tenant-config.module';
 import { ApiKeyController } from './api-key.controller';
 import { ApiKeyGuard } from './api-key.guard';
 import { ApiKeyService } from './api-key.service';
 import { ManifestController } from './manifest.controller';
 import { ManifestService } from './manifest.service';
+import { CatalogService } from './catalog.service';
+import { ApiCatalogController } from './catalog.controller';
 import { PublicApiController } from './public.controller';
 import { PublicApiService } from './public.service';
 import { PublicRateLimitMiddleware } from './rate-limit';
@@ -25,9 +28,18 @@ import { WebhookService } from './webhook.service';
  * The dispatcher's own retry timer starts here.
  */
 @Module({
-  imports: [TenantConfigModule],
-  controllers: [WebhookController, ApiKeyController, PublicApiController, ManifestController],
+  // DiscoveryModule gives the catalogue the application's own metadata to read,
+  // so the API's description is generated rather than maintained (docs/47 §2).
+  imports: [TenantConfigModule, DiscoveryModule],
+  controllers: [
+    ApiCatalogController,
+    WebhookController,
+    ApiKeyController,
+    PublicApiController,
+    ManifestController,
+  ],
   providers: [
+    CatalogService,
     WebhookService,
     WebhookDispatcher,
     ApiKeyService,
