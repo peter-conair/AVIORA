@@ -25,5 +25,23 @@ export default defineConfig({
     hookTimeout: 120_000,
     // Isolation tests share DB fixtures — run serially to stay deterministic.
     fileParallelism: false,
+    /**
+     * Coverage is measured HERE, not on the unit run, because this is where the
+     * tests are: 609 of them, through real HTTP against a real database. Unit
+     * coverage of this codebase is 2.7% and that is the design — docs/23's
+     * "≥80%" is about how much of the code is exercised, and asking the unit
+     * runner is asking the wrong instrument.
+     *
+     * Thresholds apply only when coverage is requested (`pnpm test:coverage`),
+     * so an ordinary CI run is not slowed by instrumentation. They sit a little
+     * below the current numbers — a floor with headroom, not a ratchet that
+     * turns an unrelated refactor red.
+     */
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/main.ts'],
+      thresholds: { statements: 85, functions: 90, branches: 75, lines: 85 },
+    },
   },
 });

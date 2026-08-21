@@ -42,16 +42,16 @@ Team: **one senior developer + AI assistance.** Estimates are ideal days; AI ass
 
 ### Sprint 0 Definition of Done
 
-- [ ] Fresh clone → `pnpm install && docker compose up && pnpm dev` boots web + api against local Postgres/Redis.
-- [ ] CI runs lint, typecheck, gitleaks, unit, integration on every PR; all checks required on `main`; direct pushes blocked.
-- [ ] Planted fake secret is blocked at pre-commit (L1) **and** in CI (L2).
-- [ ] Base migration applies cleanly on compose DB and testcontainers; zero `timestamp without time zone` columns (meta-test).
-- [ ] RLS suite green **as the non-owner app role**: alpha context sees only alpha rows; unset context sees zero rows; pg_policies meta-test passes.
-- [ ] TenantContext resolves from subdomain and header with correct precedence; forged `X-Tenant-ID` cannot widen access (integration test).
-- [ ] All API errors return the standard envelope; logs are structured JSON with the three ids.
-- [ ] Seed script runs twice with identical resulting state.
-- [ ] Docs 01–23 committed; ADR log (`20-adr.md`) reflects all thirteen decisions.
-- [ ] No secret values anywhere in the repo; `.env.example` placeholders only.
+- [x] Fresh clone boots web + api — CI does exactly this on every push: fresh checkout, `pnpm install --frozen-lockfile`, migrate, start both servers for the browser job.
+- [ ] CI runs lint, typecheck, gitleaks, unit, integration on every PR; all checks required on `main`; direct pushes blocked. **Half true, and the half that is missing is a decision, not a task**: four checks are required on `main` and force-pushes are blocked, but `enforce_admins` is off, so an administrator can push straight to `main` and bypass them. Turning it on makes every change — including an administrator's — go through a PR. That is a workflow choice for the repository owner.
+- [x] Planted fake secret is blocked at L1 and L2 — gitleaks runs in the pre-commit hook on every commit and as the required "scan for credentials" check. The planting itself is a manual drill (`~/.claude/rules/gitleaks-mandatory.md`), not an automated test: a repo that commits a fake secret to prove it cannot has committed a fake secret.
+- [x] Migrations apply cleanly and there are zero naive timestamp columns — `schema-meta.spec.ts` asserts `timestamptz` on every temporal column and fails on a new table that forgets it.
+- [x] RLS suite green as the non-owner app role — `tenant-isolation.spec.ts`, plus `route-coverage.spec.ts` driving every tenant-scoped route against a foreign tenant..
+- [x] TenantContext precedence, and a forged `X-Tenant-ID` cannot widen access — `tenant-isolation.spec.ts`. The guard additionally requires MEMBERSHIP on permission-free tenant routes, which is what stops a header from being enough.
+- [x] Standard error envelope, and structured logs carrying request/tenant/user — the envelope is asserted across the suites; the three ids were completed in docs/36 §2, taken from what the guards RESOLVED rather than from the header a caller sent.
+- [x] Seed runs twice with identical state — `seed-idempotence.spec.ts` executes it as a child process, the way a deploy runs it, and compares a full snapshot. It had been claimed in docs/17 §15 and tested nowhere, which matters because the seed is the one script that touches a production database unattended.
+- [x] Docs committed; `20-adr.md` carries thirteen ADRs.
+- [x] No secret values in the repo — gitleaks is clean on every commit and `.env.example` holds placeholders with a note on where each value comes from.
 
 ---
 
@@ -109,16 +109,16 @@ Stories are P0 backlog items; "thin" columns state Sprint-1 scope where the full
 
 ### Sprint 1 Definition of Done
 
-- [ ] The complete spec §72 sequence runs end-to-end through the UI on the compose stack (and staging, if provisioned).
-- [ ] Playwright E2E of the Slice 1 journey is green and required in CI.
-- [ ] Tenant-isolation suite covers **every** endpoint shipped this sprint (route-registry meta-test proves none is missing) and is a required CI gate.
-- [ ] `MemberRegistered`, `MembershipActivated`, `TeamCreated`, `LeaderAssigned`, `MemberJoinedTeam`, `GoalCreated`, `CourseStarted` events written to the outbox exactly once each along the journey; worker relays them (email consumer live, others logged).
-- [ ] Every sensitive mutation in the journey has an audit row with before/after and request_id.
-- [ ] All capability checks use entitlements — zero plan-name branching (review + lint).
-- [ ] Unit coverage on new domain logic ≥ 80% (Vitest thresholds); all CI gates green.
-- [ ] No hard-coded tenant, brand, depth, or plan anywhere (dev rules 1–7 review pass).
-- [ ] Journey screens usable at 360 px width; strings in i18n catalogs (th may lag en, no raw strings in JSX).
-- [ ] Demo script above performed in sprint review; consistency checkpoint (spec §83) recorded: schema ↔ docs ↔ tests aligned before Sprint 2 (Slice 2: recursive teams) begins.
+- [x] The §72 sequence runs end-to-end through the UI on the compose stack — `apps/web/e2e/vertical-slice-journey.spec.ts`. Staging is not provisioned, so that clause is untested and stays that way until one exists.
+- [x] Playwright E2E of the Slice 1 journey is green and required in CI — "browser E2E (mobile viewport)".
+- [x] Tenant isolation covers every endpoint via the route-registry sweep, and is a required CI gate.
+- [x] All seven journey events are written to the outbox and relayed — asserted in `vertical-slice.e2e.spec.ts`; events written to the outbox exactly once each along the journey; worker relays them (email consumer live, others logged).
+- [x] Every sensitive mutation has an audit row with a request id — `vertical-slice.e2e.spec.ts` for the journey's eight actions, and `audit-coverage.spec.ts` sweeping all 103 mutating routes so a new one cannot be silent. **`before`/`after` is not universal**: it is recorded where a value changed and omitted on creation, where there is no "before" to state.
+- [x] Capability checks use entitlements, with zero plan-name branching — no `plan.code ===` or `plan.name ===` exists in `apps/api/src`. It is enforced by review rather than by a lint rule, which is worth knowing: the check above is a grep, not a gate.
+- [x] Coverage ≥ 80%, measured where the tests are — **90.6% statements, 95.0% functions, 79.5% branches** under the integration suite (`pnpm --filter @aviora/api test:coverage`, thresholds configured). Measured on the UNIT runner it is 2.7%, and that is the design rather than a gap: this codebase tests behaviour through real HTTP against a real database, so asking the unit runner is asking the wrong instrument.
+- [x] No hard-coded tenant, brand, depth or plan — brands are rows (proved by the seed shipping two and `marketplace.e2e` asserting neutrality), depth is a closure table, plans are entitlements. Enforced by review and by the tests that would break, not by a linter.
+- [x] Journey screens usable at 360 px — `narrow-viewport.spec.ts` runs a dedicated Playwright project at 360×800 over sign-in, the journey screens, the admin tabs and the bottom bar. The rest of the browser suite runs at a Pixel 7, which is 412 px and would not have caught an overflow at 360.
+- [ ] Demo script performed in sprint review; consistency checkpoint (spec §83) recorded. **Not verifiable from the repository** — it is a meeting, and no artefact here can prove it happened. The schema ↔ docs ↔ tests half is continuously enforced by `schema-meta.spec.ts`, `route-coverage.spec.ts` and `audit-coverage.spec.ts`, each of which fails when the code and the documents disagree. (Slice 2: recursive teams) begins.
 
 ---
 

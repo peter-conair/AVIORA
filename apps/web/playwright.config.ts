@@ -31,6 +31,16 @@ export default defineConfig({
     {
       name: 'mobile',
       use: { ...devices['Pixel 7'] },
+      testIgnore: /narrow-viewport\.spec\.ts/,
+    },
+    {
+      // 360 px is the width docs/23's definition of done names, and it is 52 px
+      // narrower than a Pixel 7 — narrow enough that a layout which merely
+      // "works on mobile" starts to overflow. Only the layout-critical file
+      // runs here: the point is the width, not running everything twice.
+      name: 'narrow',
+      testMatch: /narrow-viewport\.spec\.ts/,
+      use: { ...devices['Pixel 7'], viewport: { width: 360, height: 800 } },
     },
   ],
   webServer: {

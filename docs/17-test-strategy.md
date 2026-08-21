@@ -196,7 +196,7 @@ Order matters — fail fast and cheap first:
 ## 15. Test Data Management
 
 - Canonical fixture factory in `packages/db` builds `tenant_alpha` / `tenant_beta` with a 4-level team tree, three roles, two plans, and sample goals/courses/leads — used by integration, isolation, and E2E suites so scenarios stay comparable.
-- The production seed script is idempotent and itself under test (running twice yields identical state).
+- The production seed script is idempotent and itself under test — `apps/api/test/integration/seed-idempotence.spec.ts` runs it as a child process, the way a deploy runs it, and compares a full snapshot across two runs. This sentence was here long before the test was: the seed is the one script that touches a production database unattended, and "idempotent" printed in its own output is not evidence.
 - No production data in tests, ever. No live third-party APIs in tests, ever (fakes at the gateway seams: AI, email, LINE, payment).
 
 ### 15.1 Nothing else may be touching the database
