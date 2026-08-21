@@ -3,6 +3,7 @@ import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { ERROR_CODES, PERMISSIONS } from '@aviora/shared';
 import { RequirePermissions } from '../../common/auth/decorators';
+import { AuditService } from '../../common/audit/audit.service';
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { ZodPipe } from '../../common/validation/zod.pipe';
@@ -16,6 +17,7 @@ export class MembersController {
   constructor(
     private readonly db: TenantDb,
     private readonly cls: ClsService,
+    private readonly audit: AuditService,
   ) {}
 
   @Get()
@@ -70,6 +72,9 @@ export class MembersController {
   @RequirePermissions(PERMISSIONS.GOAL_VIEW)
   async updateMe(@Body(new ZodPipe(updateMeSchema)) body: z.infer<typeof updateMeSchema>) {
     const memberId = this.requireMemberId();
+    const before = await this.db.tx((tx) =>
+      tx.member.findFirst({ where: { id: memberId }, select: { displayName: true } }),
+    );
     const member = await this.db.tx((tx) =>
       tx.member.update({
         where: { id: memberId },
@@ -77,6 +82,16 @@ export class MembersController {
         select: { id: true, displayName: true },
       }),
     );
+    // A member's own profile carries PII, and `health.profile.update` next door
+    // is already audited — two routes changing a person's details should not
+    // disagree about whether that is worth recording.
+    await this.audit.record({
+      action: 'member.profile.update',
+      entityType: 'member',
+      entityId: member.id,
+      before: { displayName: before?.displayName },
+      after: { displayName: member.displayName },
+    });
     return { member };
   }
 

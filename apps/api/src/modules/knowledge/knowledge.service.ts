@@ -7,6 +7,7 @@ import {
 import { ClsService } from 'nestjs-cls';
 import { ERROR_CODES, PERMISSIONS } from '@aviora/shared';
 import type { Tx } from '@aviora/db';
+import { AuditService } from '../../common/audit/audit.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { CLS_MEMBER_ID, PLATFORM_BYPASS } from '../../common/auth/permissions.guard';
 import { CLS_TENANT_ID } from '../../common/tenant/tenant-context.middleware';
@@ -49,6 +50,7 @@ export class KnowledgeService {
     private readonly db: TenantDb,
     private readonly cls: ClsService,
     private readonly teamScope: TeamScopeService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -572,7 +574,7 @@ export class KnowledgeService {
           message: 'Team knowledge belongs to a tenant, and this request resolved to none',
         });
       }
-      return tx.article.create({
+      const created = await tx.article.create({
         data: {
           tenantId,
           teamId: input.teamId,
@@ -587,6 +589,16 @@ export class KnowledgeService {
         },
         select: { id: true, slug: true, title: true, teamId: true, status: true },
       });
+      // A team acts on the guidance published to it, and docs/37 §5 keeps an
+      // unpublished article precisely so somebody can explain what it said.
+      // Who published it belongs in the same story.
+      await this.audit.record({
+        action: 'knowledge.team_article.publish',
+        entityType: 'article',
+        entityId: created.id,
+        after: { slug: created.slug, teamId: created.teamId },
+      });
+      return created;
     });
   }
 
@@ -606,7 +618,7 @@ export class KnowledgeService {
       const title = input.title ?? article.title;
       const summary = input.summary === undefined ? article.summary : input.summary;
       const bodyText = input.body ?? article.body;
-      return tx.article.update({
+      const updated = await tx.article.update({
         where: { id },
         data: {
           title,
@@ -617,6 +629,14 @@ export class KnowledgeService {
         },
         select: { id: true, slug: true, title: true, teamId: true, status: true },
       });
+      await this.audit.record({
+        action: 'knowledge.team_article.update',
+        entityType: 'article',
+        entityId: updated.id,
+        before: { title: article.title },
+        after: { title: updated.title, status: updated.status },
+      });
+      return updated;
     });
   }
 

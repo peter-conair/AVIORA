@@ -238,7 +238,7 @@ export class ChallengeService {
    * reached the target so the caller can emit their events.
    */
   async settle(challengeId: string): Promise<Array<{ memberId: string; code: string }>> {
-    return this.db.tx(async (tx) => {
+    const settled = await this.db.tx(async (tx) => {
       const challenge = await tx.challenge.findFirst({ where: { id: challengeId } });
       if (!challenge) return [];
       const participants = await tx.challengeParticipant.findMany({
@@ -271,6 +271,15 @@ export class ChallengeService {
       }
       return completed;
     });
+    // Settling decides who completed and what they are owed — the one moment in
+    // a challenge's life that a person would later want explained.
+    await this.audit.record({
+      action: 'challenge.settle',
+      entityType: 'challenge',
+      entityId: challengeId,
+      after: { completed: settled.length },
+    });
+    return settled;
   }
 
   /** Progress per member, derived from the source domain. */

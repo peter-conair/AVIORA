@@ -135,10 +135,10 @@ Covers: identity, tenant, membership, team (single level), goal, learning (minim
 
 **Slice 1 exit criteria**
 
-- [ ] The full §72 sequence runs end-to-end through the UI on staging.
-- [ ] Two tenants exist; the tenant-isolation test suite passes (Tenant A can never read/write Tenant B).
-- [ ] Playwright E2E covering the whole slice is green in CI.
-- [ ] Every mutation in the flow produces an audit log row.
+- [ ] **The full §72 sequence runs end-to-end through the UI.** The API drives the whole sequence (`vertical-slice.e2e.spec.ts`) and the browser suite exercises the screens at a phone viewport, but no single browser test walks the sequence from platform admin to updated dashboard. **There is also no staging environment**, so the "on staging" half cannot be ticked by anything in this repo.
+- [x] Two tenants exist; the tenant-isolation test suite passes — `tenant-isolation.spec.ts`, `route-coverage.spec.ts` (drives EVERY tenant-scoped route against a foreign tenant), `multi-tenant-user.e2e.spec.ts`.
+- [x] Playwright E2E covering the slice is green in CI — `apps/web/e2e/first-vertical-slice.spec.ts`, a required check ("browser E2E (mobile viewport)").
+- [x] Every mutation in the flow produces an audit log row — `vertical-slice.e2e.spec.ts` asserts the eight flow actions with request ids, and `audit-coverage.spec.ts` sweeps EVERY mutating route (103 of them), requiring each to be audited or exempted with a written reason. It found four silent mutations when it was added.
 
 #### Vertical Slice 2 — recursive teams (spec §73)
 
@@ -150,10 +150,10 @@ Covers: team closure table under depth, team move, scoped permissions (`SELF / D
 
 **Slice 2 exit criteria**
 
-- [ ] Parent leader sees authorized descendants; child leader cannot see unauthorized ancestors/siblings (test-asserted).
-- [ ] Metrics roll up correctly across ≥4 levels (direct vs organization counts verified by test).
-- [ ] Team move preserves closure correctness and history (dedicated test suite green).
-- [ ] Tenant boundaries hold under hierarchy queries (isolation suite extended to team endpoints).
+- [x] Parent leader sees authorized descendants; child leader cannot see unauthorized ancestors/siblings — `team-hierarchy.e2e.spec.ts`.
+- [x] Metrics roll up correctly across ≥4 levels — the same suite builds A → A1 → A1.1 → A1.1.1 with different leaders and checks direct vs organization counts.
+- [x] Team move preserves closure correctness and history — `PATCH /teams/:id/move` with a cycle guard, asserted in the same suite.
+- [x] Tenant boundaries hold under hierarchy queries — `route-coverage.spec.ts` covers team endpoints, having found `GET /teams/:id/members` answering 200 for a foreign team.
 
 #### Vertical Slice 3 — knowledge-to-product journey (spec §74)
 
@@ -166,31 +166,31 @@ Covers: minimal knowledge entities (`HealthGoal`, `Topic`, `Article`, `Ingredien
 
 **Slice 3 exit criteria**
 
-- [ ] A member can navigate goal → topic → article → ingredient → product in the UI.
-- [ ] Search ranks knowledge/articles above products (contract test).
-- [ ] A second brand is seeded with no schema change (test proves brand neutrality).
-- [ ] Global vs tenant knowledge visibility enforced.
+- [x] A member can navigate goal → topic → article → ingredient → product in the UI — browser test "the journey shows products only after the knowledge".
+- [x] Search ranks knowledge/articles above products — `knowledge-ai.e2e.spec.ts`.
+- [x] A second brand is seeded with no schema change — the seed ships two brands; `marketplace.e2e.spec.ts` additionally proves ordering never groups by brand (docs/44 §2).
+- [x] Global vs tenant knowledge visibility enforced — `knowledge-ai.e2e.spec.ts`, and team-scoped visibility in `team-knowledge.e2e.spec.ts` (docs/37).
 
 ### 2.4 MVP exit criteria — Definition of MVP Done (spec §84)
 
 All of the following, each backed by an automated test where feasible:
 
-- [ ] Platform Admin can create multiple tenants.
-- [ ] Tenant data is isolated (isolation suite green — highest priority).
-- [ ] One user can belong to multiple tenants (tenant switcher works).
-- [ ] Tenant can create membership plans; entitlements gate capabilities.
-- [ ] Tenant can invite members; members can register and activate membership.
-- [ ] Tenant can create unlimited nested teams; members can belong to multiple teams.
-- [ ] Teams have independent leaders; leaders manage authorized descendant teams only.
-- [ ] Team hierarchy history is preserved (effective dates, never destructive).
-- [ ] Member can create goals and follow a learning journey.
-- [ ] CRM supports leads and follow-up.
-- [ ] Dashboard shows personal and team progress (direct vs organization metrics).
-- [ ] Roles and permissions work, including scope levels.
-- [ ] AI respects tenant and team permissions (AI permission tests green).
-- [ ] Audit logs capture all sensitive actions.
-- [ ] Mobile UX is usable (mobile-first responsive, th/en).
-- [ ] Automated tenant-isolation tests pass in CI as a required gate.
+- [x] Platform Admin can create multiple tenants — `vertical-slice.e2e.spec.ts`.
+- [x] Tenant data is isolated — three suites, one of which sweeps every route.
+- [x] One user can belong to multiple tenants — `multi-tenant-user.e2e.spec.ts` (owner in A, member in B) + the tenant picker.
+- [x] Tenant can create membership plans; entitlements gate capabilities — asserted positively and negatively (a plan without `course.access` is refused a course).
+- [x] Tenant can invite members; members register and activate — the invitation flow, including the second acceptance failing.
+- [x] Unlimited nested teams; members in multiple teams — `team-hierarchy.e2e.spec.ts`.
+- [x] Independent leaders; leaders manage authorized descendants only — same suite, asserted in both directions.
+- [x] Team hierarchy history preserved — leadership history and closure rewrite on move.
+- [x] Member can create goals and follow a learning journey — Slice 1 flow.
+- [x] CRM supports leads and follow-up — `crm.e2e.spec.ts`.
+- [x] Dashboard shows personal and team progress — `analytics.e2e.spec.ts`, direct vs organization.
+- [x] Roles and permissions work, including scope levels — `SYSTEM_ROLES` + `TeamScopeService`; a repair pass reaches tenants provisioned before a scope changed.
+- [x] AI respects tenant and team permissions — `knowledge-ai.e2e.spec.ts` and `team-knowledge.e2e.spec.ts`: scope is applied IN the query, so nothing is filtered after retrieval.
+- [x] Audit logs capture all sensitive actions — see Slice 1 above; the sweep is what makes this a claim rather than a hope.
+- [x] Mobile UX is usable (mobile-first, th/en) — the browser suite runs at Pixel 7 and asserts no horizontal scroll; the Thai locale is exercised.
+- [x] Automated tenant-isolation tests pass in CI as a required gate — "integration (RLS + tenant isolation)".
 
 ---
 
@@ -253,7 +253,7 @@ Add the optional, configurable growth-economics layer — ranks, compensation, r
 - [x] Team graph, referral graph, and compensation graph are independently editable; coupling tests assert it in every direction (`growth.e2e.spec.ts`, `compensation.e2e.spec.ts`).
 - [x] Rank progress computes against configurable qualification rules — `growth.e2e.spec.ts`.
 - [x] Commission runs are idempotent (unique per period), auditable (every entry stores its working), and reproducible (as-of traversal + frozen approvals).
-- [ ] AI Team Coach answers spec §49 questions only within the requesting leader's scope (AI permission tests).
+- [x] AI Team Coach answers spec §49 questions only within the requesting leader's scope — `analytics.e2e.spec.ts`: the coach calls the same scoped service the leader dashboard calls, holds no database handle of its own, and is refused entirely to a member who leads nothing. Authorization precedes retrieval, so there is nothing to filter afterwards (docs/28 §4).
 - [ ] Automation workflows execute from all spec §51 triggers via the outbox/BullMQ pipeline.
 
 ---
@@ -281,7 +281,7 @@ Open the platform outward: multi-brand commerce, enterprise-grade tenancy, partn
 - [ ] Enterprise SSO login works for at least one federated tenant. **Open**: OIDC is verified against a fake provider with real RSA keys (`sso.e2e.spec.ts`); no real IdP has been used.
 - [x] A third-party integration consumes the public API + webhooks end-to-end — `integration.e2e.spec.ts` drives a real in-process TLS receiver and verifies the signature it receives.
 - [x] A white-label mobile build ships for at least one tenant — as a branded installable PWA (per-host manifest). Native store distribution is deliberately out of scope (docs/30 §5).
-- [ ] Platform dashboard reports MRR/ARR/churn/AI cost per tenant. **Partly**: members, tenants, churn and AI _token_ counts are real; AI cost, storage and infrastructure cost report as not-measured rather than as zero (docs/28 §6).
+- [ ] Platform dashboard reports MRR/ARR/churn/AI cost per tenant. **Mostly**: members, tenants, churn and AI usage are real, and AI **cost** is now computed from tokens times a reviewed rate card, with a model that has no rate costing `null` and saying so rather than `0` (docs/36 §5). Storage and infrastructure cost still report as not-measured — nothing inside the app meters the machine it runs on, and a fabricated number is worse than a missing one.
 
 ---
 

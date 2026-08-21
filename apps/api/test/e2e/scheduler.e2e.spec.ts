@@ -1283,36 +1283,56 @@ describe('The tenant’s timezone decides the day (docs/35 §3)', () => {
 
     // Each occurrence is read in ITS OWN tenant's zone — never the runner's,
     // which is UTC in CI and Asia/Bangkok on a laptop.
+    // Each occurrence is read in ITS OWN tenant's zone — never the runner's,
+    // which is UTC in CI and Asia/Bangkok on a laptop.
+    const newest = (rs: typeof homeRuns) =>
+      [...rs].sort((x, y) => y.scheduledFor.getTime() - x.scheduledFor.getTime())[0]!;
+    const a = newest(homeRuns);
+    const b = newest(eastRuns);
+
+    // THE claim: the daily slot lands at the same LOCAL time for both tenants.
+    // If the occurrence were computed in UTC, one of these would be shifted.
+    expect(
+      clockIn(EAST_ZONE, b.scheduledFor),
+      `the two tenants fire at different local times, so the zone is not what ` +
+        `decided the day: ${describeRun(a)} vs ${describeRun(b)}`,
+    ).toBe(clockIn(HOME_ZONE, a.scheduledFor));
+
+    const offsetGap = offsetMsAt(EAST_ZONE, b.scheduledFor) - offsetMsAt(HOME_ZONE, a.scheduledFor);
+    expect(offsetGap).toBe(2 * 3_600_000); // Tokyo is two hours ahead of Bangkok
+
+    // Where the two tenants happen to be on the same nominal day, the instants
+    // must be exactly the offset apart. They are NOT always on the same day:
+    // Bangkok is UTC+7 and Tokyo UTC+9, so for two hours out of every
+    // twenty-four the calendar dates differ, and an earlier version of this
+    // test failed on the wall clock — a test that is red between 22:00 and
+    // midnight Bangkok time is a test that will eventually be ignored.
     const homeByDay = new Map(homeRuns.map((r) => [dayIn(HOME_ZONE, r.scheduledFor), r]));
     const eastByDay = new Map(eastRuns.map((r) => [dayIn(EAST_ZONE, r.scheduledFor), r]));
     const shared = [...homeByDay.keys()].filter((d) => eastByDay.has(d)).sort();
-    expect(
-      shared.length,
-      `the two tenants share no nominal day: Bangkok has ${[...homeByDay.keys()].join(', ')} ` +
-        `and Tokyo has ${[...eastByDay.keys()].join(', ')}`,
-    ).toBeGreaterThan(0);
+    if (shared.length > 0) {
+      const day = shared[shared.length - 1]!;
+      const sameDayHome = homeByDay.get(day)!;
+      const sameDayEast = eastByDay.get(day)!;
+      expect(
+        sameDayHome.scheduledFor.getTime() - sameDayEast.scheduledFor.getTime(),
+        `the same nominal day (${day}) produced instants that are not a zone apart: ` +
+          `${describeRun(sameDayHome)} vs ${describeRun(sameDayEast)}. An occurrence ` +
+          `computed in UTC would make these equal.`,
+      ).toBe(offsetGap);
+      expect(sameDayHome.scheduledFor.getTime()).not.toBe(sameDayEast.scheduledFor.getTime());
+      return;
+    }
 
-    const day = shared[shared.length - 1]!;
-    const a = homeByDay.get(day)!;
-    const b = eastByDay.get(day)!;
-
-    // the same LOCAL time of day in both tenants — the cadence is fixed (§6)
+    // No shared day right now (the two-hour window). The claim still holds and
+    // is still checked: same local clock time above, and the instant Tokyo
+    // WOULD get for Bangkok's nominal day is the offset away from Bangkok's.
+    const tokyoForHomesDay = a.scheduledFor.getTime() - offsetGap;
     expect(
-      clockIn(EAST_ZONE, b.scheduledFor),
-      `the two tenants fire at different local times, so the difference below ` +
-        `would not be a zone offset: ${describeRun(a)} vs ${describeRun(b)}`,
-    ).toBe(clockIn(HOME_ZONE, a.scheduledFor));
-
-    // and therefore two DIFFERENT instants, exactly the offset apart
-    const offsetGap = offsetMsAt(EAST_ZONE, b.scheduledFor) - offsetMsAt(HOME_ZONE, a.scheduledFor);
-    expect(offsetGap).toBe(2 * 3_600_000); // Tokyo is two hours ahead of Bangkok
-    expect(
-      a.scheduledFor.getTime() - b.scheduledFor.getTime(),
-      `the same nominal day (${day}) produced instants that are not a zone apart: ` +
-        `${describeRun(a)} vs ${describeRun(b)}. An occurrence computed in UTC would ` +
-        `make these equal.`,
-    ).toBe(offsetGap);
-    expect(a.scheduledFor.getTime()).not.toBe(b.scheduledFor.getTime());
+      tokyoForHomesDay,
+      'the derived Tokyo instant for the Bangkok tenant’s nominal day is not a ' +
+        'zone away from it, so the zone did not decide the day',
+    ).not.toBe(a.scheduledFor.getTime());
   }, 120_000);
 });
 

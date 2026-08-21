@@ -8,6 +8,7 @@ import { ERROR_CODES, EVENTS } from '@aviora/shared';
 import { withTenant, type Tx } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { AuditService } from '../../common/audit/audit.service';
 import { InvitationsService } from '../membership/invitations.service';
 
 /**
@@ -33,6 +34,7 @@ export class SponsorshipService {
     private readonly db: TenantDb,
     private readonly prisma: PrismaService,
     private readonly invitations: InvitationsService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(input: {
@@ -42,7 +44,7 @@ export class SponsorshipService {
     seats: number;
     sponsorName?: string;
   }) {
-    return this.db.tx(async (tx) => {
+    const pool = await this.db.tx(async (tx) => {
       const plan = await tx.membershipPlan.findFirst({
         where: { id: input.planId, status: 'active' },
         select: { id: true },
@@ -68,6 +70,15 @@ export class SponsorshipService {
         },
       });
     });
+    // Seats are what somebody paid for; how many existed and when is the kind
+    // of thing a billing conversation turns on.
+    await this.audit.record({
+      action: 'sponsorship.create',
+      entityType: 'sponsorship_pool',
+      entityId: pool.id,
+      after: { code: pool.code, seats: pool.seats, planId: pool.planId },
+    });
+    return pool;
   }
 
   /** Pools with their seat accounting: used, reserved, free. */
@@ -173,7 +184,7 @@ export class SponsorshipService {
   }
 
   async release(seatId: string) {
-    return this.db.tx(async (tx) => {
+    const released = await this.db.tx(async (tx) => {
       const seat = await tx.sponsoredSeat.findFirst({ where: { id: seatId, releasedAt: null } });
       if (!seat) {
         throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Seat not found' });
@@ -183,10 +194,17 @@ export class SponsorshipService {
         data: { releasedAt: new Date() },
       });
     });
+    await this.audit.record({
+      action: 'sponsorship.seat.release',
+      entityType: 'sponsored_seat',
+      entityId: released.id,
+      after: { poolId: released.poolId, memberId: released.memberId },
+    });
+    return released;
   }
 
   async resize(poolId: string, input: { seats?: number; status?: string }) {
-    return this.db.tx(async (tx) => {
+    const result = await this.db.tx(async (tx) => {
       const pool = await tx.sponsorshipPool.findFirst({ where: { id: poolId } });
       if (!pool) {
         throw new NotFoundException({
@@ -209,14 +227,23 @@ export class SponsorshipService {
           });
         }
       }
-      return tx.sponsorshipPool.update({
+      const updated = await tx.sponsorshipPool.update({
         where: { id: pool.id },
         data: {
           ...(input.seats !== undefined ? { seats: input.seats } : {}),
           ...(input.status ? { status: input.status } : {}),
         },
       });
+      return { updated, before: { seats: pool.seats, status: pool.status } };
     });
+    await this.audit.record({
+      action: 'sponsorship.update',
+      entityType: 'sponsorship_pool',
+      entityId: result.updated.id,
+      before: result.before,
+      after: { seats: result.updated.seats, status: result.updated.status },
+    });
+    return result.updated;
   }
 
   /**

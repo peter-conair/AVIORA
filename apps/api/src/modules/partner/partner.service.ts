@@ -8,6 +8,7 @@ import { withTenant, type Tx } from '@aviora/db';
 import { ERROR_CODES } from '@aviora/shared';
 import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { AuditService } from '../../common/audit/audit.service';
 import { InvitationsService } from '../membership/invitations.service';
 
 /**
@@ -30,12 +31,13 @@ export class PartnerService {
     private readonly db: TenantDb,
     private readonly prisma: PrismaService,
     private readonly invitations: InvitationsService,
+    private readonly audit: AuditService,
   ) {}
 
   /* ── tenant side ───────────────────────────────────────────────────────── */
 
   async create(input: { code: string; name: string; contactEmail?: string }) {
-    return this.db.tx(async (tx) => {
+    const partner = await this.db.tx(async (tx) => {
       const dup = await tx.partner.findFirst({ where: { code: input.code } });
       if (dup) {
         throw new ConflictException({
@@ -52,6 +54,13 @@ export class PartnerService {
         },
       });
     });
+    await this.audit.record({
+      action: 'partner.create',
+      entityType: 'partner',
+      entityId: partner.id,
+      after: { code: partner.code, name: partner.name },
+    });
+    return partner;
   }
 
   async list() {
@@ -70,7 +79,7 @@ export class PartnerService {
   /** Grants a person portal access. They get a User to sign in with, never a Member. */
   async addUser(partnerId: string, email: string) {
     const normalised = email.toLowerCase().trim();
-    return this.db.tx(async (tx) => {
+    const link = await this.db.tx(async (tx) => {
       const partner = await tx.partner.findFirst({ where: { id: partnerId } });
       if (!partner) {
         throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Partner not found' });
@@ -113,16 +122,33 @@ export class PartnerService {
         data: { tenantId: this.db.tenantId, partnerId, userId: user.id },
       });
     });
+    // Granting somebody access to a tenant's data is exactly what an audit log
+    // is for — it is the partner-portal equivalent of handing out a key.
+    await this.audit.record({
+      action: 'partner.user.grant',
+      entityType: 'partner_user',
+      entityId: link.id,
+      after: { partnerId, userId: link.userId },
+    });
+    return link;
   }
 
   async removeUser(partnerUserId: string) {
-    return this.db.tx(async (tx) => {
+    const revoked = await this.db.tx(async (tx) => {
       const link = await tx.partnerUser.findFirst({ where: { id: partnerUserId } });
       if (!link) {
         throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Not found' });
       }
       return tx.partnerUser.update({ where: { id: link.id }, data: { status: 'revoked' } });
     });
+    await this.audit.record({
+      action: 'partner.user.revoke',
+      entityType: 'partner_user',
+      entityId: revoked.id,
+      before: { status: 'active' },
+      after: { status: 'revoked' },
+    });
+    return revoked;
   }
 
   /* ── partner side — every method scoped by the CALLER'S partner id ─────── */
