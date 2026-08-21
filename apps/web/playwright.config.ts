@@ -1,4 +1,11 @@
+import * as path from 'node:path';
+import * as dotenv from 'dotenv';
 import { defineConfig, devices } from '@playwright/test';
+
+// CI passes these in the job env; a laptop keeps them in the repo's .env. The
+// §72 journey test reads the invitation token from the outbox, which needs the
+// database URL — everything else here runs without it.
+dotenv.config({ path: [path.resolve(__dirname, '../../.env'), path.resolve(__dirname, '.env')] });
 
 const WEB_PORT = Number(process.env.AVIORA_WEB_PORT ?? 3020);
 
