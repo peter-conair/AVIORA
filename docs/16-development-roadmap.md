@@ -222,7 +222,7 @@ Status as built. A checked box means a test proves it, and the proof is named.
 - [ ] Knowledge search is RAG-backed. It is retrieval-backed and authorization-scoped (`knowledge-ai.e2e.spec.ts`), but retrieval is lexical, not embedding-based.
 - [x] A tenant can run a challenge with leaderboard end-to-end — `community-challenges.e2e.spec.ts`.
 - [x] An order and a subscription can be placed, renewed, paused, and cancelled; `OrderPlaced` / `OrderCompleted` / `SubscriptionRenewed` flow through the outbox — `commerce.e2e.spec.ts`, including the case that renewal cannot bill a cycle twice.
-- [ ] AI CRM suggestions appear in the CRM UI — not started.
+- [ ] AI CRM suggestions appear in the CRM UI — **not built, deliberately** (docs/33 §2 lists it under §35). Lead priority and next-best-action are predictions, and predicting from a pipeline with no history produces confident noise a salesperson would act on. It arrives when there is enough CRM history to evaluate a suggestion against what actually happened. Listed here as a goal AND there as a decision, which is why this line now says which it is.
 - [x] Health data endpoints enforce `health.profile.*` — leaders, coaches and the tenant owner all get 403 without the member's grant, with no admin override (docs/13).
 - [x] All Phase 1 gates still green — 164 API tests, 11 browser tests, four required CI checks.
 
@@ -254,7 +254,7 @@ Add the optional, configurable growth-economics layer — ranks, compensation, r
 - [x] Rank progress computes against configurable qualification rules — `growth.e2e.spec.ts`.
 - [x] Commission runs are idempotent (unique per period), auditable (every entry stores its working), and reproducible (as-of traversal + frozen approvals).
 - [x] AI Team Coach answers spec §49 questions only within the requesting leader's scope — `analytics.e2e.spec.ts`: the coach calls the same scoped service the leader dashboard calls, holds no database handle of its own, and is refused entirely to a member who leads nothing. Authorization precedes retrieval, so there is nothing to filter afterwards (docs/28 §4).
-- [ ] Automation workflows execute from all spec §51 triggers via the outbox/BullMQ pipeline.
+- [x] Automation workflows execute from spec §51's triggers via the outbox — every event in the shared `EVENTS` catalog is a legal trigger, and a rule naming an event the platform does not emit is **rejected at creation** rather than saved as a rule that could never fire (`automation.e2e.spec.ts`, docs/27 §1). Two deliberate departures from the wording: the pipeline is the outbox relay, not BullMQ (docs/11's upgrade, and docs/41 established the relay is not slow — it had been throttled); and an action with no adapter is refused at creation instead of silently ignored.
 
 ---
 
