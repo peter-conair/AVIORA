@@ -394,9 +394,16 @@ export class AnalyticsService {
  * as "we spent nothing".
  */
 const NOT_MEASURED = {
+  // AI cost stopped being unmeasured in Sprint 17: docs/36 §5 gives it a
+  // reviewed rate card, and /platform/observability/ai reports it per tenant
+  // and per model. It is named here, rather than reported here, because that
+  // number is provider spend and this dashboard is read by tenants too.
   aiCost: {
-    status: 'not_measured' as const,
-    reason: 'Token counts are recorded per tenant, but no price table converts them to money yet.',
+    status: 'measured_elsewhere' as const,
+    reason:
+      'Estimated from tokens and the rate card in docs/36 §5, and reported at ' +
+      '/platform/observability/ai. It is platform spend, so it is not shown on a ' +
+      'dashboard a tenant can read.',
   },
   storage: {
     status: 'not_measured' as const,

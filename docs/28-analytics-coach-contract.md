@@ -116,9 +116,16 @@ All accept `?window=30d|90d|month` and echo the resolved window back.
   presented as insight. It returns the underlying series so a leader can look,
   and says the platform will answer it when there is enough history to mean
   anything.
-- **No AI cost or infrastructure cost** on the platform dashboard: nothing
-  meters them yet, and a fabricated cost is worse than a missing one. The
-  dashboard names them as not-yet-measured rather than showing zero.
+- **No AI cost or infrastructure cost** on the platform dashboard: a fabricated
+  cost is worse than a missing one, so the dashboard names them rather than
+  showing zero.
+
+  _Updated in Sprint 17:_ AI cost is now measured — docs/36 §5 gives it a
+  reviewed rate card and `/platform/observability/ai` reports it per tenant and
+  model. It is still absent from **this** dashboard, and now for a different
+  reason: it is what the platform pays a provider, and this surface is read by
+  tenants. Infrastructure cost remains genuinely unmeasured.
+
 - **No churn prediction, no scoring of people.** Spec §49 asks which leader
   needs coaching; the honest answer names a measure that fell, not a judgement
   about a person.

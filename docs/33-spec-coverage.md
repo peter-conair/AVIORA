@@ -37,7 +37,8 @@
 | 54–56        | Multi-language, multi-country, white label                     | `modules/tenant-config`                          | `white-label.e2e.spec.ts`                                           |
 | 57–60        | Roles & permissions, security, health privacy, audit           | `common/auth`, `docs/13`                         | Isolation suite; health tests; audit viewer                         |
 | 61, 65–67    | Database, events, entities, API design                         | `packages/db`, outbox, `docs/10`                 | `schema-meta.spec.ts` guards every new table                        |
-| 69–74        | Testing strategy, MVP, three slices                            | `docs/17`, `apps/api/test`                       | 449 API + 22 browser tests                                          |
+| 68           | Observability                                                  | `common/observability`, `modules/observability`  | `observability.e2e.spec.ts` — stale claims surfaced, cost priced    |
+| 69–74        | Testing strategy, MVP, three slices                            | `docs/17`, `apps/api/test`                       | 541 API + 22 browser tests                                          |
 | 78–84        | Dev rules, docs, ER, backlog, process, MVP done                | `docs/00`–`docs/33`                              | This suite of documents                                             |
 
 ## 2. Deliberately not built
@@ -70,6 +71,7 @@ These are the honest risks. Each names what would make it provable.
 | **AI answers are grounded**                                                                             | Citations and a grounded-local fallback; quota-capped.                                                                                                              | A real provider key, and evaluation against questions with known answers.                                                                    |
 | **Rate limiting holds**                                                                                 | In-memory per process.                                                                                                                                              | Redis, or it resets on deploy and does not span instances.                                                                                   |
 | **Backups restore**                                                                                     | Not exercised.                                                                                                                                                      | A restore drill. A backup nobody has restored is a hope.                                                                                     |
+| **Somebody is watching**                                                                                | The platform reports on itself (docs/36): queue depth, stale scheduler claims, AI spend per tenant.                                                                 | Something that reads those numbers when nobody is looking. A metric with no alert is a page nobody opens.                                    |
 
 ## 4. The one MVP row still open
 

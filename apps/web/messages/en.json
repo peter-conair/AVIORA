@@ -1734,5 +1734,32 @@
     "acceptedNow": "Recorded: version {version}, accepted {at}.",
     "signInToAccept": "The document above is public. Sign in to record that you accept it.",
     "signInAction": "Sign in"
+  },
+  "systemHealth": {
+    "title": "System health",
+    "intro": "What the machinery is doing when nobody is watching it.",
+    "queueTitle": "Event queue",
+    "pending": "Waiting",
+    "failing": "Errored at least once",
+    "processed": "Delivered in window",
+    "oldest": "Oldest waiting",
+    "jobsTitle": "Scheduled jobs",
+    "staleTitle": "Runs nobody finished",
+    "staleNone": "Nothing is stuck. Every run that started has settled.",
+    "staleWarning": "{count, plural, =1 {One run has been claimed for longer than {minutes} minutes} other {# runs have been claimed for longer than {minutes} minutes}}. The scheduler will not retry them — that is how it avoids billing twice — so each has to be run by hand.",
+    "staleJob": "Job",
+    "staleTenant": "Tenant",
+    "staleFor": "Claimed for",
+    "aiTitle": "AI spend",
+    "aiIntro": "Estimated from tokens and a reviewed rate card. It is what the platform pays a provider — not billing, and nothing charges a tenant from it.",
+    "aiTotal": "Estimated spend",
+    "aiRequests": "Requests",
+    "aiTokens": "Tokens",
+    "unpriced": "No rate configured for: {models}. Their tokens are counted; their cost is not guessed.",
+    "forbidden": "System health is a platform view. Your account does not have it.",
+    "seconds": "{count}s",
+    "minutes": "{count}m",
+    "hours": "{count}h",
+    "none": "—"
   }
 }

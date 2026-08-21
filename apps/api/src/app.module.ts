@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ClsMiddleware, ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
@@ -76,7 +76,9 @@ import { CompensationModule } from './modules/compensation/compensation.module';
 import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { SsoModule } from './modules/sso/sso.module';
+import { LogContextInterceptor } from './common/observability/log-context.interceptor';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { ObservabilityModule } from './modules/observability/observability.module';
 import { WebhookHandlers } from './modules/integration/webhook.handlers';
 
 @Module({
@@ -116,6 +118,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     IntegrationModule,
     SsoModule,
     SchedulerModule,
+    ObservabilityModule,
   ],
   controllers: [
     HealthCheckController,
@@ -196,6 +199,9 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     // First in the chain on purpose: "read-only at the API edge" (docs/31 §2)
     // means the refusal happens before authentication, permissions or any
     // handler gets a chance to write something the migration would discard.
+    // After the guards, so what it logs is what the platform RESOLVED rather
+    // than what the caller claimed in a header (docs/36 §2).
+    { provide: APP_INTERCEPTOR, useClass: LogContextInterceptor },
     { provide: APP_GUARD, useClass: TenantDatabaseGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

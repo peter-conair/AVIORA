@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { PlatformAnalyticsSection } from '@/components/analytics/PlatformAnalyticsSection';
+import { SystemHealthSection } from '@/components/platform/SystemHealthSection';
 
 interface TenantFormState {
   code: string;
@@ -110,6 +111,8 @@ export default function PlatformPage() {
       {/* Cross-tenant measures, gated on the platform ROLE this page already
           checked — and checked again by the API (docs/28 §1). */}
       <PlatformAnalyticsSection />
+
+      <SystemHealthSection />
 
       <Card title={t('tenantsTitle')}>
         {tenants.length === 0 ? (

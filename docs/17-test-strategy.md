@@ -198,3 +198,19 @@ Order matters — fail fast and cheap first:
 - Canonical fixture factory in `packages/db` builds `tenant_alpha` / `tenant_beta` with a 4-level team tree, three roles, two plans, and sample goals/courses/leads — used by integration, isolation, and E2E suites so scenarios stay comparable.
 - The production seed script is idempotent and itself under test (running twice yields identical state).
 - No production data in tests, ever. No live third-party APIs in tests, ever (fakes at the gateway seams: AI, email, LINE, payment).
+
+### 15.1 Nothing else may be touching the database
+
+The integration suites share one local database with whatever the developer is
+running. An API server pointed at it drains the outbox these tests assert on and
+ticks the scheduler across the tenants they just created — and the resulting
+failures look exactly like product bugs.
+
+`test/setup-env.ts` refuses to start a run while something answers on
+`AVIORA_API_PORT`, and prints the command to stop it. It must be registered as
+**`globalSetup`**: for a long time it was listed only under `setupFiles`, which
+imports the module but never calls its exported `setup()`, so the guard had
+never once fired. A safety net that reads like protection and does nothing is
+worse than none — the flakes it exists to explain get blamed on the product.
+
+If a test that passes alone fails in the full suite, check this first.

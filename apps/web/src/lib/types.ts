@@ -2781,3 +2781,67 @@ export function permissionLabelKey(scope: string): string | null {
   if (!API_KEY_SCOPE_SET.has(scope)) return null;
   return `permissions.${scope.replace(/\.([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 }
+
+/* ── System health (docs/36) ───────────────────────────────────────────────── */
+
+export interface QueueHealthResponse {
+  pending: number;
+  failing: number;
+  processedInWindow: number;
+  oldestPendingAgeSeconds: number | null;
+  worstAttempts: number;
+  window: { days: number; from: string; to: string };
+  note: string;
+}
+
+export interface StaleRun {
+  id: string;
+  job: string;
+  tenantId: string | null;
+  scheduledFor: string;
+  startedAt: string | null;
+  claimedForSeconds: number | null;
+}
+
+export interface JobsHealthResponse {
+  window: { days: number; from: string; to: string };
+  /** job name → status → count */
+  jobs: Record<string, Record<string, number>>;
+  stale: {
+    thresholdMinutes: number;
+    count: number;
+    runs: StaleRun[];
+    note: string;
+  };
+  recentFailures: Array<{
+    id: string;
+    job: string;
+    tenantId: string | null;
+    scheduledFor: string;
+    attempts: number;
+    error: string | null;
+  }>;
+}
+
+export interface AiSpendRow {
+  tenantId: string;
+  provider: string;
+  model: string;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  /** Null when no rate is configured — never 0 (docs/36 §5). */
+  costMinor: number | null;
+  currency: string;
+  note?: string;
+  rateTakenOn?: string;
+}
+
+export interface AiSpendResponse {
+  window: { days: number; from: string; to: string };
+  currency: string;
+  totalCostMinor: number;
+  unpricedModels: string[];
+  usage: AiSpendRow[];
+  note: string;
+}

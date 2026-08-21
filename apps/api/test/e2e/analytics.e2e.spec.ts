@@ -1244,16 +1244,20 @@ describe('AI Team Coach — answers from these numbers (docs/28 §4)', () => {
 });
 
 describe('Platform — honest about what is not measured (docs/28 §6)', () => {
-  it('reports AI, storage and infrastructure cost as not measured, never as 0', async () => {
-    // §6: "nothing meters them yet, and a fabricated cost is worse than a
-    // missing one. The dashboard names them as not-yet-measured rather than
-    // showing zero."
+  it('names AI, storage and infrastructure cost rather than reporting a 0', async () => {
+    // §6: "a fabricated cost is worse than a missing one … the dashboard names
+    // them rather than showing zero." Since Sprint 17 the reason differs per
+    // line — AI cost is measured, just not HERE (docs/36 §5: it is provider
+    // spend, and this surface is read by tenants) — but the assertion that
+    // matters is unchanged: no number appears against any of the three.
     const platform = await login(PLATFORM_EMAIL);
     const res = await dashboard('platform', platform, { window: '30d' });
     expect(res.status).toBe(200);
 
     const serialised = JSON.stringify(res.body);
-    expect(serialised).toMatch(/not[- ]?(yet[- ])?measured|notMeasured|not_measured/i);
+    expect(serialised).toMatch(
+      /not[- ]?(yet[- ])?measured|notMeasured|not_measured|measured_elsewhere/i,
+    );
     expect(serialised).toMatch(/ai/i);
     expect(serialised).toMatch(/storage/i);
     expect(serialised).toMatch(/infrastructure|infra/i);
