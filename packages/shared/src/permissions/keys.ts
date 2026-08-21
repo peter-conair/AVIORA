@@ -34,6 +34,8 @@ export const PERMISSIONS = {
   TEAM_MEMBER_MANAGE: 'team.member.manage',
   TEAM_LEADER_ASSIGN: 'team.leader.assign',
   TEAM_ANALYTICS_VIEW: 'team.analytics.view',
+  /** Publishing knowledge to a team one leads (docs/37 §5). */
+  KNOWLEDGE_TEAM_MANAGE: 'knowledge.team.manage',
 
   // goals
   GOAL_VIEW: 'goal.view',

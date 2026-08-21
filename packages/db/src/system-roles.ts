@@ -45,6 +45,10 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'team.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'team.member.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'team.analytics.view', scope: SCOPES.DESCENDANT_TEAMS },
+      // Publishing knowledge to the teams they lead, and everything beneath
+      // (docs/37 §5). Reading team knowledge needs no grant at all — that is
+      // membership, not leadership.
+      { key: 'knowledge.team.manage', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'team.member.manage', scope: SCOPES.DIRECT_TEAM },
       { key: 'member.view', scope: SCOPES.DESCENDANT_TEAMS },
       // leaders coach their org's pipeline but do not own the records

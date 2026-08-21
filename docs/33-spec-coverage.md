@@ -15,31 +15,31 @@
 
 ## 1. Built
 
-| §            | Section                                                        | Where                                            | Proof                                                               |
-| ------------ | -------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
-| 1–3          | Vision, philosophy, member journey                             | `docs/01`, `docs/15`                             | The three vertical slices run end to end                            |
-| 4–6          | Multi-tenancy, tenant entity, resolution                       | `common/tenant`, RLS on every tenant table       | `tenant-isolation.spec.ts`, route-registry sweep                    |
-| 7–10         | User vs member, membership, entitlements, profile              | `modules/identity`, `modules/membership`         | Slice 1 E2E                                                         |
-| 11–16        | Team OS, entity, membership, leadership, hierarchy, management | `modules/team` + closure table                   | Slice 2 E2E, cycle-guarded moves                                    |
-| 17–18        | **Team tree ≠ referral tree**, referral graph                  | `modules/growth`                                 | `growth.e2e.spec.ts` — independence asserted in both directions     |
-| 19–21        | Scopes, team & leader dashboards                               | `TeamScopeService`, `/analytics/team`            | `analytics.e2e.spec.ts`                                             |
-| 24–25        | Learning OS, onboarding                                        | `modules/learning`                               | Slice 1 E2E                                                         |
-| 27–28        | Healthy Living OS + its knowledge graph                        | `modules/health`, `modules/knowledge`            | `health.e2e.spec.ts` — consent gate, no admin override              |
-| 29–33        | Knowledge OS, product intelligence, brand neutrality, content  | `modules/knowledge`                              | `knowledge-ai.e2e.spec.ts` — two brands, no favouritism             |
-| 34           | CRM                                                            | `modules/crm`                                    | Sprint 3 E2E                                                        |
-| 36–38        | Community, challenges, gamification                            | `modules/community`, `challenge`, `gamification` | `community-challenges.e2e.spec.ts`                                  |
-| 39–40        | Commerce, subscriptions                                        | `modules/commerce`                               | `commerce.e2e.spec.ts` — renewal cannot double-bill                 |
-| 42–45        | Compensation OS, rule engine, ranks, rewards                   | `modules/compensation`, `growth`, `reward`       | `compensation.e2e.spec.ts` — two tenants, two plans, one engine     |
-| 46–47, 49–50 | AI OS, context, team coach, knowledge security                 | `modules/ai`, `analytics`                        | Coach holds no DB handle; authorization precedes retrieval          |
-| 51           | Automation OS                                                  | `modules/automation`                             | `automation.e2e.spec.ts` — idempotent per event, no self-triggering |
-| 52           | Notification centre                                            | `modules/notification`                           | Sprint 3 E2E                                                        |
-| 53           | Analytics OS (4 dashboards)                                    | `modules/analytics`                              | `analytics.e2e.spec.ts`                                             |
-| 54–56        | Multi-language, multi-country, white label                     | `modules/tenant-config`                          | `white-label.e2e.spec.ts`                                           |
-| 57–60        | Roles & permissions, security, health privacy, audit           | `common/auth`, `docs/13`                         | Isolation suite; health tests; audit viewer                         |
-| 61, 65–67    | Database, events, entities, API design                         | `packages/db`, outbox, `docs/10`                 | `schema-meta.spec.ts` guards every new table                        |
-| 68           | Observability                                                  | `common/observability`, `modules/observability`  | `observability.e2e.spec.ts` — stale claims surfaced, cost priced    |
-| 69–74        | Testing strategy, MVP, three slices                            | `docs/17`, `apps/api/test`                       | 541 API + 22 browser tests                                          |
-| 78–84        | Dev rules, docs, ER, backlog, process, MVP done                | `docs/00`–`docs/33`                              | This suite of documents                                             |
+| §            | Section                                                        | Where                                            | Proof                                                                                                                   |
+| ------------ | -------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| 1–3          | Vision, philosophy, member journey                             | `docs/01`, `docs/15`                             | The three vertical slices run end to end                                                                                |
+| 4–6          | Multi-tenancy, tenant entity, resolution                       | `common/tenant`, RLS on every tenant table       | `tenant-isolation.spec.ts`, route-registry sweep                                                                        |
+| 7–10         | User vs member, membership, entitlements, profile              | `modules/identity`, `modules/membership`         | Slice 1 E2E                                                                                                             |
+| 11–16        | Team OS, entity, membership, leadership, hierarchy, management | `modules/team` + closure table                   | Slice 2 E2E, cycle-guarded moves                                                                                        |
+| 17–18        | **Team tree ≠ referral tree**, referral graph                  | `modules/growth`                                 | `growth.e2e.spec.ts` — independence asserted in both directions                                                         |
+| 19–21        | Scopes, team & leader dashboards                               | `TeamScopeService`, `/analytics/team`            | `analytics.e2e.spec.ts`                                                                                                 |
+| 24–25        | Learning OS, onboarding                                        | `modules/learning`                               | Slice 1 E2E                                                                                                             |
+| 27–28        | Healthy Living OS + its knowledge graph                        | `modules/health`, `modules/knowledge`            | `health.e2e.spec.ts` — consent gate, no admin override                                                                  |
+| 29–33        | Knowledge OS, product intelligence, brand neutrality, content  | `modules/knowledge`                              | `knowledge-ai.e2e.spec.ts` — two brands, no favouritism; `team-knowledge.e2e.spec.ts` — team scope applied in the query |
+| 34           | CRM                                                            | `modules/crm`                                    | Sprint 3 E2E                                                                                                            |
+| 36–38        | Community, challenges, gamification                            | `modules/community`, `challenge`, `gamification` | `community-challenges.e2e.spec.ts`                                                                                      |
+| 39–40        | Commerce, subscriptions                                        | `modules/commerce`                               | `commerce.e2e.spec.ts` — renewal cannot double-bill                                                                     |
+| 42–45        | Compensation OS, rule engine, ranks, rewards                   | `modules/compensation`, `growth`, `reward`       | `compensation.e2e.spec.ts` — two tenants, two plans, one engine                                                         |
+| 46–47, 49–50 | AI OS, context, team coach, knowledge security                 | `modules/ai`, `analytics`                        | Coach holds no DB handle; authorization precedes retrieval                                                              |
+| 51           | Automation OS                                                  | `modules/automation`                             | `automation.e2e.spec.ts` — idempotent per event, no self-triggering                                                     |
+| 52           | Notification centre                                            | `modules/notification`                           | Sprint 3 E2E                                                                                                            |
+| 53           | Analytics OS (4 dashboards)                                    | `modules/analytics`                              | `analytics.e2e.spec.ts`                                                                                                 |
+| 54–56        | Multi-language, multi-country, white label                     | `modules/tenant-config`                          | `white-label.e2e.spec.ts`                                                                                               |
+| 57–60        | Roles & permissions, security, health privacy, audit           | `common/auth`, `docs/13`                         | Isolation suite; health tests; audit viewer                                                                             |
+| 61, 65–67    | Database, events, entities, API design                         | `packages/db`, outbox, `docs/10`                 | `schema-meta.spec.ts` guards every new table                                                                            |
+| 68           | Observability                                                  | `common/observability`, `modules/observability`  | `observability.e2e.spec.ts` — stale claims surfaced, cost priced                                                        |
+| 69–74        | Testing strategy, MVP, three slices                            | `docs/17`, `apps/api/test`                       | 541 API + 22 browser tests                                                                                              |
+| 78–84        | Dev rules, docs, ER, backlog, process, MVP done                | `docs/00`–`docs/33`                              | This suite of documents                                                                                                 |
 
 ## 2. Deliberately not built
 
@@ -73,9 +73,15 @@ These are the honest risks. Each names what would make it provable.
 | **Backups restore**                                                                                     | Not exercised.                                                                                                                                                      | A restore drill. A backup nobody has restored is a hope.                                                                                     |
 | **Somebody is watching**                                                                                | The platform reports on itself (docs/36): queue depth, stale scheduler claims, AI spend per tenant.                                                                 | Something that reads those numbers when nobody is looking. A metric with no alert is a page nobody opens.                                    |
 
-## 4. The one MVP row still open
+## 4. The MVP rows
 
 `docs/14` §3 row 16 — the AI respecting _team-level_ knowledge permissions —
-remains open. Knowledge is global or tenant-scoped today; team-scoped knowledge
-does not exist, so there is nothing for the assistant to respect. It is listed
-here so the gap keeps its own line rather than dissolving into a percentage.
+was the last one open, and closed in Sprint 18 (docs/37). Knowledge can now be
+attached to a team; reading it goes up the tree and publishing it goes down;
+and the assistant respects the boundary because retrieval never loads an
+article the caller may not read, so there is nothing to filter afterwards.
+
+Row 18 (mobile UX) stays ⚠️ manual on purpose. Playwright runs at Pixel 7 and
+asserts no horizontal scroll, but "usable" is a judgement a viewport check does
+not make, and turning that row green on the strength of a scroll-width
+assertion would claim more than the test proves.

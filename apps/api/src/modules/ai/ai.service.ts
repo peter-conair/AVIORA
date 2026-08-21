@@ -144,8 +144,11 @@ export class AiService {
     const owner = this.requireMember(memberId);
     const { cap, used } = await this.assertQuota(owner);
 
-    // Retrieval runs through the tenant-scoped knowledge service, so RLS has
-    // already excluded anything this tenant may not read.
+    // Retrieval runs through the scoped knowledge service, so what comes back is
+    // already what this caller may read: RLS excludes other tenants, and the
+    // service's own team filter excludes other teams' knowledge (docs/37 §3).
+    // Nothing is filtered afterwards, which is the point — an article this
+    // member may not read is never loaded, so it cannot be summarised or cited.
     // retrieval in the member's own language — the knowledge base stores every
     // locale's text in one searchable column
     const locale = input.locale ?? 'en';

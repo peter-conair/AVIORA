@@ -740,6 +740,10 @@ model EvidenceReference {
 model Article {
   id           String   @id @default(uuid(7)) @db.Uuid
   tenantId     String?  @map("tenant_id") @db.Uuid
+  /// Team knowledge (docs/37 §1). Null = the whole tenant (or the platform,
+  /// when tenantId is null too). Set = readable by that team and every team
+  /// BENEATH it — reading goes up the tree, writing goes down it (docs/37 §2).
+  teamId       String?  @map("team_id") @db.Uuid
   slug         String
   title        String
   summary      String?
@@ -753,6 +757,7 @@ model Article {
   topics      ArticleTopic[]
   ingredients ArticleIngredient[]
 
+  @@index([tenantId, teamId, status])
   @@map("articles")
 }
 

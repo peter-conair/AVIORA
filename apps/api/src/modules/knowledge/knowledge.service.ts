@@ -1,6 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ERROR_CODES } from '@aviora/shared';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
+import { ERROR_CODES, PERMISSIONS } from '@aviora/shared';
+import type { Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { CLS_MEMBER_ID, PLATFORM_BYPASS } from '../../common/auth/permissions.guard';
+import { CLS_TENANT_ID } from '../../common/tenant/tenant-context.middleware';
+import { CLS_PLATFORM_ROLE } from '../../common/auth/jwt-auth.guard';
+import { TeamScopeService, type AccessibleTeams } from '../team/team-scope.service';
 
 /**
  * Knowledge OS (spec §28–§33). Two rules shape everything here:
@@ -34,7 +45,55 @@ function localized<T extends { translations?: unknown }>(
 
 @Injectable()
 export class KnowledgeService {
-  constructor(private readonly db: TenantDb) {}
+  constructor(
+    private readonly db: TenantDb,
+    private readonly cls: ClsService,
+    private readonly teamScope: TeamScopeService,
+  ) {}
+
+  /**
+   * The team articles this caller may READ (docs/37 §2).
+   *
+   * Reading goes UP the tree: a member of team Y may read what is attached to
+   * Y and to every ancestor of Y, because knowledge published at a region is
+   * meant for the branches under it. Writing goes the other way and is
+   * resolved by `TeamScopeService` — leadership, not membership. Using one for
+   * the other would either hide a team's own handbook from the team, or let
+   * any member publish to it.
+   *
+   * Returns the team ids whose articles are readable. The caller puts them IN
+   * the query; nothing filters rows that were already fetched (§3).
+   */
+  private async readableTeamIds(tx: Tx): Promise<string[]> {
+    const memberId = this.cls.get<string | undefined>(CLS_MEMBER_ID);
+    if (!memberId) return [];
+    const mine = await tx.teamMembership.findMany({
+      where: { memberId, status: 'active' },
+      select: { teamId: true },
+    });
+    if (mine.length === 0) return [];
+    const teamIds = mine.map((m) => m.teamId);
+    // Ancestors of the teams I am in — `team_closure` holds (ancestor,
+    // descendant) for every pair including depth 0, so this returns my own
+    // teams as well.
+    const up = await tx.teamClosure.findMany({
+      where: { descendantTeamId: { in: teamIds } },
+      select: { ancestorTeamId: true },
+    });
+    return [...new Set([...teamIds, ...up.map((u) => u.ancestorTeamId)])];
+  }
+
+  /**
+   * The article filter every read path shares: anything not attached to a team,
+   * plus the teams this caller may read. One place, so a new route cannot
+   * accidentally answer with somebody else's team knowledge.
+   */
+  private async articleScope(tx: Tx): Promise<{ OR: object[] }> {
+    const teamIds = await this.readableTeamIds(tx);
+    return {
+      OR: [{ teamId: null }, ...(teamIds.length > 0 ? [{ teamId: { in: teamIds } }] : [])],
+    };
+  }
 
   /** Global + this tenant's knowledge; RLS already limits it to those two. */
   async healthGoals(locale: string) {
@@ -196,8 +255,12 @@ export class KnowledgeService {
 
   async article(slug: string, locale: string) {
     return this.db.tx(async (tx) => {
+      // 404, not 403, for an article outside the caller's teams: a 403 confirms
+      // it exists, and "there is a document here you may not see" is itself
+      // information about another team (docs/37 §4).
+      const scope = await this.articleScope(tx);
       const article = await tx.article.findFirst({
-        where: { slug, status: 'published' },
+        where: { slug, status: 'published', AND: [scope] },
         select: {
           id: true,
           slug: true,
@@ -340,11 +403,16 @@ export class KnowledgeService {
           take: 10,
           select: { id: true, code: true, name: true, summary: true, translations: true },
         }),
-        tx.article.findMany({
-          where: { status: 'published', ...anyTerm() },
-          take: 10,
-          select: { id: true, slug: true, title: true, summary: true, translations: true },
-        }),
+        // The team scope is part of the QUERY, not a filter applied to results
+        // (docs/37 §3): an article this member may not read is never loaded,
+        // so it can never be ranked, summarised or cited.
+        this.articleScope(tx).then((scope) =>
+          tx.article.findMany({
+            where: { status: 'published', AND: [scope], ...anyTerm() },
+            take: 10,
+            select: { id: true, slug: true, title: true, summary: true, translations: true },
+          }),
+        ),
         tx.ingredient.findMany({
           where: anyTerm(),
           take: 10,
@@ -434,6 +502,146 @@ export class KnowledgeService {
         : [];
 
       return { query: q, knowledge, products };
+    });
+  }
+
+  /* ── publishing team knowledge (docs/37 §5) ─────────────────────────────── */
+
+  /**
+   * The teams this caller may PUBLISH to — leadership, resolved by the same
+   * service every other team-scoped write uses. There is deliberately no second
+   * answer to "which teams may this person act on" living in this module.
+   */
+  private async writableTeamIds(tx: Tx): Promise<AccessibleTeams> {
+    return this.teamScope.accessibleTeamIds(
+      tx,
+      {
+        memberId: this.cls.get<string | undefined>(CLS_MEMBER_ID) ?? null,
+        platformBypass: PLATFORM_BYPASS.has(
+          this.cls.get<string | undefined>(CLS_PLATFORM_ROLE) ?? '',
+        ),
+      },
+      PERMISSIONS.KNOWLEDGE_TEAM_MANAGE,
+    );
+  }
+
+  private async assertMayPublish(tx: Tx, teamId: string): Promise<void> {
+    const allowed = await this.writableTeamIds(tx);
+    if (allowed === 'ALL' || allowed.has(teamId)) return;
+    // Refused with the reason, rather than silently writing it somewhere the
+    // caller can see — a write that lands in the wrong scope is worse than one
+    // that fails loudly.
+    throw new ForbiddenException({
+      code: ERROR_CODES.FORBIDDEN,
+      message: 'You can publish knowledge only to teams you lead',
+    });
+  }
+
+  async createTeamArticle(input: {
+    teamId: string;
+    slug: string;
+    title: string;
+    body: string;
+    summary?: string | null;
+  }) {
+    return this.db.tx(async (tx) => {
+      await this.assertMayPublish(tx, input.teamId);
+      const team = await tx.team.findFirst({ where: { id: input.teamId }, select: { id: true } });
+      if (!team) {
+        throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Team not found' });
+      }
+      const existing = await tx.article.findFirst({
+        where: { slug: input.slug },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new ConflictException({
+          code: ERROR_CODES.CONFLICT,
+          message: 'An article with that slug already exists',
+        });
+      }
+      // `Article.tenant_id` is nullable — a null means PLATFORM knowledge — so
+      // the tenant extension does not stamp it the way it stamps a tenant-owned
+      // model. Team knowledge must carry it explicitly, and the database's
+      // `article_team_requires_tenant` check refuses the row if this is ever
+      // forgotten again.
+      const tenantId = this.cls.get<string | undefined>(CLS_TENANT_ID);
+      if (!tenantId) {
+        throw new ForbiddenException({
+          code: ERROR_CODES.FORBIDDEN,
+          message: 'Team knowledge belongs to a tenant, and this request resolved to none',
+        });
+      }
+      return tx.article.create({
+        data: {
+          tenantId,
+          teamId: input.teamId,
+          slug: input.slug,
+          title: input.title,
+          body: input.body,
+          summary: input.summary ?? null,
+          status: 'published',
+          // The same column the term search reads, built the same way it is for
+          // every other article — team knowledge is findable or it is filing.
+          searchText: [input.title, input.summary ?? '', input.body].join(' ').toLowerCase(),
+        },
+        select: { id: true, slug: true, title: true, teamId: true, status: true },
+      });
+    });
+  }
+
+  async updateTeamArticle(
+    id: string,
+    input: { title?: string; body?: string; summary?: string | null; status?: string },
+  ) {
+    return this.db.tx(async (tx) => {
+      const article = await tx.article.findFirst({
+        where: { id },
+        select: { id: true, teamId: true, title: true, body: true, summary: true },
+      });
+      if (!article?.teamId) {
+        throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Article not found' });
+      }
+      await this.assertMayPublish(tx, article.teamId);
+      const title = input.title ?? article.title;
+      const summary = input.summary === undefined ? article.summary : input.summary;
+      const bodyText = input.body ?? article.body;
+      return tx.article.update({
+        where: { id },
+        data: {
+          title,
+          summary,
+          body: bodyText,
+          ...(input.status ? { status: input.status } : {}),
+          searchText: [title, summary ?? '', bodyText].join(' ').toLowerCase(),
+        },
+        select: { id: true, slug: true, title: true, teamId: true, status: true },
+      });
+    });
+  }
+
+  /** What this leader has published, across the teams they lead. */
+  async listTeamArticles() {
+    return this.db.tx(async (tx) => {
+      const allowed = await this.writableTeamIds(tx);
+      if (allowed !== 'ALL' && allowed.size === 0) return { articles: [] };
+      const articles = await tx.article.findMany({
+        where: {
+          teamId: allowed === 'ALL' ? { not: null } : { in: [...allowed] },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 100,
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          summary: true,
+          teamId: true,
+          status: true,
+          updatedAt: true,
+        },
+      });
+      return { articles };
     });
   }
 }
