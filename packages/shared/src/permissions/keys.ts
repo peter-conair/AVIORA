@@ -36,6 +36,8 @@ export const PERMISSIONS = {
   TEAM_ANALYTICS_VIEW: 'team.analytics.view',
   /** Publishing knowledge to a team one leads (docs/37 §5). */
   KNOWLEDGE_TEAM_MANAGE: 'knowledge.team.manage',
+  /** Running a corporate wellness sponsorship: seats, invitations, participation (docs/45). */
+  SPONSORSHIP_MANAGE: 'sponsorship.manage',
 
   // goals
   GOAL_VIEW: 'goal.view',

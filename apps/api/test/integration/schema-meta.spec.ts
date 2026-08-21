@@ -82,6 +82,8 @@ const TENANT_OWNED_TABLES = [
   'webhook_endpoints',
   'webhook_deliveries',
   'api_keys',
+  'sponsorship_pools',
+  'sponsored_seats',
   'tenant_identity_providers',
   'sso_logins',
   // tenant_databases and scheduled_job_runs are platform scope, not

@@ -342,6 +342,56 @@ model Invitation {
   @@map("invitations")
 }
 
+/// Corporate wellness (docs/45). A sponsor — an employer, usually — pays for a
+/// number of memberships on a plan, and employees consume them.
+///
+/// What a sponsor can SEE about the people they pay for is deliberately narrow:
+/// participation, never health. Health is SELF-scoped with no admin override
+/// (docs/13), and paying for somebody's membership is not consent to see their
+/// sleep (docs/45 §1).
+model SponsorshipPool {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  /// The plan a seat grants. One pool, one plan — a pool that granted several
+  /// would make "how many seats are left" a question with no single answer.
+  planId      String   @map("plan_id") @db.Uuid
+  seats       Int
+  sponsorName String?  @map("sponsor_name")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  seatRows SponsoredSeat[]
+
+  @@unique([tenantId, code])
+  @@map("sponsorship_pools")
+}
+
+/// One seat out of a pool. Taken when the invitation is SENT, not when it is
+/// accepted (docs/45 §2): assigning on acceptance lets a sponsor with 100 seats
+/// invite 200 people, and the hundred who arrive second are refused at the door
+/// by a platform that told their employer everything was fine.
+model SponsoredSeat {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  poolId       String    @map("pool_id") @db.Uuid
+  /// Set when the invitation is accepted; null while the seat is only reserved.
+  memberId     String?   @map("member_id") @db.Uuid
+  invitationId String?   @map("invitation_id") @db.Uuid
+  assignedAt   DateTime? @map("assigned_at") @db.Timestamptz(6)
+  releasedAt   DateTime? @map("released_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  pool SponsorshipPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, poolId, releasedAt])
+  @@index([tenantId, memberId])
+  @@map("sponsored_seats")
+}
+
 model Team {
   id           String   @id @default(uuid(7)) @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid

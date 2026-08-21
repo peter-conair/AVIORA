@@ -201,7 +201,16 @@ export class InvitationsService {
         aggregateType: 'member',
         aggregateId: member.id,
         actorUserId: user.id,
-        payload: { email, displayName: input.displayName, memberId: member.id },
+        // The invitation id travels with the event so a sponsored seat can be
+        // assigned by a handler rather than by this service reaching into
+        // another module's tables (docs/45 §2). Additive: every existing
+        // consumer reads the fields it already read.
+        payload: {
+          email,
+          displayName: input.displayName,
+          memberId: member.id,
+          invitationId: inv.id,
+        },
       });
       if (membership) {
         await appendEvent(tx, {

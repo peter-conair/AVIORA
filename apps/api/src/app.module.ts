@@ -14,9 +14,11 @@ import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
 import { EntitlementsGuard } from './common/auth/entitlements.guard';
 import { TenantDatabaseGuard } from './common/db/tenant-database.guard';
-import { EventBus } from './common/events/event-bus';
+import { EventsModule } from './common/events/events.module';
 import { OutboxRelayService } from './common/events/outbox-relay.service';
 import { EmailModule } from './common/email/email.module';
+import { MembershipModule } from './modules/membership/membership.module';
+import { SponsorshipModule } from './modules/sponsorship/sponsorship.module';
 
 import { AuthController } from './modules/identity/auth.controller';
 import { AuthService } from './modules/identity/auth.service';
@@ -25,10 +27,6 @@ import { PlatformController } from './modules/platform/platform.controller';
 import { ProvisioningService } from './modules/platform/provisioning.service';
 import { TenantDatabaseController } from './modules/platform/tenant-database.controller';
 import { TenantDatabaseService } from './modules/platform/tenant-database.service';
-import { PlansController } from './modules/membership/plans.controller';
-import { PlansService } from './modules/membership/plans.service';
-import { InvitationsController } from './modules/membership/invitations.controller';
-import { InvitationsService } from './modules/membership/invitations.service';
 import { TeamsController } from './modules/team/teams.controller';
 import { TeamsService } from './modules/team/teams.service';
 import { TeamScopeService } from './modules/team/team-scope.service';
@@ -118,7 +116,10 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     IntegrationModule,
     SsoModule,
     SchedulerModule,
+    EventsModule,
     EmailModule,
+    MembershipModule,
+    SponsorshipModule,
     ObservabilityModule,
   ],
   controllers: [
@@ -130,8 +131,6 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     // routes because they need the owner client and the platform-role guard,
     // both of which are AppModule-scoped (docs/31 §4).
     TenantDatabaseController,
-    PlansController,
-    InvitationsController,
     TeamsController,
     GoalsController,
     LearningController,
@@ -161,13 +160,10 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     AllExceptionsFilter,
     TenantContextMiddleware,
     TenantContextAccessor,
-    EventBus,
     OutboxRelayService,
     AuthService,
     ProvisioningService,
     TenantDatabaseService,
-    PlansService,
-    InvitationsService,
     TeamsService,
     TeamScopeService,
     NotificationHandlers,

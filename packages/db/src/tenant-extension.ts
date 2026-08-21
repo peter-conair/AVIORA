@@ -84,6 +84,8 @@ export const TENANT_OWNED_MODELS = new Set<string>([
   'WebhookEndpoint',
   'WebhookDelivery',
   'ApiKey',
+  'SponsorshipPool',
+  'SponsoredSeat',
   'TenantIdentityProvider',
   'SsoLogin',
   // TenantDatabase and ScheduledJobRun are deliberately absent: both are
