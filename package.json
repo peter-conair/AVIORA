@@ -19,7 +19,8 @@
     "db:seed": "pnpm --filter @aviora/db db:seed",
     "prepare": "husky",
     "db:restore-drill": "bash scripts/restore-drill.sh",
-    "db:migration-rehearsal": "bash scripts/migration-rehearsal.sh"
+    "db:migration-rehearsal": "bash scripts/migration-rehearsal.sh",
+    "db:outbox-load": "bash scripts/outbox-load.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

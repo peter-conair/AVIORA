@@ -3,8 +3,24 @@ import type { DomainEventEnvelope, EventName } from '@aviora/shared';
 import { PrismaService } from '../db/prisma.service';
 import { EventBus } from './event-bus';
 
-const POLL_MS = 2000;
-const BATCH = 20;
+/**
+ * How often the relay looks for work, and how much it takes when it does.
+ *
+ * Exported because these two numbers ARE the deployed throughput ceiling —
+ * BATCH/POLL_MS events per second per instance — and a measurement that did not
+ * name them would report a number the deployment cannot reach (docs/41).
+ */
+export const POLL_MS = 2000;
+export const BATCH = 20;
+/**
+ * How many batches one tick may take before yielding.
+ *
+ * Without a bound, an instance that meets a large backlog keeps working until
+ * the backlog ends — holding a connection and looking, from outside, exactly
+ * like a hang. With it, a pass is bounded and the next tick continues where
+ * this one stopped.
+ */
+export const MAX_BATCHES_PER_TICK = 50;
 const MAX_ATTEMPTS = 5;
 
 interface OutboxRow {
@@ -45,9 +61,42 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
   }
 
+  /**
+   * One pass over the backlog.
+   *
+   * It keeps taking batches until one comes back short, because `POLL_MS` is
+   * meant to say "how soon is a new event noticed", not "how many events per
+   * second are allowed". Taking a single batch per tick made the deployed
+   * throughput BATCH/POLL_MS — 10 events a second — while the same code drains
+   * 161 a second when asked to keep working (docs/41 §1). Nothing was broken;
+   * it was throttled, and no test that checks correctness could have seen it.
+   *
+   * A short batch means the queue is empty, or another instance holds the rest
+   * under SKIP LOCKED. Both mean stop.
+   */
   async tick(): Promise<void> {
     if (this.running) return;
     this.running = true;
+    try {
+      for (let pass = 0; pass < MAX_BATCHES_PER_TICK; pass += 1) {
+        const taken = await this.drainBatch();
+        if (taken < BATCH) break;
+      }
+    } catch (e) {
+      this.logger.error('outbox tick failed', e as Error);
+    } finally {
+      this.running = false;
+    }
+  }
+
+  /**
+   * Takes up to BATCH events and returns how many it took. Each batch is its
+   * own transaction: the drain loop above deliberately does NOT widen it, since
+   * a longer transaction holds row locks across more handler I/O — the opposite
+   * of what the loop is for (docs/41 §2).
+   */
+  private async drainBatch(): Promise<number> {
+    let taken = 0;
     try {
       await this.prisma.owner.$transaction(async (tx) => {
         const rows = await tx.$queryRaw<OutboxRow[]>`
@@ -60,6 +109,7 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
           LIMIT ${BATCH}
           FOR UPDATE SKIP LOCKED`;
 
+        taken = rows.length;
         for (const row of rows) {
           const envelope: DomainEventEnvelope = {
             eventId: row.id,
@@ -94,9 +144,12 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
         }
       });
     } catch (e) {
-      this.logger.error('outbox tick failed', e as Error);
-    } finally {
-      this.running = false;
+      // A batch that fails rolls back whole; the events stay unprocessed and
+      // the next pass picks them up. Returning 0 stops the drain loop rather
+      // than letting it spin on a database that is refusing work.
+      this.logger.error('outbox batch failed', e as Error);
+      return 0;
     }
+    return taken;
   }
 }

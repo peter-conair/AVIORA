@@ -663,8 +663,14 @@ async function subscriptionRunCount(tenant: string, subscriptionId: string): Pro
 
 /* ── the platform's operating surface (§5) ────────────────────────────────── */
 
-async function listRuns(token: string): Promise<{ status: number; body: any }> {
-  return api('/api/v1/platform/scheduler/runs', { token });
+async function listRuns(token: string, tenantId?: string): Promise<{ status: number; body: any }> {
+  // The listing is a page, newest occurrence first, across every tenant. On a
+  // platform with a thousand tenants the first page is a thousand other
+  // people's rows, so asking "did MY tenant run" means asking for that tenant —
+  // which is what the route's filter is for, and what an operator would do.
+  // Filtering a page client-side worked only while the database was small.
+  const query = tenantId ? `?tenantId=${tenantId}` : '';
+  return api(`/api/v1/platform/scheduler/runs${query}`, { token });
 }
 
 function runsOf(body: any): any[] {
@@ -1382,12 +1388,21 @@ describe('Operating it (docs/35 §5)', () => {
 
     const listed = await listRuns(platform);
     expect(listed.status, JSON.stringify(listed.body)).toBe(200);
-    const listing = runsOf(listed.body);
-    expect(listing.length, 'the listing is the answer to "did it run" (§5)').toBeGreaterThan(0);
+    expect(
+      runsOf(listed.body).length,
+      'the listing is the answer to "did it run" (§5)',
+    ).toBeGreaterThan(0);
 
     // the listing carries what an operator at 3am needs: which job, whose, when
     // and what happened
+    const forHome = await listRuns(platform, home);
+    expect(forHome.status, JSON.stringify(forHome.body)).toBe(200);
+    const listing = runsOf(forHome.body);
     const mine = listing.filter((r: any) => (r.tenantId ?? r.tenant_id) === home);
+    expect(
+      listing.length,
+      'a tenant-filtered listing returned rows belonging to other tenants',
+    ).toBe(mine.length);
     expect(
       mine.length,
       'the listing shows nothing for a tenant that demonstrably ran',
