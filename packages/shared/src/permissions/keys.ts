@@ -124,6 +124,12 @@ export const ENTITLEMENTS = {
   RANKS: 'growth.ranks',
   /** Compensation is optional by spec §42 and off unless a tenant configures it. */
   COMPENSATION: 'growth.compensation',
+  /**
+   * Browsing the multi-brand marketplace (spec §12's own example key, docs/44).
+   * It gates the BROWSE surface, not the catalogue: a tenant without it still
+   * sells, exactly as docs/24 §2 settled for commerce.
+   */
+  MARKETPLACE: 'marketplace.access',
 } as const;
 
 export type EntitlementKey = (typeof ENTITLEMENTS)[keyof typeof ENTITLEMENTS];

@@ -4,6 +4,8 @@ import { CartService } from './cart.service';
 import { CommerceScopeService } from './commerce-scope.service';
 import { CouponController, OfferingController } from './offering.controller';
 import { OfferingService } from './offering.service';
+import { MarketplaceService } from './marketplace.service';
+import { MarketplaceController } from './marketplace.controller';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { SubscriptionController } from './subscription.controller';
@@ -18,6 +20,7 @@ import { TaxService } from './tax.service';
  */
 @Module({
   controllers: [
+    MarketplaceController,
     OfferingController,
     CouponController,
     CartController,
@@ -26,6 +29,7 @@ import { TaxService } from './tax.service';
     TaxController,
   ],
   providers: [
+    MarketplaceService,
     OfferingService,
     CartService,
     OrderService,
