@@ -151,7 +151,7 @@ Fallback-origin is the web app; the api recognizes both subdomain and custom-dom
 
 Rules:
 
-- **Restore is tested quarterly** on staging — a backup that has never been restored is not a backup.
+- **Restore is tested quarterly** on staging — a backup that has never been restored is not a backup. The exercise is `pnpm db:restore-drill` (docs/39): it restores into a scratch database and checks that the copy still refuses one tenant access to another's rows, which is the failure that would turn a recovery into a breach. It drops nothing, by design.
 - Before any destructive migration or bulk data change: explicit snapshot first, rehearse on a staging copy, migration written idempotent. Never run destructive DDL/DML without a backup path (production-safety rules).
 - Tenant offboarding exports (`/tenants/{tenant_id}` data + objects) before any deletion, with a retention window.
 

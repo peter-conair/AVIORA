@@ -2,7 +2,7 @@
   "name": "aviora",
   "private": true,
   "version": "0.1.0",
-  "description": "AVIORA — Multi-Tenant Membership & Healthy Living Growth OS",
+  "description": "AVIORA \u2014 Multi-Tenant Membership & Healthy Living Growth OS",
   "packageManager": "pnpm@10.28.2",
   "engines": {
     "node": ">=22"
@@ -17,7 +17,8 @@
     "check": "turbo run lint typecheck test",
     "db:migrate": "pnpm --filter @aviora/db db:migrate",
     "db:seed": "pnpm --filter @aviora/db db:seed",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:restore-drill": "bash scripts/restore-drill.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -33,6 +33,7 @@ let two: INestApplication;
 let base: string;
 let owner: PrismaClient;
 let tenant: string;
+let adminMemberId: string;
 
 async function api(
   path: string,
@@ -109,6 +110,7 @@ beforeAll(async () => {
   });
   expect(created.status, JSON.stringify(created.body)).toBe(201);
   tenant = created.body.tenant.id;
+  adminMemberId = created.body.adminMemberId;
 }, 240_000);
 
 afterAll(async () => {
@@ -196,17 +198,21 @@ describe('Two instances, one occurrence (docs/38 §3)', () => {
 
 describe('Two relays, one backlog (docs/38 §3)', () => {
   it('drains concurrently, and every event ends processed exactly once', async () => {
-    // A backlog worth racing over. `MemberInvited` has real handlers, so this
-    // exercises the ledger rather than an empty loop.
+    // A backlog worth racing over, and one whose handlers need nothing outside
+    // this database. `GoalCompleted` awards points; `MemberInvited` — the first
+    // choice here — sends an invitation EMAIL, and its sender rethrows so the
+    // outbox will retry. That works on a machine with Mailpit running and backs
+    // off for ever on CI, where these twelve events then looked like a locking
+    // failure. A concurrency fixture must not depend on a mail server.
     const ids: string[] = [];
     for (let i = 0; i < 12; i += 1) {
       const row = await owner.domainEvent.create({
         data: {
-          eventName: EVENTS.MemberInvited,
+          eventName: EVENTS.GoalCompleted,
           tenantId: tenant,
-          aggregateType: 'invitation',
+          aggregateType: 'goal',
           aggregateId: crypto.randomUUID(),
-          payload: { token: `probe-${RUN}-${i}`, email: `probe-${i}@test.local` },
+          payload: { memberId: adminMemberId, goalId: crypto.randomUUID() },
         },
       });
       ids.push(row.id);
@@ -233,8 +239,14 @@ describe('Two relays, one backlog (docs/38 §3)', () => {
     const unprocessed = rows.filter((r) => !r.processedAt);
     expect(
       unprocessed.map((r) => r.id),
-      'events were left undelivered after both relays ran — SKIP LOCKED must ' +
-        'hand a row to one relay, not hide it from both',
+      // The error carries lastError on purpose. The first version of this said
+      // only "undelivered", which sent me looking for a locking bug when the
+      // real answer — "connect ECONNREFUSED :1025" — was sitting in the row.
+      'events were left undelivered after both relays ran. If SKIP LOCKED is ' +
+        'sound, the reason is in the rows: ' +
+        unprocessed
+          .map((r) => `${r.id} attempts=${r.attempts} ${r.lastError ?? 'no error'}`)
+          .join(' | '),
     ).toEqual([]);
 
     // The ledger is what makes "exactly once" checkable: one row per
