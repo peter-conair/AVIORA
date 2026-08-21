@@ -9,8 +9,26 @@ import * as nodemailer from 'nodemailer';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  /**
+   * Bounded on purpose (docs/43 §2).
+   *
+   * nodemailer's defaults are a 2-minute connect, a 30-second greeting and a
+   * TEN-MINUTE socket. `send` is called from an outbox handler, inside the
+   * relay's transaction, so an unresponsive mail server could hold a database
+   * transaction and its row locks for ten minutes per event — the queue would
+   * simply stop moving, with nothing anywhere looking broken.
+   *
+   * An email that cannot be sent in ten seconds is not going to be sent, and
+   * the outbox already retries with backoff. A slow mail server should cost a
+   * delayed email, never a stalled queue.
+   */
   private readonly transport = nodemailer.createTransport(
     process.env.AVIORA_SMTP_URL ?? 'smtp://localhost:1025',
+    {
+      connectionTimeout: Number(process.env.AVIORA_SMTP_CONNECT_TIMEOUT_MS ?? 5_000),
+      greetingTimeout: Number(process.env.AVIORA_SMTP_GREETING_TIMEOUT_MS ?? 5_000),
+      socketTimeout: Number(process.env.AVIORA_SMTP_SOCKET_TIMEOUT_MS ?? 10_000),
+    },
   );
   private readonly from = process.env.AVIORA_EMAIL_FROM ?? 'AVIORA <no-reply@aviora.local>';
 

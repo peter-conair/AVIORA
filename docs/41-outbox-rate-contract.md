@@ -60,12 +60,20 @@ noticed when the queue is empty".
 
 ## 3. What this deliberately does not change
 
-- **The transaction still spans one batch of dispatches.** A slow handler — a
-  webhook with a long timeout — holds a database transaction open for the whole
-  batch, and that is a real hazard worth naming rather than leaving implied. It
-  is not fixed here because narrowing it to one transaction per event changes
-  the failure semantics of a batch, and this sprint's claim is about rate. It is
-  the next thing to do to this file.
+- **The transaction still spans one batch of dispatches.** A slow handler holds
+  a database transaction open for the whole batch, and that is a real hazard
+  worth naming rather than leaving implied. It is not fixed here because
+  narrowing it to one transaction per event changes the failure semantics of a
+  batch, and this sprint's claim is about rate. It is the next thing to do to
+  this file.
+
+  > **Corrected in Sprint 24 (docs/43 §1).** The example this paragraph
+  > originally used — "a webhook with a long timeout" — was wrong: webhook
+  > delivery does not happen inside the outbox transaction, because the handler
+  > records a delivery row and the `webhook.sweep` job posts it later. The
+  > handler that actually waits is **email**, whose transport had no timeouts at
+  > all. The worry was right; the example was not. Both are fixed in docs/43.
+
 - **BullMQ is still the documented upgrade** (docs/11). What this sprint
   establishes is that the in-process relay is not slow — it was throttled — so
   the queue is a scaling decision rather than a rescue.

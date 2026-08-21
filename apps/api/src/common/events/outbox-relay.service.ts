@@ -96,60 +96,86 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
    * of what the loop is for (docs/41 §2).
    */
   private async drainBatch(): Promise<number> {
-    let taken = 0;
+    // The ids first, in their own short transaction. Reading them here and
+    // locking them one at a time below is what stops a slow handler from
+    // holding nineteen other events' locks with it (docs/43 §2).
+    let ids: string[];
     try {
-      await this.prisma.owner.$transaction(async (tx) => {
+      const rows = await this.prisma.owner.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM domain_events
+         WHERE processed_at IS NULL AND attempts < ${MAX_ATTEMPTS}
+           AND next_attempt_at <= now()
+         ORDER BY occurred_at
+         LIMIT ${BATCH}`;
+      ids = rows.map((r) => r.id);
+    } catch (e) {
+      this.logger.error('outbox could not read the backlog', e as Error);
+      return 0;
+    }
+
+    let taken = 0;
+    for (const id of ids) {
+      // One transaction per event. SKIP LOCKED still does the arbitration —
+      // the row is locked here, so two relays cannot take the same event, which
+      // is the property second-instance.e2e.spec.ts asserts. What changed is
+      // how LONG a lock is held: one handler's wait, not twenty.
+      const handled = await this.handleOne(id);
+      if (handled) taken += 1;
+    }
+    return taken;
+  }
+
+  /** Returns whether this relay took the event (false when another one had it). */
+  private async handleOne(id: string): Promise<boolean> {
+    try {
+      return await this.prisma.owner.$transaction(async (tx) => {
         const rows = await tx.$queryRaw<OutboxRow[]>`
           SELECT id, event_name, tenant_id, aggregate_type, aggregate_id,
                  actor_user_id, payload, occurred_at, attempts
           FROM domain_events
-          WHERE processed_at IS NULL AND attempts < ${MAX_ATTEMPTS}
-            AND next_attempt_at <= now()
-          ORDER BY occurred_at
-          LIMIT ${BATCH}
+          WHERE id = ${id}::uuid AND processed_at IS NULL
           FOR UPDATE SKIP LOCKED`;
+        const row = rows[0];
+        // Gone or held by another relay: not an error, and not ours.
+        if (!row) return false;
 
-        taken = rows.length;
-        for (const row of rows) {
-          const envelope: DomainEventEnvelope = {
-            eventId: row.id,
-            eventName: row.event_name as EventName,
-            tenantId: row.tenant_id,
-            aggregateType: row.aggregate_type,
-            aggregateId: row.aggregate_id,
-            actorUserId: row.actor_user_id,
-            payload: row.payload,
-            occurredAt: row.occurred_at.toISOString(),
-            version: 1,
-          };
-          try {
-            await this.bus.dispatch(envelope);
-            await tx.domainEvent.update({
-              where: { id: row.id },
-              data: { processedAt: new Date() },
-            });
-          } catch (e) {
-            const err = e instanceof Error ? e.message : String(e);
-            this.logger.error(`event ${row.event_name} (${row.id}) failed: ${err}`);
-            const backoffMs = Math.min(2 ** row.attempts * 5_000, 10 * 60_000);
-            await tx.domainEvent.update({
-              where: { id: row.id },
-              data: {
-                attempts: row.attempts + 1,
-                lastError: err.slice(0, 1000),
-                nextAttemptAt: new Date(Date.now() + backoffMs),
-              },
-            });
-          }
+        const envelope: DomainEventEnvelope = {
+          eventId: row.id,
+          eventName: row.event_name as EventName,
+          tenantId: row.tenant_id,
+          aggregateType: row.aggregate_type,
+          aggregateId: row.aggregate_id,
+          actorUserId: row.actor_user_id,
+          payload: row.payload,
+          occurredAt: row.occurred_at.toISOString(),
+          version: 1,
+        };
+        try {
+          await this.bus.dispatch(envelope);
+          await tx.domainEvent.update({
+            where: { id: row.id },
+            data: { processedAt: new Date() },
+          });
+        } catch (e) {
+          const err = e instanceof Error ? e.message : String(e);
+          this.logger.error(`event ${row.event_name} (${row.id}) failed: ${err}`);
+          const backoffMs = Math.min(2 ** row.attempts * 5_000, 10 * 60_000);
+          await tx.domainEvent.update({
+            where: { id: row.id },
+            data: {
+              attempts: row.attempts + 1,
+              lastError: err.slice(0, 1000),
+              nextAttemptAt: new Date(Date.now() + backoffMs),
+            },
+          });
         }
+        return true;
       });
     } catch (e) {
-      // A batch that fails rolls back whole; the events stay unprocessed and
-      // the next pass picks them up. Returning 0 stops the drain loop rather
-      // than letting it spin on a database that is refusing work.
-      this.logger.error('outbox batch failed', e as Error);
-      return 0;
+      // A transaction that failed as a whole — a lost connection, a timeout.
+      // The event stays unprocessed and the next pass picks it up.
+      this.logger.error(`outbox transaction failed for ${id}`, e as Error);
+      return false;
     }
-    return taken;
   }
 }
