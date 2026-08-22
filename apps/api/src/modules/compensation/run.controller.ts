@@ -19,6 +19,7 @@ import {
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import { RunService } from './run.service';
+import { RateTier } from '../../common/rate/rate-tier.guard';
 
 const createSchema = z
   .object({
@@ -60,6 +61,9 @@ export class RunController {
     return { runs: await this.runs.list() };
   }
 
+  // A run traverses the whole tenant — expensive in the sense docs/10 §8
+  // meant, even though it costs no provider money (docs/49 §2).
+  @RateTier('expensive')
   @Post('runs')
   @RequirePermissions(PERMISSIONS.COMPENSATION_MANAGE)
   async create(
@@ -69,6 +73,9 @@ export class RunController {
     return await this.runs.create(body, user.userId);
   }
 
+  // A run traverses the whole tenant — expensive in the sense docs/10 §8
+  // meant, even though it costs no provider money (docs/49 §2).
+  @RateTier('expensive')
   @Post('runs/:id/recompute')
   @RequirePermissions(PERMISSIONS.COMPENSATION_MANAGE)
   async recompute(@Param('id', ParseUUIDPipe) id: string) {

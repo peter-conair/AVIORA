@@ -449,8 +449,20 @@ Idempotency-Key: <uuid v4/v7, client-generated>
 
 ## 8. Rate Limiting
 
-Token-bucket per `(tenant_id, user_id)` with a per-IP pre-auth layer. Enforced in
-middleware backed by Redis; limits configurable per tenant plan.
+Fixed window per `(tenant_id, user_id)` with a per-IP pre-auth layer, counted in
+Redis with an in-memory fallback (docs/49). **A fixed window, not a token
+bucket**: a bucket smooths bursts more kindly, and two algorithms in one
+codebase is a worse problem than a slightly blunt window — every limiter here
+now counts the same way.
+
+Limits are **not** per tenant plan. That is a limits table, a resolution order
+and an admin screen for a need nobody has expressed; one number an operator can
+change is the honest default, and the tier lookup is where a plan-scaled limit
+would slot in.
+
+> The table below was written long before any of it existed. `auth` arrived in
+> docs/48 and the rest in docs/49; until then an authenticated member was bounded
+> by permissions and entitlements — by WHAT they may do, never by how often.
 
 | Tier            | Applies to                                                   | Default limit                                          |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------ |
@@ -460,8 +472,14 @@ middleware backed by Redis; limits configurable per tenant plan.
 | `expensive`     | `/ai/assistant/*`, exports, `/teams/:id/descendants` (large) | 20 req / min / user + daily AI token budget per tenant |
 | `tenant-global` | Whole tenant (all users)                                     | 5,000 req / min (plan-scaled)                          |
 
-Response headers on every request: `RateLimit-Limit`, `RateLimit-Remaining`,
-`RateLimit-Reset`. On limit: `429` with `Retry-After`.
+Response headers on every authenticated request: `RateLimit-Limit`,
+`RateLimit-Remaining`, `RateLimit-Reset`. On limit: `429` with `Retry-After` and
+the tier that refused.
+
+⚠️ The **public API** (docs/30 §4) uses `X-RateLimit-*` instead. It shipped first
+and integrators read those names, so renaming them to match this table would
+break somebody's code to make a document tidier. Two names, one deliberately
+left alone.
 
 ---
 

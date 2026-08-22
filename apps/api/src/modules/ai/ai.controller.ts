@@ -6,6 +6,7 @@ import { RequireEntitlements, RequirePermissions } from '../../common/auth/decor
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import { AiService } from './ai.service';
+import { RateTier } from '../../common/rate/rate-tier.guard';
 
 const askSchema = z.object({
   question: z.string().min(2).max(2000),
@@ -42,6 +43,7 @@ export class AiController {
   }
 
   /** The assistant itself is an entitlement-gated capability (docs/04). */
+  @RateTier('expensive')
   @Post('ask')
   @RequirePermissions(PERMISSIONS.AI_ASSISTANT_USE)
   @RequireEntitlements(ENTITLEMENTS.AI_COACH)

@@ -490,6 +490,14 @@ async function dashboard(
 }
 
 beforeAll(async () => {
+  // This file asks the coach every one of docs/28 §4's eight questions and then
+  // several more, inside a few seconds. That is a test driving an API, not a
+  // person using one: twenty AI calls a minute is generous for somebody
+  // exploring a dashboard and nowhere near what this suite does. The tier
+  // itself is proved in `rate-tier.e2e.spec.ts`; here it would only be in the
+  // way, so this file buys itself room and says so.
+  process.env.AVIORA_RATE_EXPENSIVE = '100000';
+
   process.env.AVIORA_OUTBOX_DISABLED = 'true';
   process.env.AVIORA_PII_ENCRYPTION_KEY ??= Buffer.alloc(32, 9).toString('base64');
   delete process.env.AVIORA_AI_ANTHROPIC_KEY; // exercise the local grounded provider

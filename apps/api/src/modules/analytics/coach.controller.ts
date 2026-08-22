@@ -12,6 +12,7 @@ import { ZodPipe } from '../../common/validation/zod.pipe';
 import type { TeamActor } from '../team/team-scope.service';
 import { CoachService } from './coach.service';
 import { ANALYTICS_WINDOWS, DEFAULT_ANALYTICS_WINDOW, type AnalyticsWindow } from './window';
+import { RateTier } from '../../common/rate/rate-tier.guard';
 
 const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
 
@@ -42,6 +43,7 @@ export class CoachController {
     };
   }
 
+  @RateTier('expensive')
   @Post('team')
   @RequirePermissions(PERMISSIONS.TEAM_ANALYTICS_VIEW)
   async team(

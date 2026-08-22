@@ -12,6 +12,8 @@ import { TenantContextAccessor } from './common/tenant/tenant-context.accessor';
 import { HealthController as HealthCheckController } from './common/health/health.controller';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
+import { RateCounter } from './common/rate/rate-counter';
+import { RateTierGuard } from './common/rate/rate-tier.guard';
 import { EntitlementsGuard } from './common/auth/entitlements.guard';
 import { TenantDatabaseGuard } from './common/db/tenant-database.guard';
 import { EventsModule } from './common/events/events.module';
@@ -199,11 +201,15 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     // handler gets a chance to write something the migration would discard.
     // After the guards, so what it logs is what the platform RESOLVED rather
     // than what the caller claimed in a header (docs/36 §2).
+    RateCounter,
     { provide: APP_INTERCEPTOR, useClass: LogContextInterceptor },
     { provide: APP_GUARD, useClass: TenantDatabaseGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: EntitlementsGuard },
+    // Last: the tiers are keyed by tenant and user, and neither exists until the
+    // guards above have run (docs/49 §3).
+    { provide: APP_GUARD, useClass: RateTierGuard },
   ],
 })
 export class AppModule implements NestModule {
