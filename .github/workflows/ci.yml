@@ -79,6 +79,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @aviora/shared build
       - run: pnpm --filter @aviora/db build
+      - name: blind-index key for this run
+        # Generated, not committed. CI must run the state production runs in —
+        # without a key the CRM falls back to comparing plaintext and matches a
+        # phone only if it was typed the same way twice, so the suite passes for
+        # the wrong reason (it did exactly that once, docs/55 §2.1). A fresh
+        # random key is enough because nothing computed with it outlives the run,
+        # and a literal here would be committed key material even as a fake.
+        run: echo "AVIORA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: migrate
         run: pnpm --filter @aviora/db exec prisma migrate deploy
       - name: app role
@@ -122,6 +130,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @aviora/shared build
       - run: pnpm --filter @aviora/db build
+      - name: blind-index key for this run
+        # Generated, not committed. CI must run the state production runs in —
+        # without a key the CRM falls back to comparing plaintext and matches a
+        # phone only if it was typed the same way twice, so the suite passes for
+        # the wrong reason (it did exactly that once, docs/55 §2.1). A fresh
+        # random key is enough because nothing computed with it outlives the run,
+        # and a literal here would be committed key material even as a fake.
+        run: echo "AVIORA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: migrate + app role + seed
         run: |
           pnpm --filter @aviora/db exec prisma migrate deploy

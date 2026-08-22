@@ -44,6 +44,15 @@ describe('without an index key (the fallback)', () => {
     expect(where.OR[0]!.email.mode).toBe('insensitive');
   });
 
+  it('matches a phone only if it was typed the same way twice', () => {
+    // The weakness, pinned rather than described: normalising a phone in SQL
+    // would mean a second copy of "last 9 digits", which is the drift this
+    // design exists to avoid. So the fallback is exact — and docs/55 §2.1 says
+    // so, after first claiming otherwise and being caught by CI.
+    const where = svc.matchWhere({ phone: '+66 81-234-5678' }) as { OR: { phone: string }[] };
+    expect(where.OR[0]!.phone).toBe('+66 81-234-5678');
+  });
+
   it('stamps no digests, so no row claims an index it does not have', () => {
     expect(svc.keys({ email: 'ada@example.com' })).toEqual({ emailBidx: null, phoneBidx: null });
     expect(svc.usingIndex).toBe(false);

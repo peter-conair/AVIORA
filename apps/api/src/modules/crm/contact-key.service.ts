@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { BlindIndexService } from '../../common/crypto/blind-index.service';
 
 export type ContactKeys = { emailBidx: string | null; phoneBidx: string | null };
@@ -18,8 +18,22 @@ export type ContactKeys = { emailBidx: string | null; phoneBidx: string | null }
  * nothing if it is ever asked to search ciphertext without a key.
  */
 @Injectable()
-export class ContactKeyService {
+export class ContactKeyService implements OnModuleInit {
+  private readonly logger = new Logger(ContactKeyService.name);
+
   constructor(private readonly blind: BlindIndexService) {}
+
+  onModuleInit(): void {
+    if (!this.blind.isConfigured) {
+      // Said out loud, because the degradation is invisible from the outside:
+      // leads still save, the check still runs, and it just stops catching the
+      // duplicates whose phone was written a different way (docs/55 §2.1).
+      this.logger.warn(
+        'AVIORA_BLIND_INDEX_KEY is not set — CRM duplicate detection is running ' +
+          'in its degraded mode and will miss contacts whose phone was written differently',
+      );
+    }
+  }
 
   get usingIndex(): boolean {
     return this.blind.isConfigured;

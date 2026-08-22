@@ -22,12 +22,30 @@ worse than none: it answers "no duplicate" with authority.
 building it this way round: when the contact columns become ciphertext, the
 duplicate check does not change at all.
 
-**Without the key**, matching compares the plaintext columns, normalised the
-same way. That fallback exists so a deployment that forgot one variable loses
-the index rather than the ability to create a lead — the blind index fails
-closed, but taking lead creation down over a missing env var is the wrong end of
-that trade. It is honest only while those columns _are_ plaintext, and docs/54
-§4 already lists moving off it as a prerequisite for encrypting them.
+**Without the key**, matching compares the plaintext columns: email
+case-insensitively, phone **exactly as typed**. That fallback exists so a
+deployment that forgot one variable loses the index rather than the ability to
+create a lead — the blind index fails closed, but taking lead creation down over
+a missing env var is the wrong end of that trade. It is honest only while those
+columns _are_ plaintext, and docs/54 §4 already lists moving off it as a
+prerequisite for encrypting them.
+
+### 2.1 The fallback is weaker, and this document said otherwise
+
+This section first claimed the fallback normalised "the same way". It does not,
+and cannot cheaply: normalising a phone in SQL means reproducing "last 9 digits"
+as an expression, which is the second copy of the rule this design exists to
+avoid. So in the fallback, `+66 81-234-5678` and `081-234-5678` are two
+different numbers and the duplicate goes through.
+
+The claim survived every local run because this machine has the key. **CI did
+not**, so CI ran the degraded path — and the test asserting that a
+differently-written phone is caught failed there and only there. An environment
+difference was doing the work an assertion should have been doing.
+
+Both CI jobs now set the key, so CI exercises the state production runs in, and
+the API logs a warning at startup when the key is absent instead of quietly
+getting weaker — which is the exact failure shape this whole sprint is about.
 
 Both paths are tested, including the fallback, because an untested fallback is
 how a check silently stops checking.

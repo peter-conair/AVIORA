@@ -418,7 +418,15 @@ describe('Sprint 37 — duplicate leads', () => {
     });
     expect(messy.status).toBe(409);
 
-    // Same phone, written the other way round.
+    // Same phone, written the other way round. This half needs the blind
+    // index: the plaintext fallback compares phones exactly, so without a key
+    // this passes a duplicate through and the failure reads as a bare status
+    // mismatch. Say what is actually missing (docs/55 §2.1).
+    expect(
+      process.env.AVIORA_BLIND_INDEX_KEY,
+      'AVIORA_BLIND_INDEX_KEY is unset, so the CRM is in its degraded mode and ' +
+        'cannot match a phone written a different way',
+    ).toBeTruthy();
     const byPhone = await api('/api/v1/crm/leads', {
       method: 'POST',
       token: seller,
