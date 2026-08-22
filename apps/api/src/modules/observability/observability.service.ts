@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { estimateAiCost, AI_RATE_CURRENCY } from '@aviora/shared';
 import { PrismaService } from '../../common/db/prisma.service';
+import { MAX_ATTEMPTS as OUTBOX_MAX_ATTEMPTS } from '../../common/events/outbox-relay.service';
 
 /**
  * A run claimed for longer than this is a job nobody finished (docs/35 §5).
@@ -15,6 +16,8 @@ const DEFAULT_WINDOW_DAYS = 30;
 export interface QueueHealth {
   pending: number;
   failing: number;
+  /** Exhausted its attempts: the relay will never pick it up again (docs/51). */
+  dead: number;
   processedInWindow: number;
   oldestPendingAgeSeconds: number | null;
   worstAttempts: number;
@@ -42,9 +45,18 @@ export class ObservabilityService {
    */
   async queue(days?: number): Promise<QueueHealth> {
     const w = this.windowFrom(days);
-    const [pending, failing, processed, oldest, worst] = await Promise.all([
+    // An event that has exhausted MAX_ATTEMPTS stops being selected by the relay
+    // (`attempts < MAX_ATTEMPTS`) and sits in the table for ever. There is no
+    // dead-letter queue — docs/11 §273 described one that was never built — so
+    // "dead" is computed from what the rows already say, and reported apart
+    // from "failing". An operator needs to tell a delivery that will retry from
+    // one that never will again.
+    const [pending, failing, dead, processed, oldest, worst] = await Promise.all([
       this.prisma.owner.domainEvent.count({ where: { processedAt: null } }),
       this.prisma.owner.domainEvent.count({ where: { processedAt: null, attempts: { gt: 0 } } }),
+      this.prisma.owner.domainEvent.count({
+        where: { processedAt: null, attempts: { gte: OUTBOX_MAX_ATTEMPTS } },
+      }),
       this.prisma.owner.domainEvent.count({ where: { processedAt: { gte: w.from } } }),
       this.prisma.owner.domainEvent.findFirst({
         where: { processedAt: null },
@@ -60,6 +72,7 @@ export class ObservabilityService {
     return {
       pending,
       failing,
+      dead,
       processedInWindow: processed,
       oldestPendingAgeSeconds: oldest
         ? Math.round((Date.now() - oldest.occurredAt.getTime()) / 1000)
@@ -67,9 +80,11 @@ export class ObservabilityService {
       worstAttempts: worst?.attempts ?? 0,
       window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
       note:
-        'pending is the backlog now; failing is the part of that backlog that has ' +
-        'already errored at least once. Both are counted from domain_events, which ' +
-        'is the queue — there is no separate metric to disagree with it.',
+        'pending is the backlog now; failing is the part of it that has already ' +
+        'errored at least once; DEAD is the part that has exhausted its attempts ' +
+        'and will never be retried without a person. All three are counted from ' +
+        'domain_events, which is the queue — there is no separate metric to ' +
+        'disagree with it.',
     };
   }
 

@@ -21,7 +21,12 @@ export const BATCH = 20;
  * this one stopped.
  */
 export const MAX_BATCHES_PER_TICK = 50;
-const MAX_ATTEMPTS = 5;
+/**
+ * Exported so the observability surface can report DEAD events — those that
+ * have exhausted their attempts — apart from ones still retrying, without
+ * keeping a second copy of this number that could drift (docs/51).
+ */
+export const MAX_ATTEMPTS = 5;
 
 interface OutboxRow {
   id: string;

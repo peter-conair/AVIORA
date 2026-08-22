@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/db/prisma.service';
 import { EmailService } from '../../common/email/email.service';
+import { MAX_ATTEMPTS as OUTBOX_MAX_ATTEMPTS } from '../../common/events/outbox-relay.service';
 
 /**
  * Alerting (docs/42).
@@ -27,6 +28,8 @@ const THRESHOLDS = {
   jobSilentHours: Number(process.env.AVIORA_ALERT_JOB_AGE_H ?? 26),
   /** Webhook deliveries stuck failing. */
   webhookFailing: Number(process.env.AVIORA_ALERT_WEBHOOK_FAILING ?? 20),
+  /** Events that exhausted their attempts. One is worth knowing about. */
+  outboxDead: Number(process.env.AVIORA_ALERT_OUTBOX_DEAD ?? 1),
   /** Refused authentication attempts in an hour — the shape of a list being worked through. */
   authThrottled: Number(process.env.AVIORA_ALERT_AUTH_THROTTLED ?? 50),
   /** One reminder if a problem is still there after this long. */
@@ -62,7 +65,7 @@ export class AlertsService {
     const silentBefore = new Date(now - THRESHOLDS.jobSilentHours * 3_600_000);
 
     const authSince = new Date(now - 3_600_000);
-    const [oldest, failing, staleClaims, webhookFailing, jobSuccesses, authThrottled] =
+    const [oldest, failing, dead, staleClaims, webhookFailing, jobSuccesses, authThrottled] =
       await Promise.all([
         this.prisma.owner.domainEvent.findFirst({
           where: { processedAt: null },
@@ -71,6 +74,11 @@ export class AlertsService {
         }),
         this.prisma.owner.domainEvent.count({
           where: { processedAt: null, attempts: { gt: 0 } },
+        }),
+        // Exhausted, not merely erroring: the relay selects `attempts < MAX`, so
+        // these are the ones it will never look at again (docs/51).
+        this.prisma.owner.domainEvent.count({
+          where: { processedAt: null, attempts: { gte: OUTBOX_MAX_ATTEMPTS } },
         }),
         this.prisma.owner.scheduledJobRun.count({
           where: { status: 'claimed', startedAt: { lt: staleBefore } },
@@ -119,6 +127,16 @@ export class AlertsService {
         value: failing,
         threshold: THRESHOLDS.outboxFailing,
         summary: `${failing} queued events have already errored`,
+      },
+      {
+        check: 'outbox.dead',
+        firing: dead >= THRESHOLDS.outboxDead,
+        value: dead,
+        threshold: THRESHOLDS.outboxDead,
+        summary:
+          `${dead} event(s) have exhausted their delivery attempts. The relay will ` +
+          'never pick them up again — there is no dead-letter queue, so somebody ' +
+          'has to look (docs/51)',
       },
       {
         check: 'scheduler.stale_claim',

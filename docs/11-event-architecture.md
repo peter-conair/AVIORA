@@ -270,7 +270,7 @@ defaultJobOptions: {
 - Handler-level granularity: the fan-out job spawns per-handler jobs (`jobId = {event_id}:{handler}`), so retries re-run only the failed handler.
 - After final failure the job lands in the failed set = **DLQ**. Alerting: failed-count metric → Sentry/alert channel with `event_name`, `handler`, `tenant_id`, error.
 - Replay: an admin command re-enqueues DLQ jobs (idempotency ledger makes replay safe); a broader backfill can re-dispatch from `domain_events` by time range/event name.
-- Poison-pill guard: payloads failing zod validation go straight to DLQ (no retries — they will never succeed).
+- Poison-pill guard: **not built as described.** There is no dead-letter queue and no zod validation of payloads at the relay. What actually happens: a handler that throws backs off exponentially, and after `MAX_ATTEMPTS` the relay stops selecting the row (`attempts < MAX_ATTEMPTS`) — so the event stays in `domain_events`, unprocessed, for ever. That is not silent: it is reported as **`dead`** by the observability queue panel, separately from events still retrying, and the `outbox.dead` alert fires on the first one (docs/51). A DLQ would be a better home for them; a number an operator is told about is the honest version of one until then.
 
 ---
 
@@ -318,4 +318,4 @@ sequenceDiagram
 
 - Relay lag metric: `now() - min(created_at) WHERE dispatched_at IS NULL` — alert if > 30s.
 - Queue depth, failure counts per event/handler exported as metrics; every handler log line carries `event_id`, `event_name`, `tenant_id`, `correlation_id` (pino).
-- Tests: (a) outbox atomicity — force rollback after event append, assert no event row; (b) handler idempotency — deliver every handler the same event twice, assert single effect; (c) tenant context — handler for Tenant A cannot touch Tenant B rows (Prisma extension throws / RLS blocks); (d) DLQ replay is a no-op for already-processed handlers.
+- Tests: (a) outbox atomicity — `test/integration/outbox-atomicity.spec.ts` forces a rollback after an event append and asserts no event row, plus the commit case so a no-op append could not pass it, plus the state side; (b) handler idempotency — `second-instance.e2e.spec.ts` races two relays over one backlog and asserts each handler ran once, and `partner.e2e.spec.ts` replays an event and asserts nothing changes. (a) was listed here long before it existed.
