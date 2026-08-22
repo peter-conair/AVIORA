@@ -46,6 +46,7 @@ import { NotificationsService } from './modules/notification/notifications.servi
 import { CrmController } from './modules/crm/crm.controller';
 import { CrmService } from './modules/crm/crm.service';
 import { CrmScopeService } from './modules/crm/crm-scope.service';
+import { ContactKeyService } from './modules/crm/contact-key.service';
 import { AuditController } from './modules/audit/audit.controller';
 import { KnowledgeController } from './modules/knowledge/knowledge.controller';
 import { KnowledgeService } from './modules/knowledge/knowledge.service';
@@ -179,6 +180,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     WebhookHandlers,
     CrmService,
     CrmScopeService,
+    ContactKeyService,
     KnowledgeService,
     HealthService,
     HealthAccessService,

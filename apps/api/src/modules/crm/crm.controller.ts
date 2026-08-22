@@ -9,6 +9,7 @@ import {
 } from '../../common/auth/decorators';
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { ZodPipe } from '../../common/validation/zod.pipe';
+import { RateTier } from '../../common/rate/rate-tier.guard';
 import type { TeamActor } from '../team/team-scope.service';
 import { CrmService } from './crm.service';
 
@@ -16,17 +17,20 @@ const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
 
 const leadSchema = z.object({
   name: z.string().min(1).max(160),
-  email: z.string().email().optional(),
-  phone: z.string().max(40).optional(),
+  email: z.string().trim().email().optional(),
+  phone: z.string().trim().max(40).optional(),
   source: z.string().max(80).optional(),
   notes: z.string().max(4000).optional(),
   stageId: z.string().uuid().optional(),
+  // Deliberate override, not a way around the check: the caller has been told
+  // a duplicate exists and is saying they want this one anyway (docs/55 §3).
+  allowDuplicate: z.boolean().optional(),
 });
 
 const leadUpdateSchema = z.object({
   name: z.string().min(1).max(160).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().max(40).optional(),
+  email: z.string().trim().email().optional(),
+  phone: z.string().trim().max(40).optional(),
   notes: z.string().max(4000).optional(),
   stageId: z.string().uuid().optional(),
   status: z.enum(['open', 'lost', 'converted']).optional(),
@@ -95,6 +99,21 @@ export class CrmController {
     @Query('stageId') stageId?: string,
   ) {
     return { leads: await this.crm.listLeads(this.actor(user), { status, stageId }) };
+  }
+
+  @Get('leads/duplicates')
+  @RequirePermissions(PERMISSIONS.CRM_LEAD_VIEW)
+  // Throttled, because this answers "is this address in your CRM?" for any
+  // address asked. That is the question the endpoint exists to answer, but at
+  // the default read budget it also answers it a few hundred times a minute,
+  // which is an enumeration tool rather than a duplicate check (docs/55 §4).
+  @RateTier('expensive')
+  async leadDuplicates(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('email') email?: string,
+    @Query('phone') phone?: string,
+  ) {
+    return this.crm.findDuplicates(this.actor(user), { email, phone });
   }
 
   @Get('leads/:id')

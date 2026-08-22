@@ -9,6 +9,7 @@ import { appendEvent, type Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
 import type { TeamActor } from '../team/team-scope.service';
+import { ContactKeyService } from './contact-key.service';
 import { CrmScopeService } from './crm-scope.service';
 
 /** Default pipeline created on first use — tenants may rename/reorder freely. */
@@ -28,6 +29,7 @@ export class CrmService {
     private readonly db: TenantDb,
     private readonly audit: AuditService,
     private readonly scope: CrmScopeService,
+    private readonly contactKeys: ContactKeyService,
   ) {}
 
   private requireMember(actor: TeamActor): string {
@@ -130,12 +132,25 @@ export class CrmService {
       source?: string;
       notes?: string;
       stageId?: string;
+      allowDuplicate?: boolean;
     },
     actor: TeamActor,
     actorUserId: string,
   ) {
     const memberId = this.requireMember(actor);
     const lead = await this.db.tx(async (tx) => {
+      if (!input.allowDuplicate) {
+        // Inside the transaction, so two simultaneous submissions of the same
+        // web form cannot both pass the check and both insert.
+        const clash = await this.findOpenDuplicate(tx, input);
+        if (clash) {
+          throw new ConflictException({
+            code: ERROR_CODES.CONFLICT,
+            message: 'A lead with this contact is already open',
+            details: clash,
+          });
+        }
+      }
       let stageId = input.stageId ?? null;
       if (!stageId) {
         const stages = await this.ensureStages(tx);
@@ -149,6 +164,7 @@ export class CrmService {
           name: input.name,
           email: input.email,
           phone: input.phone,
+          ...this.contactKeys.keys(input),
           source: input.source,
           notes: input.notes,
         },
@@ -170,6 +186,77 @@ export class CrmService {
       after: { name: lead.name, source: lead.source },
     });
     return lead;
+  }
+
+  /**
+   * The same person, already open somewhere in this tenant.
+   *
+   * Deliberately NOT owner-scoped. The duplicate worth catching is almost
+   * always somebody else's — two salespeople working one lead is the failure
+   * this exists to prevent, and a check that only searched your own book would
+   * miss exactly that case and still say "no duplicate".
+   *
+   * What comes back is therefore limited on purpose: the owner's display name
+   * so the caller knows who to talk to, and the lead id ONLY if they were
+   * allowed to see that lead anyway. Someone who cannot read a colleague's
+   * book still learns that the contact is taken, which is the minimum the
+   * check has to reveal in order to be a check at all (docs/55 §4).
+   */
+  private async findOpenDuplicate(
+    tx: Tx,
+    input: { email?: string | null; phone?: string | null },
+  ): Promise<{ ownerName: string; leadId: string | null } | null> {
+    const match = this.contactKeys.matchWhere(input);
+    if (!match) return null;
+    const existing = await tx.lead.findFirst({
+      where: { status: 'open', ...match },
+      select: { id: true, ownerMemberId: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!existing) return null;
+    const owner = await tx.member.findFirst({
+      where: { id: existing.ownerMemberId },
+      select: { displayName: true },
+    });
+    return { ownerName: owner?.displayName ?? 'another member', leadId: null };
+  }
+
+  /**
+   * The duplicate check a screen can call before showing a create form
+   * (docs/55). Same rule as above, with the id filled in when the caller is
+   * allowed to open the lead.
+   */
+  async findDuplicates(actor: TeamActor, input: { email?: string | null; phone?: string | null }) {
+    return this.db.tx(async (tx) => {
+      const match = this.contactKeys.matchWhere(input);
+      if (!match) return { duplicates: [] as unknown[] };
+      const owners = await this.scope.ownerMemberIds(tx, actor, PERMISSIONS.CRM_LEAD_VIEW);
+      const rows = await tx.lead.findMany({
+        where: { status: 'open', ...match },
+        select: { id: true, name: true, ownerMemberId: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+        take: 20,
+      });
+      const members = await tx.member.findMany({
+        where: { id: { in: rows.map((r) => r.ownerMemberId) } },
+        select: { id: true, displayName: true },
+      });
+      const nameOf = new Map(members.map((m) => [m.id, m.displayName]));
+      return {
+        duplicates: rows.map((row) => {
+          const visible = this.scope.canAccess(owners, row.ownerMemberId);
+          return {
+            // Not visible → no id and no lead name, so the response cannot be
+            // used to read a book the caller has no permission for.
+            id: visible ? row.id : null,
+            name: visible ? row.name : null,
+            ownerName: nameOf.get(row.ownerMemberId) ?? 'another member',
+            createdAt: row.createdAt,
+            visible,
+          };
+        }),
+      };
+    });
   }
 
   async updateLead(
@@ -197,7 +284,22 @@ export class CrmService {
           throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Stage not found' });
         }
       }
-      const lead = await tx.lead.update({ where: { id }, data: input });
+      // Re-stamp when the contact itself changed, or the index still points at
+      // the old address and the duplicate check goes looking for a person who
+      // is no longer there.
+      const contactChanged = input.email !== undefined || input.phone !== undefined;
+      const lead = await tx.lead.update({
+        where: { id },
+        data: contactChanged
+          ? {
+              ...input,
+              ...this.contactKeys.keys({
+                email: input.email ?? before.email,
+                phone: input.phone ?? before.phone,
+              }),
+            }
+          : input,
+      });
       if (input.stageId && input.stageId !== before.stageId) {
         await appendEvent(tx, {
           eventName: EVENTS.LeadStageChanged,
@@ -238,6 +340,7 @@ export class CrmService {
           ownerMemberId: lead.ownerMemberId,
           name: lead.name,
           email: lead.email,
+          ...this.contactKeys.keys({ email: lead.email, phone: lead.phone }),
           phone: lead.phone,
           convertedFromLeadId: lead.id,
         },

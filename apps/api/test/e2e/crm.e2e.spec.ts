@@ -373,6 +373,181 @@ describe('Sprint 3 — CRM ownership scoping', () => {
   });
 });
 
+/**
+ * Sprint 37 — duplicate leads (docs/55).
+ *
+ * The check runs tenant-wide on purpose: the duplicate worth catching is
+ * usually a colleague's, and a check scoped to your own book would miss
+ * exactly that and still answer "no duplicate" with a straight face.
+ */
+describe('Sprint 37 — duplicate leads', () => {
+  const dupEmail = `dup-${RUN}@test.local`;
+
+  it('refuses a second open lead for the same contact, and says who has it', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const first = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Ada Original', email: dupEmail, phone: '081-234-5678' }),
+    });
+    expect(first.status).toBe(201);
+
+    const again = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Ada Again', email: dupEmail }),
+    });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('CONFLICT');
+    // Naming the owner is the point — "it is a duplicate" without "and Somchai
+    // has it" leaves the caller with nothing to do about it.
+    expect(again.body.error.details.ownerName).toBeTruthy();
+  });
+
+  it('matches the contact however it was typed', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // Wrong case and stray spaces: the shape a real second entry actually
+    // arrives in, and the one plain equality misses.
+    const messy = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Ada Messy', email: `  ${dupEmail.toUpperCase()} ` }),
+    });
+    expect(messy.status).toBe(409);
+
+    // Same phone, written the other way round.
+    const byPhone = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Ada By Phone', phone: '+66 81 234 5678' }),
+    });
+    expect(byPhone.status).toBe(409);
+  });
+
+  it('lets the caller override deliberately', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const forced = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      // Two people really do share a family phone or a shop address. The check
+      // exists to stop the accidental double, not to overrule the person.
+      body: JSON.stringify({ name: 'Ada Twin', email: dupEmail, allowDuplicate: true }),
+    });
+    expect(forced.status).toBe(201);
+  });
+
+  it('tells an outsider the contact is taken without handing over the lead', async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const found = await api(`/api/v1/crm/leads/duplicates?email=${encodeURIComponent(dupEmail)}`, {
+      token: outsider,
+      tenant: tenantId,
+    });
+    expect(found.status).toBe(200);
+    expect(found.body.duplicates.length).toBeGreaterThan(0);
+    for (const dup of found.body.duplicates) {
+      // They may not read the seller's book, so they get the owner's name and
+      // nothing they could use to open the record.
+      expect(dup.visible).toBe(false);
+      expect(dup.id).toBeNull();
+      expect(dup.name).toBeNull();
+      expect(dup.ownerName).toBeTruthy();
+    }
+  });
+
+  it('gives the owner the lead itself', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const found = await api(`/api/v1/crm/leads/duplicates?email=${encodeURIComponent(dupEmail)}`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(found.status).toBe(200);
+    expect(found.body.duplicates.every((d: { visible: boolean }) => d.visible)).toBe(true);
+    expect(found.body.duplicates[0].id).toBeTruthy();
+  });
+
+  it('does not treat a lead with no contact details as a duplicate of another', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // Nothing to match on must match NOTHING. An unguarded OR over two null
+    // keys matches every row with a blank email, which would block every
+    // walk-in with only a name.
+    for (const name of ['Walk-in One', 'Walk-in Two']) {
+      const created = await api('/api/v1/crm/leads', {
+        method: 'POST',
+        token: seller,
+        tenant: tenantId,
+        body: JSON.stringify({ name }),
+      });
+      expect(created.status).toBe(201);
+    }
+  });
+
+  it('lets a closed lead be re-entered', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const email = `requote-${RUN}@test.local`;
+    const first = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Old Enquiry', email }),
+    });
+    await api(`/api/v1/crm/leads/${first.body.lead.id}`, {
+      method: 'PATCH',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ status: 'lost' }),
+    });
+    // A person who enquired last year and comes back is a new lead, not a
+    // duplicate — only OPEN leads block.
+    const returning = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Returning Enquiry', email }),
+    });
+    expect(returning.status).toBe(201);
+  });
+
+  it('follows the contact when a lead is edited', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const moved = `moved-${RUN}@test.local`;
+    const created = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Typo Email', email: `typo-${RUN}@test.local` }),
+    });
+    await api(`/api/v1/crm/leads/${created.body.lead.id}`, {
+      method: 'PATCH',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ email: moved }),
+    });
+
+    // The index has to move with the correction, or the check keeps guarding
+    // an address nobody has and stops guarding the one they do.
+    const atNew = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Same Person', email: moved }),
+    });
+    expect(atNew.status).toBe(409);
+
+    const atOld = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: 'Nobody', email: `typo-${RUN}@test.local` }),
+    });
+    expect(atOld.status).toBe(201);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

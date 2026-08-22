@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:coverage": "vitest run --config vitest.integration.config.ts --coverage"
+    "test:coverage": "vitest run --config vitest.integration.config.ts --coverage",
+    "backfill:crm-bidx": "tsx scripts/backfill-crm-blind-index.ts"
   },
   "dependencies": {
     "@aviora/db": "workspace:*",

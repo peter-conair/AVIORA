@@ -629,6 +629,8 @@ model Lead {
   name                String
   email               String?
   phone               String?
+  emailBidx           String?   @map("email_bidx")
+  phoneBidx           String?   @map("phone_bidx")
   source              String?
   notes               String?
   status              String    @default("open")
@@ -645,6 +647,10 @@ model Lead {
 
   @@index([tenantId, ownerMemberId, status])
   @@index([tenantId, stageId])
+  // Contact lookup goes through the blind index, not the column, so it keeps
+  // working when the column is ciphertext (docs/54).
+  @@index([tenantId, emailBidx])
+  @@index([tenantId, phoneBidx])
   @@map("leads")
 }
 
@@ -656,6 +662,8 @@ model Customer {
   name                String
   email               String?
   phone               String?
+  emailBidx           String?  @map("email_bidx")
+  phoneBidx           String?  @map("phone_bidx")
   status              String   @default("active")
   convertedFromLeadId String?  @map("converted_from_lead_id") @db.Uuid
   metadata            Json?
@@ -666,6 +674,8 @@ model Customer {
   interactions Interaction[]
 
   @@index([tenantId, ownerMemberId, status])
+  @@index([tenantId, emailBidx])
+  @@index([tenantId, phoneBidx])
   @@map("customers")
 }
 
