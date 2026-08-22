@@ -48,6 +48,8 @@ import { CrmService } from './modules/crm/crm.service';
 import { CrmScopeService } from './modules/crm/crm-scope.service';
 import { ContactKeyService } from './modules/crm/contact-key.service';
 import { ProspectingService } from './modules/crm/prospecting.service';
+import { TrackerService } from './modules/tracker/tracker.service';
+import { TrackerController } from './modules/tracker/tracker.controller';
 import { BusinessGoalService } from './modules/goals-business/business-goal.service';
 import { BusinessGoalController } from './modules/goals-business/business-goal.controller';
 import { AuditController } from './modules/audit/audit.controller';
@@ -147,6 +149,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     NotificationsController,
     CrmController,
     BusinessGoalController,
+    TrackerController,
     AuditController,
     KnowledgeController,
     AiController,
@@ -187,6 +190,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ContactKeyService,
     ProspectingService,
     BusinessGoalService,
+    TrackerService,
     KnowledgeService,
     HealthService,
     HealthAccessService,

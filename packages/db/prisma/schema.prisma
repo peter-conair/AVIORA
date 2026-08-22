@@ -2163,3 +2163,97 @@ model BusinessGoal {
   @@index([tenantId, month])
   @@map("business_goals")
 }
+
+/// A tracking sheet's columns (docs/59). The Follow Up Sheet, the Diamond
+/// Check List and the 6WNY protocol are all rows of this table — their columns
+/// are product-specific, so they are tenant data rather than code.
+model TrackerTemplate {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  /// What a row on this sheet is about: 'lead' | 'member' | 'customer'.
+  subjectType String  @map("subject_type")
+  isActive    Boolean @default(true) @map("is_active")
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  steps   TrackerStep[]
+  entries TrackerEntry[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive, order])
+  @@map("tracker_templates")
+}
+
+/// One column. `stageLabel` groups columns the way 6WNY groups them into
+/// "before the course / day 4 / day 7"; a sheet with no stages leaves it null.
+model TrackerStep {
+  id         String  @id @default(uuid(7)) @db.Uuid
+  tenantId   String  @map("tenant_id") @db.Uuid
+  templateId String  @map("template_id") @db.Uuid
+  key        String
+  label      String
+  stageLabel String? @map("stage_label")
+  order      Int     @default(0)
+
+  template TrackerTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  marks    TrackerMark[]
+
+  @@unique([templateId, key])
+  @@index([tenantId, templateId, order])
+  @@map("tracker_steps")
+}
+
+/// One row: this sheet, applied to this person.
+model TrackerEntry {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  templateId  String  @map("template_id") @db.Uuid
+  /// 'lead' | 'member' | 'customer' — matches the template's subjectType.
+  subjectType String  @map("subject_type")
+  subjectId   String  @map("subject_id") @db.Uuid
+  /// Who is working this row; a sheet belongs to the person doing the work.
+  ownerMemberId String @map("owner_member_id") @db.Uuid
+  /// "LINE 1".."LINE 6" on the Diamond sheet; null everywhere else.
+  groupLabel  String? @map("group_label")
+
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  /// Denormalised from the marks so "who has stalled" is one indexed query
+  /// rather than a scan of every tick (docs/59 §5).
+  lastMarkedAt DateTime? @map("last_marked_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  template TrackerTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  marks    TrackerMark[]
+
+  @@unique([tenantId, templateId, subjectType, subjectId])
+  @@index([tenantId, templateId, groupLabel])
+  @@index([tenantId, ownerMemberId, lastMarkedAt])
+  @@map("tracker_entries")
+}
+
+/// A tick, with the date it happened and who put it there. The date is the
+/// whole reason this is not a boolean column.
+model TrackerMark {
+  id       String   @id @default(uuid(7)) @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  entryId  String   @map("entry_id") @db.Uuid
+  stepId   String   @map("step_id") @db.Uuid
+  markedAt DateTime @default(now()) @map("marked_at") @db.Timestamptz(6)
+  markedByMemberId String? @map("marked_by_member_id") @db.Uuid
+  note     String?
+
+  entry TrackerEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  step  TrackerStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, stepId])
+  @@index([tenantId, entryId])
+  @@map("tracker_marks")
+}

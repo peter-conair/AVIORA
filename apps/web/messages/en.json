@@ -1774,7 +1774,8 @@
       "sponsor": "Sponsor list",
       "customer": "Customer list",
       "report": "Report",
-      "goals": "Goals"
+      "goals": "Goals",
+      "tracker": "Follow up"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1821,6 +1822,12 @@
     "lifeGoal": "Life goal",
     "saveGoals": "Save goals",
     "sourceComputed": "Counted by the system from paid orders and new partners",
-    "sourceManual": "You report this one — the system does not measure it"
+    "sourceManual": "You report this one — the system does not measure it",
+    "stalledTitle": "Not moved in {days} days",
+    "neverStarted": "never started",
+    "lastMoved": "stalled",
+    "trackerEmpty": "Nobody on this sheet yet.",
+    "addToSheet": "Put someone on this sheet",
+    "nobodyToAdd": "Everybody is already on it."
   }
 }

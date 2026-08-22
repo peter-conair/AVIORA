@@ -718,6 +718,184 @@ describe('Sprint 38 — name lists and the memory jogger', () => {
   });
 });
 
+/**
+ * Sprint 40 — the tracking sheets (docs/59).
+ *
+ * Three of the paper sheets are one primitive, so what these assert is the
+ * primitive: the columns are data, a tick carries a date, and the sheet can
+ * answer the question paper cannot — who stopped moving.
+ */
+describe('Sprint 40 — tracking sheets', () => {
+  let entryId = '';
+  let firstStepId = '';
+  let leadId = '';
+
+  it('gives a brand-new tenant working sheets without anybody configuring one', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/tracker/sheets', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+    const codes = res.body.templates.map((t: { code: string }) => t.code);
+    expect(codes).toEqual(expect.arrayContaining(['follow_up', 'diamond', 'follow_up_6wny']));
+  });
+
+  it('keeps the stages the paper draws bands over', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/tracker/sheets/follow_up_6wny', {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(res.status).toBe(200);
+    // Five stages, in column order — a grid that sorted them alphabetically
+    // would put "day 14" before "day 4".
+    expect(res.body.stages).toEqual([
+      'ก่อนเริ่มคอร์ส',
+      '4 วัน',
+      '7 วัน',
+      '14 วัน',
+      'สัปดาห์ที่ 3 เป็นต้นไป',
+    ]);
+  });
+
+  it('puts a person on a sheet and ticks a box', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const lead = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: `ติดตาม ${RUN}` }),
+    });
+    leadId = lead.body.lead.id;
+
+    const added = await api('/api/v1/tracker/sheets/follow_up/entries', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ subjectId: leadId }),
+    });
+    expect(added.status).toBe(201);
+    entryId = added.body.entry.id;
+
+    const sheet = await api('/api/v1/tracker/sheets/follow_up', {
+      token: seller,
+      tenant: tenantId,
+    });
+    firstStepId = sheet.body.steps[0].id;
+    const row = sheet.body.entries.find((e: { id: string }) => e.id === entryId);
+    // The row knows whose it is without a second lookup, or the grid renders a
+    // column of uuids.
+    expect(row.subjectName).toBe(`ติดตาม ${RUN}`);
+    expect(row.doneCount).toBe(0);
+    expect(row.stepCount).toBeGreaterThan(40);
+
+    const marked = await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: firstStepId, done: true }),
+    });
+    expect(marked.status).toBe(200);
+    expect(marked.body.entry.lastMarkedAt).toBeTruthy();
+  });
+
+  it('treats ticking twice as the same tick, and keeps the first date', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const first = await api('/api/v1/tracker/sheets/follow_up', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const before = first.body.entries.find((e: { id: string }) => e.id === entryId);
+
+    await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: firstStepId, done: true }),
+    });
+
+    const after = await api('/api/v1/tracker/sheets/follow_up', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const row = after.body.entries.find((e: { id: string }) => e.id === entryId);
+    // WHEN it happened is the fact being recorded; a second tick must not
+    // reset it and make a stalled row look fresh.
+    expect(row.doneCount).toBe(before.doneCount);
+    expect(row.lastMarkedAt).toBe(before.lastMarkedAt);
+  });
+
+  it('takes a tick back', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: firstStepId, done: false }),
+    });
+    const sheet = await api('/api/v1/tracker/sheets/follow_up', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const row = sheet.body.entries.find((e: { id: string }) => e.id === entryId);
+    expect(row.doneCount).toBe(0);
+    expect(row.lastMarkedAt).toBeNull();
+  });
+
+  it('refuses the same person twice on one sheet', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const again = await api('/api/v1/tracker/sheets/follow_up/entries', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ subjectId: leadId }),
+    });
+    // Two rows would let one person be half-ticked in two places and neither
+    // would be the truth.
+    expect(again.status).toBe(409);
+  });
+
+  it('refuses a column from a different sheet', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const diamond = await api('/api/v1/tracker/sheets/diamond', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const foreignStep = diamond.body.steps[0].id;
+    const res = await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: foreignStep, done: true }),
+    });
+    // Otherwise a Diamond milestone lands on a Follow Up row and the counts on
+    // both sheets stop meaning anything.
+    expect(res.status).toBe(404);
+  });
+
+  it('names who has stopped moving, including who never started', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // Zero days = everything not finished counts as stalled, which is the only
+    // way to assert this without waiting a fortnight.
+    const res = await api('/api/v1/tracker/stalled?days=0', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+    const mine = res.body.stalled.find((s: { entryId: string }) => s.entryId === entryId);
+    expect(mine).toBeTruthy();
+    // Started and never touched is the worst kind of stalled, and a plain
+    // "lastMarkedAt < cutoff" filter would miss it — the column is still null.
+    expect(mine.neverStarted).toBe(true);
+    expect(mine.subjectName).toBe(`ติดตาม ${RUN}`);
+  });
+
+  it("does not put another member's rows on your sheet", async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const res = await api('/api/v1/tracker/sheets/follow_up', {
+      token: outsider,
+      tenant: tenantId,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.entries).toHaveLength(0);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

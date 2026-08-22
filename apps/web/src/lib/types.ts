@@ -2937,3 +2937,40 @@ export interface BusinessGoalResponse {
     };
   };
 }
+
+export interface TrackerSheetList {
+  templates: { id: string; code: string; name: string; subjectType: string }[];
+}
+
+export interface TrackerSheet {
+  template: { id: string; code: string; name: string; subjectType: string };
+  stages: string[];
+  steps: { id: string; key: string; label: string; stageLabel: string | null }[];
+  entries: {
+    id: string;
+    subjectId: string;
+    subjectName: string | null;
+    groupLabel: string | null;
+    startedAt: string;
+    lastMarkedAt: string | null;
+    completedAt: string | null;
+    done: string[];
+    doneCount: number;
+    stepCount: number;
+  }[];
+}
+
+export interface TrackerStalled {
+  days: number;
+  stalled: {
+    entryId: string;
+    sheet: string;
+    sheetCode: string;
+    subjectId: string;
+    subjectName: string | null;
+    groupLabel: string | null;
+    lastMarkedAt: string | null;
+    startedAt: string;
+    neverStarted: boolean;
+  }[];
+}

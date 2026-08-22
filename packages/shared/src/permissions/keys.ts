@@ -58,6 +58,12 @@ export const PERMISSIONS = {
 
   CRM_PIPELINE_MANAGE: 'crm.pipeline.manage',
 
+  // tracking sheets (docs/59) — the Follow Up / Diamond / 6WNY grids
+  TRACKER_VIEW: 'tracker.view',
+  TRACKER_MANAGE: 'tracker.manage',
+  /** Editing the templates themselves — the columns everyone else ticks. */
+  TRACKER_TEMPLATE_MANAGE: 'tracker.template.manage',
+
   // community
   COMMUNITY_VIEW: 'community.view',
   COMMUNITY_POST: 'community.post',

@@ -25,7 +25,7 @@
 
 <!-- GENERATED:permission-matrix -->
 
-_Generated from `PERMISSIONS` and `SYSTEM_ROLES`. 62 permissions,
+_Generated from `PERMISSIONS` and `SYSTEM_ROLES`. 65 permissions,
 3 system roles. Do not edit by hand — run `pnpm --filter @aviora/db
 docs:permissions`. A platform-scope key is never granted to a tenant role, which
 is why those rows are dashes all the way across (docs/07 §1)._
@@ -94,6 +94,9 @@ is why those rows are dashes all the way across (docs/07 §1)._
 | `tenant.settings.manage`       | tenant   | `TENANT_ALL` | —                  | —             |
 | `tenant.settings.view`         | tenant   | `TENANT_ALL` | —                  | —             |
 | `tenant.sso.manage`            | tenant   | `TENANT_ALL` | —                  | —             |
+| `tracker.manage`               | tenant   | `TENANT_ALL` | `SELF`             | `SELF`        |
+| `tracker.template.manage`      | tenant   | `TENANT_ALL` | —                  | —             |
+| `tracker.view`                 | tenant   | `TENANT_ALL` | `DESCENDANT_TEAMS` | `SELF`        |
 
 <!-- /GENERATED:permission-matrix -->
 

@@ -34,6 +34,10 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
+    pattern: /^\/api\/v1\/tracker\/entries\/[^/]+\/marks$/,
+    why: 'Ticking a box on a follow-up sheet is routine work, and a busy line produces hundreds a week — auditing each would bury the rows this log exists for. The tick is not lost: tracker_marks stores when it happened and which member put it there, which is strictly more than an audit row would say (docs/59 §4). Adding a ROW to a sheet IS audited.',
+  },
+  {
     pattern: /^\/api\/v1\/auth\/(logout|refresh)$/,
     why: 'Session lifecycle, not tenant mutations. Refresh-token reuse already kills the family and records it; a row per logout would bury the mutations this log exists for. (login IS audited, on refusal — see the inventory.)',
   },

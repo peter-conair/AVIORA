@@ -108,6 +108,18 @@ test.describe('The prospecting workbook', () => {
     await expect(page.getByText('21 / 25')).toBeVisible();
     await expect(page.getByText('รายชื่อมาจากไหนบ้าง')).toBeVisible();
 
+    /* ── the follow-up sheet: put the person on it and tick a column ────── */
+    await page.getByRole('button', { name: 'ติดตามผล', exact: true }).click();
+    await page.getByRole('button', { name: 'เพิ่มคนเข้าแผ่นนี้' }).click();
+    await page.getByRole('button', { name: `สมชาย ${RUN}` }).click();
+    // The row shows progress out of the sheet's own column count — the
+    // component never names a column, so this works for a tenant's own sheet.
+    await expect(page.getByText('0 / 44')).toBeVisible();
+
+    await page.getByRole('button', { name: new RegExp(`สมชาย ${RUN}`) }).click();
+    await page.getByRole('button', { name: `สมชาย ${RUN} — แผนธุรกิจ` }).click();
+    await expect(page.getByText('1 / 44')).toBeVisible();
+
     /* ── a name written down but never rated is the coach's real target ─── */
     await page.getByRole('button', { name: 'ช่วยจำ' }).click();
     await page.getByRole('button', { name: 'เพื่อนบ้าน' }).click();

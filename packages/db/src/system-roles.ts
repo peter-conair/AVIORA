@@ -54,6 +54,11 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       // leaders coach their org's pipeline but do not own the records
       { key: 'crm.lead.view', scope: SCOPES.DESCENDANT_TEAMS },
       { key: 'crm.customer.view', scope: SCOPES.DESCENDANT_TEAMS },
+      // The whole point of the Diamond sheet is a leader looking down a line,
+      // so a leader reads their org's sheets — but ticks only their own, since
+      // a step is a claim about work somebody actually did.
+      { key: 'tracker.view', scope: SCOPES.DESCENDANT_TEAMS },
+      { key: 'tracker.manage', scope: SCOPES.SELF },
       // A leader may ASK to view health data; the grant decides whether they
       // actually can. Deliberately not DESCENDANT_TEAMS — leadership confers
       // no health access on its own (spec §59).
@@ -77,6 +82,8 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       { key: 'notification.view', scope: SCOPES.SELF },
       // CRM is a member-level tool: each member works their own book.
       { key: 'crm.lead.view', scope: SCOPES.SELF },
+      { key: 'tracker.view', scope: SCOPES.SELF },
+      { key: 'tracker.manage', scope: SCOPES.SELF },
       { key: 'crm.lead.manage', scope: SCOPES.SELF },
       { key: 'crm.customer.view', scope: SCOPES.SELF },
       { key: 'crm.customer.manage', scope: SCOPES.SELF },
