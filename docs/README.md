@@ -68,6 +68,8 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 54  | [CRM contact encryption](./54-crm-encryption-readiness.md)                                        | rehearsed, not performed                                  |
 | 55  | [Duplicate leads, and the index that makes the check survive encryption](./55-duplicate-leads.md) | Sprint 37                                                 |
 | 56  | [The prospecting workbook](./56-prospecting-workbook.md)                                          | Sprint 38                                                 |
+| 57  | [The workbook, end to end — what gets built and in what order](./57-workbook-roadmap.md)          | Sprint 39                                                 |
+| 58  | [The monthly goal sheet](./58-business-goals.md)                                                  | Sprint 39                                                 |
 
 ## Canonical stack (see ADRs)
 

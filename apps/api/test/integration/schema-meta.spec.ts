@@ -26,6 +26,7 @@ const TENANT_OWNED_TABLES = [
   'courses',
   'lessons',
   'learning_progress',
+  'business_goals',
   'pipeline_stages',
   'leads',
   'customers',

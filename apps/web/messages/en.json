@@ -1773,7 +1773,8 @@
       "jogger": "Memory Jogger",
       "sponsor": "Sponsor list",
       "customer": "Customer list",
-      "report": "Report"
+      "report": "Report",
+      "goals": "Goals"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1802,6 +1803,24 @@
       "acquaintances": "People you know",
       "who_sold_us": "People who sold you something",
       "traits": "People who are.."
-    }
+    },
+    "goalsThisMonth": "Goals for {month}",
+    "goalsNarrative": "Where this is going",
+    "targetVolume": "Volume",
+    "targetVolumeInput": "Target volume",
+    "targetPartners": "New partners",
+    "targetPartnersInput": "Target new partners",
+    "targetDevelop": "Develop 5+3",
+    "developCustomersTarget": "Customers target",
+    "developPartnersTarget": "Partners target",
+    "developCustomersActual": "Customers done",
+    "developPartnersActual": "Partners done",
+    "shortTerm": "This month",
+    "midTerm": "This financial year",
+    "longTerm": "Five years",
+    "lifeGoal": "Life goal",
+    "saveGoals": "Save goals",
+    "sourceComputed": "Counted by the system from paid orders and new partners",
+    "sourceManual": "You report this one — the system does not measure it"
   }
 }

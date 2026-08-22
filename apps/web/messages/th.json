@@ -1773,7 +1773,8 @@
       "jogger": "ช่วยจำ",
       "sponsor": "รายชื่อผู้ร่วมธุรกิจ",
       "customer": "รายชื่อลูกค้า",
-      "report": "รายงาน"
+      "report": "รายงาน",
+      "goals": "เป้าหมาย"
     },
     "lists": {
       "sponsor": "รายชื่อผู้ร่วมธุรกิจ",
@@ -1802,6 +1803,24 @@
       "acquaintances": "คนรู้จัก",
       "who_sold_us": "คนที่เราเป็นลูกค้า",
       "traits": "คนที่.."
-    }
+    },
+    "goalsThisMonth": "เป้าหมายเดือน {month}",
+    "goalsNarrative": "เป้าหมายระยะยาว",
+    "targetVolume": "ยอด",
+    "targetVolumeInput": "เป้ายอด",
+    "targetPartners": "คน (NEW GT)",
+    "targetPartnersInput": "เป้าจำนวนคน",
+    "targetDevelop": "พัฒนา 5+3",
+    "developCustomersTarget": "เป้าลูกค้า",
+    "developPartnersTarget": "เป้าผู้ร่วมธุรกิจ",
+    "developCustomersActual": "ลูกค้าที่ทำได้",
+    "developPartnersActual": "ผู้ร่วมธุรกิจที่ทำได้",
+    "shortTerm": "ระยะสั้น (เป้าหมายรายเดือน)",
+    "midTerm": "ระยะกลาง (เป้าหมาย 1 ปีบัญชี)",
+    "longTerm": "ระยะยาว (เป้าหมาย 5 ปีบัญชี)",
+    "lifeGoal": "เป้าหมายชีวิต",
+    "saveGoals": "บันทึกเป้าหมาย",
+    "sourceComputed": "ระบบนับให้จากยอดที่ชำระแล้วและคนที่สปอนเซอร์",
+    "sourceManual": "ช่องนี้คุณกรอกเอง ระบบไม่ได้วัดให้"
   }
 }

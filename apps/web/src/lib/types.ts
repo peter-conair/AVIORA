@@ -2900,3 +2900,40 @@ export interface ProspectingReport {
   joggerCategories: { key: string; named: number }[];
   prompts: { category: string; key: string; named: number }[];
 }
+
+export interface BusinessGoalResponse {
+  month: string;
+  memberId: string;
+  goal: {
+    id: string;
+    shortTerm: string | null;
+    midTerm: string | null;
+    longTerm: string | null;
+    lifeGoal: string | null;
+    volumeTargetMinor: number | null;
+    newPartnersTarget: number | null;
+    developCustomersTarget: number | null;
+    developPartnersTarget: number | null;
+  } | null;
+  progress: {
+    volume: {
+      targetMinor: number | null;
+      actualMinor: number;
+      source: 'computed' | 'manual';
+      metric: string;
+    };
+    newPartners: {
+      target: number | null;
+      actual: number;
+      source: 'computed' | 'manual';
+      metric: string;
+    };
+    develop: {
+      customersTarget: number | null;
+      customersActual: number;
+      partnersTarget: number | null;
+      partnersActual: number;
+      source: 'computed' | 'manual';
+    };
+  };
+}

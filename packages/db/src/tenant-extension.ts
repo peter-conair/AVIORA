@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
  * Keep in sync with RLS policies in the migrations.
  */
 export const TENANT_OWNED_MODELS = new Set<string>([
+  'BusinessGoal',
   'TenantSetting',
   'TenantMembership',
   'Member',

@@ -145,6 +145,7 @@ model Member {
   @@unique([tenantId, userId])
   @@index([tenantId, status])
   @@map("members")
+  businessGoals BusinessGoal[]
 }
 
 model Role {
@@ -2127,4 +2128,38 @@ model ScheduledJobRun {
   @@index([job, scheduledFor])
   @@index([status, scheduledFor])
   @@map("scheduled_job_runs")
+}
+
+/// The monthly goal sheet (docs/58). One per member per month.
+model BusinessGoal {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  /// First day of the month this sheet is for, in the tenant's zone.
+  month     DateTime @map("month") @db.Date
+
+  /// The narrative half of the sheet. Stored, never scored.
+  shortTerm String?  @map("short_term")
+  midTerm   String?  @map("mid_term")
+  longTerm  String?  @map("long_term")
+  lifeGoal  String?  @map("life_goal")
+
+  /// The numeric half. Volume is in minor units like every other money column.
+  volumeTargetMinor  Int? @map("volume_target_minor")
+  newPartnersTarget  Int? @map("new_partners_target")
+  /// "พัฒนา 5+3" — a coaching convention whose definition belongs to the
+  /// business, so its progress is typed rather than computed (docs/58 §3).
+  developCustomersTarget Int? @map("develop_customers_target")
+  developPartnersTarget  Int? @map("develop_partners_target")
+  developCustomersActual Int  @default(0) @map("develop_customers_actual")
+  developPartnersActual  Int  @default(0) @map("develop_partners_actual")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@unique([tenantId, memberId, month])
+  @@index([tenantId, month])
+  @@map("business_goals")
 }

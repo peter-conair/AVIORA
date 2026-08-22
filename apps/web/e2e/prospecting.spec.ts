@@ -57,7 +57,18 @@ test.describe('The prospecting workbook', () => {
     await signIn(page);
     await page.goto('/th/prospecting');
 
+    /* ── the goal comes first: a name list with no number is an address book ── */
+    await page.getByLabel('เป้ายอด').fill('30000');
+    await page.getByLabel('เป้าจำนวนคน').fill('1');
+    await page.getByRole('button', { name: 'บันทึกเป้าหมาย' }).click();
+    // Said out loud, because a typed number and a measured one look identical.
+    await expect(
+      page.getByText('ระบบนับให้จากยอดที่ชำระแล้วและคนที่สปอนเซอร์').first(),
+    ).toBeVisible();
+    await expect(page.getByText('ช่องนี้คุณกรอกเอง ระบบไม่ได้วัดให้')).toBeVisible();
+
     /* ── the Memory Jogger produces the name ─────────────────────────────── */
+    await page.getByRole('button', { name: 'ช่วยจำ' }).click();
     await page.getByRole('button', { name: 'เพื่อนสนิท' }).click();
     await page.getByLabel('ชื่อ').fill(`สมชาย ${RUN}`);
     await page.getByRole('button', { name: 'เพิ่ม', exact: true }).click();

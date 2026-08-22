@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { GoalsTab } from '@/components/prospecting/GoalsTab';
 import { NameListTab } from '@/components/prospecting/NameListTab';
 import { MemoryJoggerTab } from '@/components/prospecting/MemoryJoggerTab';
 import { ProspectingReportTab } from '@/components/prospecting/ProspectingReportTab';
 
-const TABS = ['jogger', 'sponsor', 'customer', 'report'] as const;
+const TABS = ['goals', 'jogger', 'sponsor', 'customer', 'report'] as const;
 type Tab = (typeof TABS)[number];
 
 /**
@@ -17,7 +18,7 @@ type Tab = (typeof TABS)[number];
  */
 export default function ProspectingPage() {
   const t = useTranslations('prospecting');
-  const [tab, setTab] = useState<Tab>('jogger');
+  const [tab, setTab] = useState<Tab>('goals');
   const [version, setVersion] = useState(0);
 
   return (
@@ -37,6 +38,7 @@ export default function ProspectingPage() {
           </button>
         ))}
       </div>
+      {tab === 'goals' ? <GoalsTab /> : null}
       {tab === 'jogger' ? <MemoryJoggerTab onAdded={() => setVersion((v) => v + 1)} /> : null}
       {tab === 'sponsor' ? <NameListTab key={`s${version}`} list="sponsor" /> : null}
       {tab === 'customer' ? <NameListTab key={`c${version}`} list="customer" /> : null}

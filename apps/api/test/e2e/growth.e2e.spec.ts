@@ -1276,3 +1276,124 @@ describe('Isolation and entitlement', () => {
     expect(await downline(vera, tenantId, { depth: 1 })).toContain(m.pia);
   });
 });
+
+/**
+ * Sprint 39 — the monthly goal sheet (docs/58).
+ *
+ * The claim worth testing is not that the sheet saves. It is §3.1: goal
+ * progress and rank qualification are the SAME number, because they come from
+ * the same metric definitions. A goal that said 28,000 while the rank engine
+ * said 31,000 for one month would leave two defensible answers and no way to
+ * tell which was wrong.
+ */
+describe('Sprint 39 — business goals read the same metrics as ranks', () => {
+  it('starts with no sheet but still knows where the member stands', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const res = await api('/api/v1/goals/business', { token, tenant: tenantId });
+    expect(res.status).toBe(200);
+    // No goal written yet is not the same as no progress: the month has still
+    // happened, and a screen that showed nothing would invite retyping numbers
+    // the system already has.
+    expect(res.body.goal).toBeNull();
+    expect(res.body.progress.volume.actualMinor).toBeGreaterThanOrEqual(0);
+  });
+
+  it('counts exactly the money that was actually paid this month', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const before = await api('/api/v1/goals/business', { token, tenant: tenantId });
+
+    // An independent check, not the same code asked twice: buy something of a
+    // known price through the real checkout, then require the sheet to move by
+    // exactly that. The first version of this test compared the goal against a
+    // /ranks/preview endpoint that does not exist, so its assertion sat inside
+    // an `if` that never ran.
+    const order = await buy(
+      `vera-${RUN}@test.local`,
+      tenantId,
+      await login(`admin-a-${RUN}@test.local`),
+      offering.canopy,
+    );
+
+    // A free offering would make the assertion below pass without proving
+    // anything moved.
+    expect(order.totalMinor).toBeGreaterThan(0);
+    const after = await api('/api/v1/goals/business', { token, tenant: tenantId });
+    expect(after.body.progress.volume.actualMinor).toBe(
+      before.body.progress.volume.actualMinor + order.totalMinor,
+    );
+    // And it is the metric the rank engine names, not a private count.
+    expect(after.body.progress.volume.metric).toBe('personal_volume');
+  });
+
+  it('saves the sheet and reads it back', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const goal = await api('/api/v1/goals/business', {
+      method: 'PUT',
+      token,
+      tenant: tenantId,
+      body: JSON.stringify({
+        shortTerm: 'ปิดยอด 30000 PPV',
+        volumeTargetMinor: 3_000_000,
+        newPartnersTarget: 1,
+        developCustomersTarget: 5,
+        developPartnersTarget: 3,
+      }),
+    });
+    expect(goal.status).toBe(200);
+    const after = await api('/api/v1/goals/business', { token, tenant: tenantId });
+    expect(after.body.goal.shortTerm).toBe('ปิดยอด 30000 PPV');
+    expect(after.body.progress.volume.targetMinor).toBe(3_000_000);
+  });
+
+  it('says which numbers it measured and which a person typed', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const res = await api('/api/v1/goals/business', { token, tenant: tenantId });
+    // Without this a typed number and a measured one look identical on screen,
+    // and "5+3" is a coaching convention the system has no business inventing.
+    expect(res.body.progress.volume.source).toBe('computed');
+    expect(res.body.progress.newPartners.source).toBe('computed');
+    expect(res.body.progress.develop.source).toBe('manual');
+  });
+
+  it('keeps one sheet per member per month however often it is saved', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const first = await api('/api/v1/goals/business', {
+      method: 'PUT',
+      token,
+      tenant: tenantId,
+      body: JSON.stringify({ volumeTargetMinor: 111 }),
+    });
+    const second = await api('/api/v1/goals/business', {
+      method: 'PUT',
+      token,
+      tenant: tenantId,
+      body: JSON.stringify({ volumeTargetMinor: 222 }),
+    });
+    // Two rows would leave two answers to "what was the goal", and the weekly
+    // update would report against whichever it found first.
+    expect(second.body.goal.id).toBe(first.body.goal.id);
+    expect(second.body.goal.volumeTargetMinor).toBe(222);
+  });
+
+  it('anchors the window to the month asked about, not to today', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    // A coach reviewing March in April must see March. Reading "now" would
+    // show them April's empty month and call it a failed target.
+    const march = await api('/api/v1/goals/business?month=2026-03-01', {
+      token,
+      tenant: tenantId,
+    });
+    expect(march.status).toBe(200);
+    expect(march.body.month).toBe('2026-03-01');
+    expect(march.body.progress.volume.actualMinor).toBe(0);
+  });
+
+  it('refuses to show a sheet belonging to somebody outside your scope', async () => {
+    const token = await login(`yuki-${RUN}@test.local`);
+    const res = await api(`/api/v1/goals/business?memberId=${m.vera}`, {
+      token,
+      tenant: tenantId,
+    });
+    expect(res.status).toBe(403);
+  });
+});
