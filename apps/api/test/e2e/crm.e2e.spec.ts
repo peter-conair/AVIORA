@@ -556,6 +556,168 @@ describe('Sprint 37 — duplicate leads', () => {
   });
 });
 
+/**
+ * Sprint 38 — the prospecting workbook (docs/56).
+ *
+ * The paper sheet is the requirement, so these assert what the sheet does:
+ * twenty rows to fill, two lists with different columns, and a Memory Jogger
+ * whose whole job is producing names you would not have thought of.
+ */
+describe('Sprint 38 — name lists and the memory jogger', () => {
+  let scoredId = '';
+
+  it('starts empty, and says how far off twenty it is', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/crm/name-list/sponsor', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+    expect(res.body.target).toBe(20);
+    // "Filling the sheet" is the exercise, so the gap has to be a number the
+    // screen can show — not something the salesperson counts by eye.
+    expect(res.body.remaining).toBe(20 - res.body.filled);
+    expect(res.body.criteria.map((c: { key: string }) => c.key)).toEqual([
+      'active',
+      'friendly',
+      'money',
+      'relation',
+      'age',
+    ]);
+  });
+
+  it('gives the customer list its own columns', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/crm/name-list/customer', { token: seller, tenant: tenantId });
+    expect(res.body.criteria.map((c: { key: string }) => c.key)).toEqual([
+      'money',
+      'authority',
+      'relation',
+    ]);
+    // Three criteria, not five — a customer total and a sponsor total are not
+    // the same number and must not be compared.
+    expect(res.body.scoreMax).toBe(15);
+  });
+
+  it('refuses a list that is not on the sheet', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // Otherwise this reaches the query as "on neither list" and answers 200
+    // with an empty sheet, which reads as "you have no names".
+    const res = await api('/api/v1/crm/name-list/friends', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(400);
+  });
+
+  it('adds a name from a memory jogger prompt and keeps which prompt it was', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const created = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        name: `ช่างทำผม ${RUN}`,
+        onSponsorList: true,
+        onCustomerList: true,
+        joggerPrompt: 'beauty_therapist',
+      }),
+    });
+    expect(created.status).toBe(201);
+    scoredId = created.body.lead.id;
+
+    const jogger = await api('/api/v1/crm/memory-jogger', { token: seller, tenant: tenantId });
+    const shops = jogger.body.categories.find((c: { key: string }) => c.key === 'regular_shops');
+    const prompt = shops.prompts.find((p: { key: string }) => p.key === 'beauty_therapist');
+    // A count, not a tick: six names from one prompt reads differently from
+    // one, and the paper cannot say so.
+    expect(prompt.named).toBe(1);
+  });
+
+  it('refuses a prompt that is not in the catalogue', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/crm/leads', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ name: `Bad ${RUN}`, joggerPrompt: 'from_a_dream' }),
+    });
+    // Stored loose, it would appear in the report as a category nobody can
+    // find on the sheet.
+    expect(res.status).toBe(400);
+  });
+
+  it('scores a name and ranks the list by it', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const scored = await api(`/api/v1/crm/leads/${scoredId}/scores`, {
+      method: 'PATCH',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ scores: { active: 5, friendly: 5, money: 4, relation: 5, age: 3 } }),
+    });
+    expect(scored.status).toBe(200);
+    expect(scored.body.lead.sponsorScore).toBe(22);
+    // money + relation only: the customer total counts ITS OWN columns, or a
+    // name rated on five criteria would always outrank one rated on three.
+    expect(scored.body.lead.customerScore).toBe(9);
+
+    const list = await api('/api/v1/crm/name-list/sponsor', { token: seller, tenant: tenantId });
+    expect(list.body.entries[0].id).toBe(scoredId);
+    expect(list.body.entries[0].score).toBe(22);
+    expect(list.body.entries[0].rated).toBe(true);
+  });
+
+  it('shares a rating that both lists ask for', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // `money` is a column on both sheets. Rating it as a customer has to move
+    // the sponsor total too, or one of the two goes quietly stale.
+    const before = await api(`/api/v1/crm/name-list/sponsor`, { token: seller, tenant: tenantId });
+    const was = before.body.entries.find((e: { id: string }) => e.id === scoredId).score;
+    await api(`/api/v1/crm/leads/${scoredId}/scores`, {
+      method: 'PATCH',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ scores: { money: 1 } }),
+    });
+    const after = await api(`/api/v1/crm/name-list/sponsor`, { token: seller, tenant: tenantId });
+    expect(after.body.entries.find((e: { id: string }) => e.id === scoredId).score).toBe(was - 3);
+  });
+
+  it('refuses a rating that is not on the scale', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // A 9 in a 1..5 column would sort a name to the top of a list it never
+    // earned.
+    const res = await api(`/api/v1/crm/leads/${scoredId}/scores`, {
+      method: 'PATCH',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ scores: { active: 9 } }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('reports the gap, who to call, and where names come from', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/crm/prospecting/report', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+
+    const sponsor = res.body.lists.find((l: { list: string }) => l.list === 'sponsor');
+    expect(sponsor.target).toBe(20);
+    expect(sponsor.top[0].name).toContain('ช่างทำผม');
+
+    // Every prompt, including the ones that produced nothing. A report listing
+    // only what worked cannot tell you what you have not tried.
+    expect(res.body.prompts.length).toBeGreaterThan(40);
+    expect(res.body.prompts.some((p: { named: number }) => p.named === 0)).toBe(true);
+    expect(res.body.prompts.find((p: { key: string }) => p.key === 'beauty_therapist').named).toBe(
+      1,
+    );
+  });
+
+  it("does not show another member's book", async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const res = await api('/api/v1/crm/name-list/sponsor', { token: outsider, tenant: tenantId });
+    expect(res.status).toBe(200);
+    // A name list is one person's own book. Somebody else's twenty names
+    // appearing on it would be both wrong and useless.
+    expect(res.body.entries).toHaveLength(0);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

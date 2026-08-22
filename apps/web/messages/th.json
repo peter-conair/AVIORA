@@ -27,6 +27,7 @@
       "assistant": "ผู้ช่วย AI",
       "shop": "ร้านค้า",
       "orders": "คำสั่งซื้อ",
+      "prospecting": "การหารายชื่อ",
       "crm": "ลูกค้าสัมพันธ์",
       "followUps": "งานติดตาม",
       "teams": "ทีม",
@@ -1764,5 +1765,43 @@
     "minutes": "{count} นาที",
     "hours": "{count} ชม.",
     "none": "—"
+  },
+  "prospecting": {
+    "title": "การหารายชื่อ",
+    "forbidden": "คุณไม่มีสิทธิ์เข้าถึงส่วนนี้",
+    "tabs": {
+      "jogger": "ช่วยจำ",
+      "sponsor": "รายชื่อผู้ร่วมธุรกิจ",
+      "customer": "รายชื่อลูกค้า",
+      "report": "รายงาน"
+    },
+    "lists": {
+      "sponsor": "รายชื่อผู้ร่วมธุรกิจ",
+      "customer": "รายชื่อลูกค้า"
+    },
+    "progress": "{filled} จาก {target} รายชื่อ",
+    "remaining": "อีก {count} ชื่อจึงจะเต็มแผ่น",
+    "add": "เพิ่ม",
+    "addName": "ชื่อ",
+    "addPlaceholder": "เขียนชื่อ",
+    "addAnyway": "เพิ่มต่อไป",
+    "duplicateWarning": "{owner} มีลีดที่เปิดอยู่สำหรับผู้ติดต่อรายนี้แล้ว",
+    "someoneElse": "สมาชิกท่านอื่น",
+    "alreadyOnList": "ชื่อนี้อยู่ในรายชื่อแล้ว",
+    "emptyList": "ยังไม่มีรายชื่อ",
+    "notRated": "ยังไม่ให้คะแนน",
+    "joggerIntro": "ไม่ต้องนั่งนึกชื่อ ตอบคำถามไปเรื่อย ๆ แล้วชื่อจะมาเอง",
+    "joggerTotal": "เขียนชื่อไปแล้ว {count} ชื่อ",
+    "unrated": "มี {count} ชื่อในรายชื่อที่ยังไม่ได้ให้คะแนน",
+    "whereNamesComeFrom": "รายชื่อมาจากไหนบ้าง",
+    "zeroesAreThePoint": "เลขศูนย์คือประเด็น — คือหัวข้อที่ยังไม่ได้ไล่",
+    "joggerCategories": {
+      "family": "ครอบครัว",
+      "friends": "เพื่อน",
+      "regular_shops": "ร้านประจำ",
+      "acquaintances": "คนรู้จัก",
+      "who_sold_us": "คนที่เราเป็นลูกค้า",
+      "traits": "คนที่.."
+    }
   }
 }

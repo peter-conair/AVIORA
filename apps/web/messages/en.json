@@ -27,6 +27,7 @@
       "assistant": "Assistant",
       "shop": "Shop",
       "orders": "Orders",
+      "prospecting": "Prospecting",
       "crm": "CRM",
       "followUps": "Follow-ups",
       "teams": "Teams",
@@ -1764,5 +1765,43 @@
     "minutes": "{count}m",
     "hours": "{count}h",
     "none": "—"
+  },
+  "prospecting": {
+    "title": "Prospecting",
+    "forbidden": "You do not have access to this.",
+    "tabs": {
+      "jogger": "Memory Jogger",
+      "sponsor": "Sponsor list",
+      "customer": "Customer list",
+      "report": "Report"
+    },
+    "lists": {
+      "sponsor": "Sponsor name list",
+      "customer": "Customer name list"
+    },
+    "progress": "{filled} of {target} names",
+    "remaining": "{count} more to fill the sheet",
+    "add": "Add",
+    "addName": "Name",
+    "addPlaceholder": "Write a name",
+    "addAnyway": "Add anyway",
+    "duplicateWarning": "{owner} already has an open lead for this contact.",
+    "someoneElse": "Someone else",
+    "alreadyOnList": "That name is already on a list.",
+    "emptyList": "No names yet.",
+    "notRated": "not rated",
+    "joggerIntro": "Do not try to remember names. Answer the questions, and the names come.",
+    "joggerTotal": "{count} names written down so far",
+    "unrated": "{count} names on a list have not been rated yet.",
+    "whereNamesComeFrom": "Where your names come from",
+    "zeroesAreThePoint": "The zeroes are the point — they are the prompts you have not worked through yet.",
+    "joggerCategories": {
+      "family": "Relatives",
+      "friends": "Friends",
+      "regular_shops": "Places you go",
+      "acquaintances": "People you know",
+      "who_sold_us": "People who sold you something",
+      "traits": "People who are.."
+    }
   }
 }

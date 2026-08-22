@@ -4,3 +4,5 @@ export * from './errors/codes';
 export * from './events/names';
 export * from './utils/uuid';
 export * from './observability/ai-rates';
+export * from './prospecting/criteria';
+export * from './prospecting/memory-jogger';

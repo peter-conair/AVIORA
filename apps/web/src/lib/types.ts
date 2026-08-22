@@ -2845,3 +2845,58 @@ export interface AiSpendResponse {
   usage: AiSpendRow[];
   note: string;
 }
+
+/* ── prospecting workbook (docs/56) ─────────────────────────────────────── */
+
+export interface NameListCriterion {
+  key: string;
+  label: string;
+  help: string;
+}
+
+export interface NameListEntry {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  scores: Record<string, number> | null;
+  score: number;
+  scoreMax: number;
+  rated: boolean;
+  joggerPrompt: string | null;
+  lastContactAt: string | null;
+  createdAt: string;
+}
+
+export interface NameListResponse {
+  list: 'sponsor' | 'customer';
+  target: number;
+  filled: number;
+  remaining: number;
+  criteria: NameListCriterion[];
+  scoreMax: number;
+  entries: NameListEntry[];
+}
+
+export interface MemoryJoggerResponse {
+  categories: {
+    key: string;
+    label: string;
+    prompts: { key: string; label: string; named: number }[];
+  }[];
+  total: number;
+}
+
+export interface ProspectingReport {
+  lists: {
+    list: 'sponsor' | 'customer';
+    filled: number;
+    target: number;
+    remaining: number;
+    scoreMax: number;
+    top: { id: string; name: string; score: number; lastContactAt: string | null }[];
+  }[];
+  unrated: number;
+  joggerCategories: { key: string; named: number }[];
+  prompts: { category: string; key: string; named: number }[];
+}

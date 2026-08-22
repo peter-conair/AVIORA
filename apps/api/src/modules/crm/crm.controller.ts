@@ -1,7 +1,25 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
-import { PERMISSIONS } from '@aviora/shared';
+import {
+  ERROR_CODES,
+  PERMISSIONS,
+  PROSPECT_LISTS,
+  PROSPECT_SCORE_MAX,
+  PROSPECT_SCORE_MIN,
+  isJoggerPrompt,
+  type ProspectList,
+} from '@aviora/shared';
 import {
   CurrentUser,
   RequirePermissions,
@@ -12,6 +30,7 @@ import { ZodPipe } from '../../common/validation/zod.pipe';
 import { RateTier } from '../../common/rate/rate-tier.guard';
 import type { TeamActor } from '../team/team-scope.service';
 import { CrmService } from './crm.service';
+import { ProspectingService } from './prospecting.service';
 
 const PLATFORM_BYPASS = new Set(['PLATFORM_OWNER', 'SUPER_ADMIN']);
 
@@ -25,6 +44,20 @@ const leadSchema = z.object({
   // Deliberate override, not a way around the check: the caller has been told
   // a duplicate exists and is saying they want this one anyway (docs/55 §3).
   allowDuplicate: z.boolean().optional(),
+  onSponsorList: z.boolean().optional(),
+  onCustomerList: z.boolean().optional(),
+  // Rejected rather than stored loose: an unknown prompt would appear in the
+  // report as a category nobody can find on the sheet (docs/56 §6).
+  joggerPrompt: z
+    .string()
+    .refine(isJoggerPrompt, { message: 'unknown memory jogger prompt' })
+    .optional(),
+});
+
+const scoreSchema = z.object({
+  scores: z.record(z.number().int().min(PROSPECT_SCORE_MIN).max(PROSPECT_SCORE_MAX)).optional(),
+  onSponsorList: z.boolean().optional(),
+  onCustomerList: z.boolean().optional(),
 });
 
 const leadUpdateSchema = z.object({
@@ -63,8 +96,24 @@ const interactionSchema = z.object({
 export class CrmController {
   constructor(
     private readonly crm: CrmService,
+    private readonly prospecting: ProspectingService,
     private readonly cls: ClsService,
   ) {}
+
+  /**
+   * A path segment, not a uuid — so an unknown one has to be refused here or
+   * it reaches the query as a silent "neither list" and returns an empty sheet
+   * that looks like a person with no names.
+   */
+  private requireList(list: string): ProspectList {
+    if (!(PROSPECT_LISTS as readonly string[]).includes(list)) {
+      throw new BadRequestException({
+        code: ERROR_CODES.VALIDATION_FAILED,
+        message: `list must be one of: ${PROSPECT_LISTS.join(', ')}`,
+      });
+    }
+    return list as ProspectList;
+  }
 
   private actor(user: AuthenticatedUser): TeamActor {
     return {
@@ -114,6 +163,44 @@ export class CrmController {
     @Query('phone') phone?: string,
   ) {
     return this.crm.findDuplicates(this.actor(user), { email, phone });
+  }
+
+  /* ── the prospecting workbook (docs/56) ───────────────────────────────── */
+
+  @Get('name-list/:list')
+  @RequirePermissions(PERMISSIONS.CRM_LEAD_VIEW)
+  async nameList(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('list') list: string,
+    @Query('locale') locale?: string,
+  ) {
+    return this.prospecting.nameList(
+      this.actor(user),
+      this.requireList(list),
+      locale === 'en' ? 'en' : 'th',
+    );
+  }
+
+  @Patch('leads/:id/scores')
+  @RequirePermissions(PERMISSIONS.CRM_LEAD_MANAGE)
+  async scoreLead(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(scoreSchema)) body: z.infer<typeof scoreSchema>,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { lead: await this.prospecting.setScores(id, body, this.actor(user)) };
+  }
+
+  @Get('memory-jogger')
+  @RequirePermissions(PERMISSIONS.CRM_LEAD_VIEW)
+  async memoryJogger(@CurrentUser() user: AuthenticatedUser, @Query('locale') locale?: string) {
+    return this.prospecting.memoryJogger(this.actor(user), locale === 'en' ? 'en' : 'th');
+  }
+
+  @Get('prospecting/report')
+  @RequirePermissions(PERMISSIONS.CRM_LEAD_VIEW)
+  async prospectingReport(@CurrentUser() user: AuthenticatedUser) {
+    return this.prospecting.report(this.actor(user));
   }
 
   @Get('leads/:id')

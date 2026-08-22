@@ -634,6 +634,22 @@ model Lead {
   source              String?
   notes               String?
   status              String    @default("open")
+  // The two paper name lists (docs/56). A person can be on both — someone you
+  // would happily sponsor is usually also someone who would buy — so these are
+  // two flags rather than one "kind" that would force a second row and trip
+  // the duplicate check (docs/55).
+  onSponsorList       Boolean   @default(false) @map("on_sponsor_list")
+  onCustomerList      Boolean   @default(false) @map("on_customer_list")
+  /// Ratings per criterion key, 1..5. Shared with both lists on purpose:
+  /// `money` and `relation` are one fact about a person, not two.
+  scores              Json?
+  /// Derived from `scores`, stored so the report can rank in the database
+  /// rather than pulling every lead into memory to sort it.
+  sponsorScore        Int       @default(0) @map("sponsor_score")
+  customerScore       Int       @default(0) @map("customer_score")
+  /// Which Memory Jogger prompt produced this name, so the report can say
+  /// which prompts work for this person (docs/56 §6).
+  joggerPrompt        String?   @map("jogger_prompt")
   convertedCustomerId String?   @map("converted_customer_id") @db.Uuid
   convertedAt         DateTime? @map("converted_at") @db.Timestamptz(6)
   lastContactAt       DateTime? @map("last_contact_at") @db.Timestamptz(6)
@@ -651,6 +667,9 @@ model Lead {
   // working when the column is ciphertext (docs/54).
   @@index([tenantId, emailBidx])
   @@index([tenantId, phoneBidx])
+  // The name-list screens read one list ordered by its own score.
+  @@index([tenantId, onSponsorList, sponsorScore])
+  @@index([tenantId, onCustomerList, customerScore])
   @@map("leads")
 }
 

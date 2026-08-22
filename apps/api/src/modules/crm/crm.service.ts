@@ -133,6 +133,9 @@ export class CrmService {
       notes?: string;
       stageId?: string;
       allowDuplicate?: boolean;
+      onSponsorList?: boolean;
+      onCustomerList?: boolean;
+      joggerPrompt?: string;
     },
     actor: TeamActor,
     actorUserId: string,
@@ -167,6 +170,9 @@ export class CrmService {
           ...this.contactKeys.keys(input),
           source: input.source,
           notes: input.notes,
+          onSponsorList: input.onSponsorList ?? false,
+          onCustomerList: input.onCustomerList ?? false,
+          joggerPrompt: input.joggerPrompt ?? null,
         },
       });
       await appendEvent(tx, {

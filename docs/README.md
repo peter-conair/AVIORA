@@ -67,6 +67,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 53  | [A Role for Platform Reads](./53-platform-role-contract.md)                                       | Sprint 35                                                 |
 | 54  | [CRM contact encryption](./54-crm-encryption-readiness.md)                                        | rehearsed, not performed                                  |
 | 55  | [Duplicate leads, and the index that makes the check survive encryption](./55-duplicate-leads.md) | Sprint 37                                                 |
+| 56  | [The prospecting workbook](./56-prospecting-workbook.md)                                          | Sprint 38                                                 |
 
 ## Canonical stack (see ADRs)
 

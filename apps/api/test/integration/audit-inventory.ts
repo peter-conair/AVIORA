@@ -33,6 +33,7 @@ export const AUDITED_ROUTES = new Map<string, string>([
   ['POST /api/v1/goals', 'goal.create'],
   ['POST /api/v1/crm/leads', 'crm.lead.create'],
   ['PATCH /api/v1/crm/leads/:id', 'crm.lead.update'],
+  ['PATCH /api/v1/crm/leads/:id/scores', 'crm.lead.score'],
   ['POST /api/v1/crm/leads/:id/convert', 'crm.lead.convert'],
   ['POST /api/v1/crm/follow-ups', 'crm.followup.create'],
   ['POST /api/v1/crm/stages', 'crm.stage.create'],

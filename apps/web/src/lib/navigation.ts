@@ -95,6 +95,9 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'customers',
     icon: 'customers',
     items: [
+      // Ahead of the CRM on purpose: finding names is what a new member does
+      // first, and the pipeline is empty until they have (docs/56).
+      { href: '/prospecting', key: 'prospecting', icon: 'customers', feature: 'crm' },
       { href: '/crm', key: 'crm', icon: 'customers', feature: 'crm' },
       { href: '/follow-ups', key: 'followUps', icon: 'followUps', feature: 'crm' },
     ],
