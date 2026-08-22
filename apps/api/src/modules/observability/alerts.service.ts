@@ -27,6 +27,8 @@ const THRESHOLDS = {
   jobSilentHours: Number(process.env.AVIORA_ALERT_JOB_AGE_H ?? 26),
   /** Webhook deliveries stuck failing. */
   webhookFailing: Number(process.env.AVIORA_ALERT_WEBHOOK_FAILING ?? 20),
+  /** Refused authentication attempts in an hour — the shape of a list being worked through. */
+  authThrottled: Number(process.env.AVIORA_ALERT_AUTH_THROTTLED ?? 50),
   /** One reminder if a problem is still there after this long. */
   reminderHours: Number(process.env.AVIORA_ALERT_REMINDER_H ?? 24),
 };
@@ -59,25 +61,37 @@ export class AlertsService {
     const staleBefore = new Date(now - THRESHOLDS.staleClaimMinutes * 60_000);
     const silentBefore = new Date(now - THRESHOLDS.jobSilentHours * 3_600_000);
 
-    const [oldest, failing, staleClaims, webhookFailing, jobSuccesses] = await Promise.all([
-      this.prisma.owner.domainEvent.findFirst({
-        where: { processedAt: null },
-        orderBy: { occurredAt: 'asc' },
-        select: { occurredAt: true },
-      }),
-      this.prisma.owner.domainEvent.count({
-        where: { processedAt: null, attempts: { gt: 0 } },
-      }),
-      this.prisma.owner.scheduledJobRun.count({
-        where: { status: 'claimed', startedAt: { lt: staleBefore } },
-      }),
-      this.prisma.owner.webhookDelivery.count({ where: { status: 'failed' } }),
-      this.prisma.owner.scheduledJobRun.groupBy({
-        by: ['job'],
-        where: { job: { in: DAILY_JOBS }, status: 'succeeded', finishedAt: { gte: silentBefore } },
-        _count: { _all: true },
-      }),
-    ]);
+    const authSince = new Date(now - 3_600_000);
+    const [oldest, failing, staleClaims, webhookFailing, jobSuccesses, authThrottled] =
+      await Promise.all([
+        this.prisma.owner.domainEvent.findFirst({
+          where: { processedAt: null },
+          orderBy: { occurredAt: 'asc' },
+          select: { occurredAt: true },
+        }),
+        this.prisma.owner.domainEvent.count({
+          where: { processedAt: null, attempts: { gt: 0 } },
+        }),
+        this.prisma.owner.scheduledJobRun.count({
+          where: { status: 'claimed', startedAt: { lt: staleBefore } },
+        }),
+        this.prisma.owner.webhookDelivery.count({ where: { status: 'failed' } }),
+        this.prisma.owner.scheduledJobRun.groupBy({
+          by: ['job'],
+          where: {
+            job: { in: DAILY_JOBS },
+            status: 'succeeded',
+            finishedAt: { gte: silentBefore },
+          },
+          _count: { _all: true },
+        }),
+        // Refusals, not failures: the limiter caps how many of these can exist,
+        // so a spike is somebody working through a list rather than a busy hour
+        // (docs/48 §6).
+        this.prisma.owner.auditLog.count({
+          where: { action: 'auth.throttled', createdAt: { gte: authSince } },
+        }),
+      ]);
 
     const backlogSeconds = oldest ? Math.round((now - oldest.occurredAt.getTime()) / 1000) : 0;
     // A job that has NEVER run is not silent — a platform with no tenants on a
@@ -125,6 +139,15 @@ export class AlertsService {
           silentJobs.length > 0
             ? `${silentJobs.join(', ')} has not succeeded in ${THRESHOLDS.jobSilentHours}h`
             : 'every daily job has succeeded recently',
+      },
+      {
+        check: 'auth.throttled',
+        firing: authThrottled >= THRESHOLDS.authThrottled,
+        value: authThrottled,
+        threshold: THRESHOLDS.authThrottled,
+        summary:
+          `${authThrottled} authentication attempts were refused in the last hour — ` +
+          'each one is a caller that had already spent its budget (docs/48)',
       },
       {
         check: 'webhook.failing',

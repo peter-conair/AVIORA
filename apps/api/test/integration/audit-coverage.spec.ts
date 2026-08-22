@@ -34,8 +34,8 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
-    pattern: /^\/api\/v1\/auth\/(login|logout|refresh)$/,
-    why: 'Authentication events, not tenant mutations. Sessions are recorded by the auth module (refresh-token family) and a login row per request would bury the mutations this log exists for.',
+    pattern: /^\/api\/v1\/auth\/(logout|refresh)$/,
+    why: 'Session lifecycle, not tenant mutations. Refresh-token reuse already kills the family and records it; a row per logout would bury the mutations this log exists for. (login IS audited, on refusal — see the inventory.)',
   },
   {
     pattern: /^\/api\/v1\/(courses\/[^/]+\/start|lessons\/[^/]+\/complete)$/,

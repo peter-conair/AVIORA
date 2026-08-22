@@ -15,6 +15,9 @@ export const AUDITED_ROUTES = new Map<string, string>([
   // identity · tenant · membership
   ['POST /api/v1/platform/tenants', 'platform.tenant.create'],
   ['POST /api/v1/auth/register', 'auth.register'],
+  // login writes auth.throttled on a REFUSAL only — a wrong password is not an
+  // audit event, a caller past its budget is (docs/48 §6)
+  ['POST /api/v1/auth/login', 'auth.throttled'],
   ['POST /api/v1/membership-plans', 'membership.plan.create'],
   ['PATCH /api/v1/membership-plans/:id', 'membership.plan.update'],
   ['POST /api/v1/invitations', 'member.invite'],

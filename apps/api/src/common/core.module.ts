@@ -3,6 +3,7 @@ import { PrismaService } from './db/prisma.service';
 import { TenantDb } from './db/tenant-db.service';
 import { TenantDatabaseResolver } from './db/tenant-database.resolver';
 import { AuditService } from './audit/audit.service';
+import { AuthThrottleService } from './auth/auth-throttle.service';
 
 /**
  * Infrastructure every feature module needs. Global because PrismaService owns
@@ -11,7 +12,7 @@ import { AuditService } from './audit/audit.service';
  */
 @Global()
 @Module({
-  providers: [PrismaService, TenantDb, TenantDatabaseResolver, AuditService],
-  exports: [PrismaService, TenantDb, TenantDatabaseResolver, AuditService],
+  providers: [PrismaService, TenantDb, TenantDatabaseResolver, AuditService, AuthThrottleService],
+  exports: [PrismaService, TenantDb, TenantDatabaseResolver, AuditService, AuthThrottleService],
 })
 export class CoreModule {}
