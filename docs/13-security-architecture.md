@@ -117,15 +117,15 @@ CREATE POLICY tenant_isolation ON member
 
 ## 5. Encryption
 
-| Surface                    | Mechanism                                                                                                                                                                                                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| In transit                 | TLS 1.2+ everywhere (Cloudflare edge → origin included); HSTS `max-age=63072000; includeSubDomains`; no plaintext internal hops                                                                                                                                                          |
-| At rest — DB               | Managed PostgreSQL 17 volume encryption (AES-256)                                                                                                                                                                                                                                        |
-| At rest — objects          | Cloudflare R2 server-side encryption; bucket-level access via scoped API tokens only                                                                                                                                                                                                     |
-| At rest — backups          | Encrypted snapshots; restore drills quarterly                                                                                                                                                                                                                                            |
-| **PII fields**             | Application-level **AES-256-GCM** field encryption for high-sensitivity columns (national id, phone, address, health profile fields). Random 96-bit nonce per value; ciphertext stored as `enc:v1:<key_id>:<nonce>:<ct>:<tag>`                                                           |
-| Keys                       | Data-encryption keys live in the **secret manager** (never in DB or repo); `key_id` in the ciphertext envelope enables rotation (re-encrypt lazily on write). **Fail-closed:** if the key is unavailable, reads return an error — never plaintext fallbacks, never silently empty fields |
-| Search on encrypted fields | Blind index (HMAC-SHA256 with a separate index key) for exact-match lookup only                                                                                                                                                                                                          |
+| Surface                    | Mechanism                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| In transit                 | TLS 1.2+ everywhere (Cloudflare edge → origin included); HSTS `max-age=63072000; includeSubDomains`; no plaintext internal hops                                                                                                                                                                                                                                                                                                |
+| At rest — DB               | Managed PostgreSQL 17 volume encryption (AES-256)                                                                                                                                                                                                                                                                                                                                                                              |
+| At rest — objects          | Cloudflare R2 server-side encryption; bucket-level access via scoped API tokens only                                                                                                                                                                                                                                                                                                                                           |
+| At rest — backups          | Encrypted snapshots; restore drills quarterly                                                                                                                                                                                                                                                                                                                                                                                  |
+| **PII fields**             | Application-level **AES-256-GCM** field encryption, `enc.v1:<nonce>:<ct>:<tag>`, fail-closed. **Applied to:** health profile free text (`lifestyle_notes`) and the OIDC `client_secret`. **NOT applied to:** CRM lead and customer `name` / `email` / `phone`, which are stored in plaintext. There are no national-id or address columns anywhere — that part of this row described a schema that was never built. See §11.1. |
+| Keys                       | Data-encryption keys live in the **secret manager** (never in DB or repo); `key_id` in the ciphertext envelope enables rotation (re-encrypt lazily on write). **Fail-closed:** if the key is unavailable, reads return an error — never plaintext fallbacks, never silently empty fields                                                                                                                                       |
+| Search on encrypted fields | **Not implemented.** No blind index exists, and nothing currently needs one: no query filters or sorts on an encrypted column. It is named here because it is the thing that must arrive BEFORE any searchable field is encrypted, not after.                                                                                                                                                                                  |
 
 ---
 
@@ -288,3 +288,30 @@ write, and that revocation closes it immediately.
 - **PDPA**: member data subject requests (access/erasure) handled via tenant admin tooling; erasure preserves audit integrity by pseudonymization, not row deletion.
 
 Related docs: [07-role-permission-matrix.md](./07-role-permission-matrix.md) · [10-api-design.md](./10-api-design.md) · [19-observability.md](./19-observability.md)
+
+## 11.1 CRM contact data is not encrypted, and that is a decision to take
+
+Found by auditing this document against the code: the PII row above claimed
+field encryption for `phone`, and `crm_leads` / `crm_customers` store `name`,
+`email` and `phone` in plaintext. A leaked CRM table is a leaked list of
+prospects — real people who never signed up for anything.
+
+It is **feasible** to encrypt them: nothing filters or sorts on those columns, so
+no blind index is needed today. It has not been done, and the reasons are worth
+writing down rather than deciding quietly:
+
+1. **Encrypting existing production rows is a one-way door.** Lose the key and
+   the CRM is gone — not degraded, gone. That is a decision for whoever owns the
+   data and the key custody story, not a refactor.
+2. **Encrypting `phone` alone would be close to theatre.** An attacker holding
+   the row already has the name and the email; hiding one of the three changes
+   little. If this is done it should be all three.
+3. **It forecloses search.** Nothing searches leads by email today, but "find
+   the lead with this email" is the most ordinary CRM request there is, and
+   after encryption it needs the blind index this document has always promised
+   and never had.
+
+Until then: health data — the most sensitive thing here — IS encrypted, and the
+CRM contact columns are plaintext behind row-level security, tenant scoping and
+the ownership rules in `CrmScopeService`. That is the honest position, and this
+section exists so nobody reads the table above and believes otherwise.
