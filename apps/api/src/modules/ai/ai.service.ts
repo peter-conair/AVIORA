@@ -5,6 +5,8 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { AnthropicProvider } from './anthropic.provider';
 import { GroundedProvider } from './grounded.provider';
 import { CONTEXT_MARKER, type AiProvider, type AiPurpose } from './provider.port';
+import { checkAnswer, safeReplacement } from './output-safety';
+import { AuditService } from '../../common/audit/audit.service';
 
 const MAX_OUTPUT_TOKENS = 700;
 const HISTORY_TURNS = 10;
@@ -59,6 +61,7 @@ export class AiService {
     private readonly knowledge: KnowledgeService,
     private readonly anthropic: AnthropicProvider,
     private readonly grounded: GroundedProvider,
+    private readonly audit: AuditService,
   ) {}
 
   /** Model router (docs/12): a configured provider, else the local fallback. */
@@ -286,6 +289,26 @@ export class AiService {
       locale,
       purpose: input.purpose ?? 'knowledge',
     });
+
+    // The post-generation check docs/12 §8 promised and never had (docs/50).
+    // The prompt above is an instruction to a model, not a control: it holds
+    // for a well-behaved model on an ordinary question, and it is exactly what
+    // a slip or a jailbreak defeats. This REFUSES rather than rewriting — an
+    // answer silently edited to look safe is one nobody can audit, and the
+    // member cannot tell what was taken out.
+    const verdict = checkAnswer(result.content);
+    if (!verdict.safe) {
+      result.content = safeReplacement(locale);
+      await this.audit.record({
+        action: 'ai.safety.blocked',
+        entityType: 'ai_conversation',
+        entityId: conversationId,
+        after: { hits: verdict.hits, agent: input.agent ?? 'assistant' },
+      });
+      this.logger.warn(
+        `AI answer withheld (${verdict.hits.join(', ')}) in conversation ${conversationId}`,
+      );
+    }
 
     await this.db.tx(async (tx) => {
       // Both rows land in one transaction and therefore share created_at, so

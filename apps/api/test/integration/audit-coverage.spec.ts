@@ -51,7 +51,7 @@ const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   },
   {
     pattern: /^\/api\/v1\/(cart|ai|assistant)\b/,
-    why: 'Cart edits are a draft the member is still making; the ORDER that results is audited (commerce.order.place). AI turns are stored as conversations with their own history.',
+    why: 'Cart edits are a draft the member is still making; the ORDER that results is audited (commerce.order.place). AI turns are stored as conversations with their own history — and an answer WITHHELD by the safety filter writes ai.safety.blocked, which is the intervention worth recording (docs/50 §3).',
   },
   {
     pattern: /^\/api\/v1\/notifications\b/,
