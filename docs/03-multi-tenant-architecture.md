@@ -67,7 +67,7 @@ Resolution runs in NestJS middleware, before guards. Precedence (first match win
 Rules:
 
 - If both a host-derived tenant and a JWT `tid` are present and **disagree** → `400 TENANT_MISMATCH`. Never silently prefer either.
-- `X-Tenant-ID` is honored only for requests authenticated as platform-scope principals (platform admin JWT or internal service key). Tenant-scope users cannot switch tenants via header.
+- `X-Tenant-ID` is accepted from **any** authenticated caller, and the isolation comes from somewhere else: `PermissionsGuard` asserts MEMBERSHIP of the named tenant on every tenant-scoped route, including routes that require no permission at all. This document previously said the header was honoured only for platform principals; it never was, and it could not be — one person legitimately belongs to several tenants and has to be able to say which one they are acting in (`multi-tenant-user.e2e.spec.ts`). The header names a tenant; it never grants one. A mismatch between host and header is refused outright.
 - Unresolvable host → `404 TENANT_NOT_FOUND` (page-level for web, error envelope for API).
 - Tenant status gates the request: `SUSPENDED`/`ARCHIVED` → `403 TENANT_UNAVAILABLE` (except platform-admin endpoints).
 - Host→tenant lookups are cached in Redis (`platform:tenant-host:{host}` — note the `platform:` prefix, this is a platform-scope key) with 60s TTL + invalidation on tenant domain change.
@@ -170,7 +170,7 @@ await prisma.$transaction(async (tx) => {
 ```
 
 - **Exempt (platform-scope) tables** — no `tenant_id`, no RLS: `tenants`, `users`, `platform_plans`, `refresh_tokens` (keyed by user), plus platform-side reads of `domain_events` by the dispatcher. Access to these goes through the `platform` and `identity` modules only.
-- Platform admin operations that must cross tenants use a dedicated `aviora_platform` role with explicit, audited entry points — never by skipping the `SET LOCAL`.
+- Platform operations that cross tenants use the **owner** client, not a dedicated role. There is no `aviora_platform` role; the database has exactly two, `aviora_owner` and `aviora_app`. This is a real shortfall in defence-in-depth and is described in §4.1 rather than left as an aspiration in this line.
 
 ### 4.2 ORM — Prisma client extension (primary layer)
 
@@ -206,7 +206,7 @@ Behavior:
 ### 4.3 API layer
 
 - `RequireTenantGuard` → `JwtAuthGuard` → `PermissionGuard(scope-aware)` on every tenant route.
-- DTO validation strips any client-supplied `tenantId` field (whitelist validation; `tenant_id` is never accepted from request bodies — it comes only from TenantContext).
+- `tenant_id` is not accepted from request bodies, with **one deliberate exception**: `POST /platform/scheduler/run` takes a `tenantId`, because forcing a job for a named tenant is the entire point of an operator override — and that route is platform-role-gated. Everywhere else the tenant comes from context, and the tenant extension REFUSES a write naming a different tenant rather than silently rewriting it.
 - Route params referencing entities (`/teams/:id`) resolve through tenant-scoped queries — a foreign tenant's id yields `404`, indistinguishable from "does not exist" (no existence oracle).
 - Rate limiting buckets are per-tenant (and per-user within tenant).
 
@@ -347,3 +347,31 @@ Consequences accepted now: cross-tenant reporting for migrated tenants moves to 
 | R2 presign for foreign-tenant key                                             | 403                                                  |
 | BullMQ handler for Tenant A event touching Tenant B data                      | Prisma extension blocks (context = A)                |
 | Cross-tenant `createMany` smuggling `tenant_id` in payload                    | DTO whitelist strips it; extension overwrites it     |
+
+### 4.1 Platform reads run as the owner, and RLS is not a backstop for them
+
+The layered claim above — application first, RLS behind it — holds for every
+tenant-scoped path. It does **not** hold for platform-scope paths.
+
+Platform operations (the tenant list, cross-tenant metrics, the scheduler, the
+outbox relay) run through the owner client. `FORCE ROW LEVEL SECURITY` binds
+every role **except the table owner**, so on those paths there is no second
+layer: a bug in a platform query has nothing underneath it.
+
+That is narrower than it sounds — platform routes are gated by
+`@RequirePlatformRoles`, and the isolation sweep drives every _tenant-scoped_
+route against a foreign tenant — but it is a genuine gap between what this
+document claimed and what defence-in-depth actually covers.
+
+**What closing it would take**, so the decision is costed rather than deferred
+vaguely: a third role that is not the table owner; policies on all 89 RLS tables
+admitting it explicitly (`USING (current_setting('app.platform', true) = 'true')`
+or similar) so platform access becomes a stated policy rather than an inherited
+privilege; a migration touching every one of those tables; and a rework of
+`PrismaService` so platform paths take that role instead of the owner. The
+prize is that a mistake in a platform query would be refused by the database
+instead of served.
+
+It is not done. It is written here because "the database is the backstop" was
+being claimed for paths where no backstop exists, and an operator reading §4
+should know which half of the system that sentence is about.
