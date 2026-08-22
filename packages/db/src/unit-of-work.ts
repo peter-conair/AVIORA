@@ -31,6 +31,29 @@ export async function withTenant<T>(
   });
 }
 
+/**
+ * One transaction that has declared itself platform-scope (docs/53 §2).
+ *
+ * The mirror of `withTenant`: that one says WHICH tenant, this one says NO
+ * tenant — deliberately, across all of them. `app.platform` is set for the
+ * transaction and nothing else sets it, so a platform query that does not come
+ * through here reads zero rows instead of everything.
+ *
+ * It carries no tenant extension. A caller reaching across tenants must not
+ * have `tenant_id` quietly injected into its `where` — that would silently
+ * narrow the very query the role exists to allow, and the caller would read a
+ * partial answer as a complete one.
+ */
+export async function withPlatform<T>(
+  prisma: PrismaClient,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.platform', 'true', true)`;
+    return fn(tx);
+  });
+}
+
 export interface AppendEventInput<TPayload> {
   eventName: EventName;
   tenantId: string | null;

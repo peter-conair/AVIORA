@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { estimateAiCost, AI_RATE_CURRENCY } from '@aviora/shared';
+import { withPlatform } from '@aviora/db';
 import { PrismaService } from '../../common/db/prisma.service';
 import { MAX_ATTEMPTS as OUTBOX_MAX_ATTEMPTS } from '../../common/events/outbox-relay.service';
 
@@ -44,48 +45,53 @@ export class ObservabilityService {
    * "not delivered yet, and it has already gone wrong at least once".
    */
   async queue(days?: number): Promise<QueueHealth> {
-    const w = this.windowFrom(days);
-    // An event that has exhausted MAX_ATTEMPTS stops being selected by the relay
-    // (`attempts < MAX_ATTEMPTS`) and sits in the table for ever. There is no
-    // dead-letter queue — docs/11 §273 described one that was never built — so
-    // "dead" is computed from what the rows already say, and reported apart
-    // from "failing". An operator needs to tell a delivery that will retry from
-    // one that never will again.
-    const [pending, failing, dead, processed, oldest, worst] = await Promise.all([
-      this.prisma.owner.domainEvent.count({ where: { processedAt: null } }),
-      this.prisma.owner.domainEvent.count({ where: { processedAt: null, attempts: { gt: 0 } } }),
-      this.prisma.owner.domainEvent.count({
-        where: { processedAt: null, attempts: { gte: OUTBOX_MAX_ATTEMPTS } },
-      }),
-      this.prisma.owner.domainEvent.count({ where: { processedAt: { gte: w.from } } }),
-      this.prisma.owner.domainEvent.findFirst({
-        where: { processedAt: null },
-        orderBy: { occurredAt: 'asc' },
-        select: { occurredAt: true },
-      }),
-      this.prisma.owner.domainEvent.findFirst({
-        where: { processedAt: null },
-        orderBy: { attempts: 'desc' },
-        select: { attempts: true, lastError: true },
-      }),
-    ]);
-    return {
-      pending,
-      failing,
-      dead,
-      processedInWindow: processed,
-      oldestPendingAgeSeconds: oldest
-        ? Math.round((Date.now() - oldest.occurredAt.getTime()) / 1000)
-        : null,
-      worstAttempts: worst?.attempts ?? 0,
-      window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
-      note:
-        'pending is the backlog now; failing is the part of it that has already ' +
-        'errored at least once; DEAD is the part that has exhausted its attempts ' +
-        'and will never be retried without a person. All three are counted from ' +
-        'domain_events, which is the queue — there is no separate metric to ' +
-        'disagree with it.',
-    };
+    // One declared platform transaction (docs/53 §2). Without the flag the
+    // policies admit nothing, so a read that skipped this would return zeros
+    // and look like a healthy platform.
+    return withPlatform(this.prisma.platform, async (tx) => {
+      const w = this.windowFrom(days);
+      // An event that has exhausted MAX_ATTEMPTS stops being selected by the relay
+      // (`attempts < MAX_ATTEMPTS`) and sits in the table for ever. There is no
+      // dead-letter queue — docs/11 §273 described one that was never built — so
+      // "dead" is computed from what the rows already say, and reported apart
+      // from "failing". An operator needs to tell a delivery that will retry from
+      // one that never will again.
+      const [pending, failing, dead, processed, oldest, worst] = await Promise.all([
+        tx.domainEvent.count({ where: { processedAt: null } }),
+        tx.domainEvent.count({ where: { processedAt: null, attempts: { gt: 0 } } }),
+        tx.domainEvent.count({
+          where: { processedAt: null, attempts: { gte: OUTBOX_MAX_ATTEMPTS } },
+        }),
+        tx.domainEvent.count({ where: { processedAt: { gte: w.from } } }),
+        tx.domainEvent.findFirst({
+          where: { processedAt: null },
+          orderBy: { occurredAt: 'asc' },
+          select: { occurredAt: true },
+        }),
+        tx.domainEvent.findFirst({
+          where: { processedAt: null },
+          orderBy: { attempts: 'desc' },
+          select: { attempts: true, lastError: true },
+        }),
+      ]);
+      return {
+        pending,
+        failing,
+        dead,
+        processedInWindow: processed,
+        oldestPendingAgeSeconds: oldest
+          ? Math.round((Date.now() - oldest.occurredAt.getTime()) / 1000)
+          : null,
+        worstAttempts: worst?.attempts ?? 0,
+        window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
+        note:
+          'pending is the backlog now; failing is the part of it that has already ' +
+          'errored at least once; DEAD is the part that has exhausted its attempts ' +
+          'and will never be retried without a person. All three are counted from ' +
+          'domain_events, which is the queue — there is no separate metric to ' +
+          'disagree with it.',
+      };
+    });
   }
 
   /**
@@ -97,59 +103,74 @@ export class ObservabilityService {
    * force it, and they cannot force what nobody tells them about.
    */
   async jobs(days?: number) {
-    const w = this.windowFrom(days);
-    const staleBefore = new Date(Date.now() - STALE_CLAIM_MINUTES * 60 * 1000);
-    const [byStatus, stale, recentFailures] = await Promise.all([
-      this.prisma.owner.scheduledJobRun.groupBy({
-        by: ['job', 'status'],
-        where: { scheduledFor: { gte: w.from } },
-        _count: { _all: true },
-      }),
-      this.prisma.owner.scheduledJobRun.findMany({
-        where: { status: 'claimed', startedAt: { lt: staleBefore } },
-        orderBy: { startedAt: 'asc' },
-        take: 50,
-        select: { id: true, job: true, tenantId: true, scheduledFor: true, startedAt: true },
-      }),
-      this.prisma.owner.scheduledJobRun.findMany({
-        where: { status: 'failed', scheduledFor: { gte: w.from } },
-        orderBy: { finishedAt: 'desc' },
-        take: 20,
-        select: {
-          id: true,
-          job: true,
-          tenantId: true,
-          scheduledFor: true,
-          attempts: true,
-          error: true,
+    // One declared platform transaction (docs/53 §2). Without the flag the
+    // policies admit nothing, so a read that skipped this would return zeros
+    // and look like a healthy platform.
+    return withPlatform(this.prisma.platform, async (tx) => {
+      const w = this.windowFrom(days);
+      const staleBefore = new Date(Date.now() - STALE_CLAIM_MINUTES * 60 * 1000);
+      const [byStatus, staleCount, stale, recentFailures] = await Promise.all([
+        tx.scheduledJobRun.groupBy({
+          by: ['job', 'status'],
+          where: { scheduledFor: { gte: w.from } },
+          _count: { _all: true },
+        }),
+        // The true total, separately from the sample below. `stale.length` was
+        // being reported as `count`, which is the length of a list that has
+        // already been truncated — so an operator with 56 stale claims read
+        // "50" and believed they were seeing all of them. A cap that does not
+        // announce itself reads as completeness.
+        tx.scheduledJobRun.count({
+          where: { status: 'claimed', startedAt: { lt: staleBefore } },
+        }),
+        tx.scheduledJobRun.findMany({
+          where: { status: 'claimed', startedAt: { lt: staleBefore } },
+          orderBy: { startedAt: 'asc' },
+          take: 50,
+          select: { id: true, job: true, tenantId: true, scheduledFor: true, startedAt: true },
+        }),
+        tx.scheduledJobRun.findMany({
+          where: { status: 'failed', scheduledFor: { gte: w.from } },
+          orderBy: { finishedAt: 'desc' },
+          take: 20,
+          select: {
+            id: true,
+            job: true,
+            tenantId: true,
+            scheduledFor: true,
+            attempts: true,
+            error: true,
+          },
+        }),
+      ]);
+
+      const jobs: Record<string, Record<string, number>> = {};
+      for (const row of byStatus) {
+        (jobs[row.job] ??= {})[row.status] = row._count._all;
+      }
+
+      return {
+        window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
+        jobs,
+        stale: {
+          thresholdMinutes: STALE_CLAIM_MINUTES,
+          count: staleCount,
+          showing: stale.length,
+          truncated: staleCount > stale.length,
+          runs: stale.map((r) => ({
+            ...r,
+            claimedForSeconds: r.startedAt
+              ? Math.round((Date.now() - r.startedAt.getTime()) / 1000)
+              : null,
+          })),
+          note:
+            `a run claimed for more than ${STALE_CLAIM_MINUTES} minutes is a job nobody ` +
+            'finished. The scheduler will not retry it — that is how it avoids billing ' +
+            'twice — so it runs only if an operator forces it (POST /platform/scheduler/run).',
         },
-      }),
-    ]);
-
-    const jobs: Record<string, Record<string, number>> = {};
-    for (const row of byStatus) {
-      (jobs[row.job] ??= {})[row.status] = row._count._all;
-    }
-
-    return {
-      window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
-      jobs,
-      stale: {
-        thresholdMinutes: STALE_CLAIM_MINUTES,
-        count: stale.length,
-        runs: stale.map((r) => ({
-          ...r,
-          claimedForSeconds: r.startedAt
-            ? Math.round((Date.now() - r.startedAt.getTime()) / 1000)
-            : null,
-        })),
-        note:
-          `a run claimed for more than ${STALE_CLAIM_MINUTES} minutes is a job nobody ` +
-          'finished. The scheduler will not retry it — that is how it avoids billing ' +
-          'twice — so it runs only if an operator forces it (POST /platform/scheduler/run).',
-      },
-      recentFailures,
-    };
+        recentFailures,
+      };
+    });
   }
 
   /**
@@ -159,47 +180,52 @@ export class ObservabilityService {
    * null cost with the reason instead of a zero somebody would budget against.
    */
   async ai(days?: number, tenantId?: string) {
-    const w = this.windowFrom(days);
-    const rows = await this.prisma.owner.aiUsage.groupBy({
-      by: ['tenantId', 'provider', 'model'],
-      where: {
-        usageDate: { gte: new Date(w.from.toISOString().slice(0, 10)) },
-        ...(tenantId ? { tenantId } : {}),
-      },
-      _sum: { requests: true, inputTokens: true, outputTokens: true },
-    });
+    // One declared platform transaction (docs/53 §2). Without the flag the
+    // policies admit nothing, so a read that skipped this would return zeros
+    // and look like a healthy platform.
+    return withPlatform(this.prisma.platform, async (tx) => {
+      const w = this.windowFrom(days);
+      const rows = await tx.aiUsage.groupBy({
+        by: ['tenantId', 'provider', 'model'],
+        where: {
+          usageDate: { gte: new Date(w.from.toISOString().slice(0, 10)) },
+          ...(tenantId ? { tenantId } : {}),
+        },
+        _sum: { requests: true, inputTokens: true, outputTokens: true },
+      });
 
-    const usage = rows.map((r) => {
-      const inputTokens = r._sum.inputTokens ?? 0;
-      const outputTokens = r._sum.outputTokens ?? 0;
-      const cost = estimateAiCost(r.provider, r.model, inputTokens, outputTokens);
+      const usage = rows.map((r) => {
+        const inputTokens = r._sum.inputTokens ?? 0;
+        const outputTokens = r._sum.outputTokens ?? 0;
+        const cost = estimateAiCost(r.provider, r.model, inputTokens, outputTokens);
+        return {
+          tenantId: r.tenantId,
+          provider: r.provider,
+          model: r.model,
+          requests: r._sum.requests ?? 0,
+          inputTokens,
+          outputTokens,
+          ...cost,
+        };
+      });
+
+      const priced = usage.filter((u) => u.costMinor !== null);
+      const unpriced = usage.filter((u) => u.costMinor === null);
+
       return {
-        tenantId: r.tenantId,
-        provider: r.provider,
-        model: r.model,
-        requests: r._sum.requests ?? 0,
-        inputTokens,
-        outputTokens,
-        ...cost,
+        window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
+        currency: AI_RATE_CURRENCY,
+        totalCostMinor: priced.reduce((sum, u) => sum + (u.costMinor ?? 0), 0),
+        // Distinct: an unpriced model appears once per tenant that used it, and a
+        // list repeating the same name forty times reads as forty problems.
+        unpricedModels: [...new Set(unpriced.map((u) => `${u.provider}/${u.model}`))],
+        usage,
+        note:
+          'an estimate of what the platform pays a provider, from tokens times a rate ' +
+          'card that is a reviewed constant (docs/36 §5). It is not billing, nothing ' +
+          'charges a tenant from it, and a model with no rate costs null rather than 0.',
       };
     });
-
-    const priced = usage.filter((u) => u.costMinor !== null);
-    const unpriced = usage.filter((u) => u.costMinor === null);
-
-    return {
-      window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
-      currency: AI_RATE_CURRENCY,
-      totalCostMinor: priced.reduce((sum, u) => sum + (u.costMinor ?? 0), 0),
-      // Distinct: an unpriced model appears once per tenant that used it, and a
-      // list repeating the same name forty times reads as forty problems.
-      unpricedModels: [...new Set(unpriced.map((u) => `${u.provider}/${u.model}`))],
-      usage,
-      note:
-        'an estimate of what the platform pays a provider, from tokens times a rate ' +
-        'card that is a reviewed constant (docs/36 §5). It is not billing, nothing ' +
-        'charges a tenant from it, and a model with no rate costs null rather than 0.',
-    };
   }
 
   /**
@@ -207,79 +233,84 @@ export class ObservabilityService {
    * about itself, so the platform view and the tenant view cannot drift.
    */
   async tenants(days?: number, tenantId?: string) {
-    const w = this.windowFrom(days);
-    const where = tenantId ? { id: tenantId } : {};
-    const tenants = await this.prisma.owner.tenant.findMany({
-      where,
-      select: { id: true, name: true, slug: true, status: true, createdAt: true },
-      orderBy: { createdAt: 'asc' },
-      take: tenantId ? 1 : 200,
-    });
-    const ids = tenants.map((t) => t.id);
-    if (ids.length === 0) {
+    // One declared platform transaction (docs/53 §2). Without the flag the
+    // policies admit nothing, so a read that skipped this would return zeros
+    // and look like a healthy platform.
+    return withPlatform(this.prisma.platform, async (tx) => {
+      const w = this.windowFrom(days);
+      const where = tenantId ? { id: tenantId } : {};
+      const tenants = await tx.tenant.findMany({
+        where,
+        select: { id: true, name: true, slug: true, status: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+        take: tenantId ? 1 : 200,
+      });
+      const ids = tenants.map((t) => t.id);
+      if (ids.length === 0) {
+        return {
+          window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
+          tenants: [],
+        };
+      }
+
+      const [members, orders, events, ai] = await Promise.all([
+        tx.member.groupBy({
+          by: ['tenantId'],
+          where: { tenantId: { in: ids } },
+          _count: { _all: true },
+        }),
+        // Grouped by CURRENCY as well, because one number summing baht and
+        // dollars is not a number. A tenant has one currency today, but the
+        // shape must not be the thing that breaks when a second one appears.
+        tx.order.groupBy({
+          by: ['tenantId', 'currency'],
+          where: { tenantId: { in: ids }, placedAt: { gte: w.from } },
+          _count: { _all: true },
+          _sum: { totalMinor: true },
+        }),
+        tx.domainEvent.groupBy({
+          by: ['tenantId'],
+          where: { tenantId: { in: ids }, occurredAt: { gte: w.from } },
+          _count: { _all: true },
+        }),
+        tx.aiUsage.groupBy({
+          by: ['tenantId'],
+          where: {
+            tenantId: { in: ids },
+            usageDate: { gte: new Date(w.from.toISOString().slice(0, 10)) },
+          },
+          _sum: { requests: true, inputTokens: true, outputTokens: true },
+        }),
+      ]);
+
+      const at = <T extends { tenantId: string | null }>(rows: T[], id: string) =>
+        rows.find((r) => r.tenantId === id);
+
       return {
         window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
-        tenants: [],
+        tenants: tenants.map((t) => {
+          const mine = orders.filter((o) => o.tenantId === t.id);
+          const a = at(ai, t.id);
+          return {
+            ...t,
+            members: at(members, t.id)?._count._all ?? 0,
+            ordersInWindow: mine.reduce((n, o) => n + (o._count?._all ?? 0), 0),
+            orderValueInWindow: mine.map((o) => ({
+              currency: o.currency,
+              totalMinor: o._sum?.totalMinor ?? 0,
+            })),
+            eventsInWindow: at(events, t.id)?._count._all ?? 0,
+            aiRequestsInWindow: a?._sum.requests ?? 0,
+            aiTokensInWindow: (a?._sum.inputTokens ?? 0) + (a?._sum.outputTokens ?? 0),
+          };
+        }),
+        note:
+          'counts come from the tables that own the data — members, orders, ' +
+          'domain_events, ai_usage — so a number here cannot disagree with the thing ' +
+          'it measures. Order value is reported per currency and never summed across ' +
+          'them: there is no exchange rate here, and inventing one would be a guess ' +
+          'presented as a total.',
       };
-    }
-
-    const [members, orders, events, ai] = await Promise.all([
-      this.prisma.owner.member.groupBy({
-        by: ['tenantId'],
-        where: { tenantId: { in: ids } },
-        _count: { _all: true },
-      }),
-      // Grouped by CURRENCY as well, because one number summing baht and
-      // dollars is not a number. A tenant has one currency today, but the
-      // shape must not be the thing that breaks when a second one appears.
-      this.prisma.owner.order.groupBy({
-        by: ['tenantId', 'currency'],
-        where: { tenantId: { in: ids }, placedAt: { gte: w.from } },
-        _count: { _all: true },
-        _sum: { totalMinor: true },
-      }),
-      this.prisma.owner.domainEvent.groupBy({
-        by: ['tenantId'],
-        where: { tenantId: { in: ids }, occurredAt: { gte: w.from } },
-        _count: { _all: true },
-      }),
-      this.prisma.owner.aiUsage.groupBy({
-        by: ['tenantId'],
-        where: {
-          tenantId: { in: ids },
-          usageDate: { gte: new Date(w.from.toISOString().slice(0, 10)) },
-        },
-        _sum: { requests: true, inputTokens: true, outputTokens: true },
-      }),
-    ]);
-
-    const at = <T extends { tenantId: string | null }>(rows: T[], id: string) =>
-      rows.find((r) => r.tenantId === id);
-
-    return {
-      window: { days: w.days, from: w.from.toISOString(), to: w.to.toISOString() },
-      tenants: tenants.map((t) => {
-        const mine = orders.filter((o) => o.tenantId === t.id);
-        const a = at(ai, t.id);
-        return {
-          ...t,
-          members: at(members, t.id)?._count._all ?? 0,
-          ordersInWindow: mine.reduce((n, o) => n + (o._count?._all ?? 0), 0),
-          orderValueInWindow: mine.map((o) => ({
-            currency: o.currency,
-            totalMinor: o._sum?.totalMinor ?? 0,
-          })),
-          eventsInWindow: at(events, t.id)?._count._all ?? 0,
-          aiRequestsInWindow: a?._sum.requests ?? 0,
-          aiTokensInWindow: (a?._sum.inputTokens ?? 0) + (a?._sum.outputTokens ?? 0),
-        };
-      }),
-      note:
-        'counts come from the tables that own the data — members, orders, ' +
-        'domain_events, ai_usage — so a number here cannot disagree with the thing ' +
-        'it measures. Order value is reported per currency and never summed across ' +
-        'them: there is no exchange rate here, and inventing one would be a guess ' +
-        'presented as a total.',
-    };
+    });
   }
 }

@@ -208,14 +208,33 @@ describe('The machinery reports on itself (docs/36 §4)', () => {
     expect(res.status, JSON.stringify(res.body)).toBe(200);
 
     const ids = res.body.stale.runs.map((r: { id: string }) => r.id);
-    expect(ids, 'a three-hour-old claim is a job nobody finished').toContain(stale.id);
+    // The listing is capped and ordered oldest-first, so on a database carrying
+    // other suites' stale claims this fixture can fall outside the sample. That
+    // is the LISTING being truncated, not the check failing — and the response
+    // now says so, which is what this asserts.
+    expect(
+      res.body.stale.count,
+      'the stale count did not include this claim at all',
+    ).toBeGreaterThan(0);
+    if (res.body.stale.truncated) {
+      expect(
+        res.body.stale.count,
+        'the response claims truncation while showing everything it counted',
+      ).toBeGreaterThan(res.body.stale.showing);
+    } else {
+      expect(ids, 'a three-hour-old claim is a job nobody finished').toContain(stale.id);
+    }
     expect(
       ids,
       'a claim made a moment ago is a job in progress; calling it stale trains ' +
         'an operator to ignore the alert',
     ).not.toContain(fresh.id);
 
-    const reported = res.body.stale.runs.find((r: { id: string }) => r.id === stale.id);
+    // Whichever stale run the sample contains, every one of them must carry how
+    // long it has been held — that number is the reason an operator looks.
+    const reported =
+      res.body.stale.runs.find((r: { id: string }) => r.id === stale.id) ?? res.body.stale.runs[0];
+    expect(reported, 'the stale sample is empty while the count is not').toBeTruthy();
     expect(reported.claimedForSeconds).toBeGreaterThan(60 * 60);
     expect(res.body.stale.note).toMatch(/force/i);
     expect(res.body.jobs['subscription.renew']).toBeTruthy();

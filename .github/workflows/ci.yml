@@ -65,6 +65,7 @@ jobs:
     env:
       AVIORA_DATABASE_URL: postgresql://aviora_owner:ci-owner-pw@localhost:5439/aviora
       AVIORA_APP_DATABASE_URL: postgresql://aviora_app:ci-app-pw@localhost:5439/aviora
+      AVIORA_PLATFORM_DATABASE_URL: postgresql://aviora_platform:ci-platform-pw@localhost:5439/aviora
       AVIORA_JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-credential-x1
       AVIORA_JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-credential-1
       AVIORA_REDIS_URL: redis://localhost:6379
@@ -103,6 +104,7 @@ jobs:
     env:
       AVIORA_DATABASE_URL: postgresql://aviora_owner:ci-owner-pw@localhost:5439/aviora
       AVIORA_APP_DATABASE_URL: postgresql://aviora_app:ci-app-pw@localhost:5439/aviora
+      AVIORA_PLATFORM_DATABASE_URL: postgresql://aviora_platform:ci-platform-pw@localhost:5439/aviora
       AVIORA_JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-credential-x1
       AVIORA_JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-credential-1
       AVIORA_SEED_PLATFORM_ADMIN_EMAIL: admin@aviora.local

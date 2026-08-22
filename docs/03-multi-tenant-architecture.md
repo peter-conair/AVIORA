@@ -170,7 +170,7 @@ await prisma.$transaction(async (tx) => {
 ```
 
 - **Exempt (platform-scope) tables** — no `tenant_id`, no RLS: `tenants`, `users`, `platform_plans`, `refresh_tokens` (keyed by user), plus platform-side reads of `domain_events` by the dispatcher. Access to these goes through the `platform` and `identity` modules only.
-- Platform operations that cross tenants use the **owner** client, not a dedicated role. There is no `aviora_platform` role; the database has exactly two, `aviora_owner` and `aviora_app`. This is a real shortfall in defence-in-depth and is described in §4.1 rather than left as an aspiration in this line.
+- Platform operations that cross tenants use the **`aviora_platform`** role (docs/53): not the table owner, bound by a `platform_access` policy on all 89 tenant-isolated tables, and granted nothing unless the transaction sets `app.platform` via `withPlatform`. A platform read that forgets to declare itself sees zero rows. Migrations, seeding and the platform-scope tables that have no `tenant_isolation` policy stay on the owner, for the reasons in docs/53 §3.
 
 ### 4.2 ORM — Prisma client extension (primary layer)
 
@@ -372,6 +372,9 @@ privilege; a migration touching every one of those tables; and a rework of
 prize is that a mistake in a platform query would be refused by the database
 instead of served.
 
-It is not done. It is written here because "the database is the backstop" was
-being claimed for paths where no backstop exists, and an operator reading §4
-should know which half of the system that sentence is about.
+**Done in Sprint 35** (docs/53), for the observability views — the cross-tenant
+reads this was actually about. Migrations and seeding remain owner work, because
+a role without DDL rights cannot run them and should not have them; and the
+platform-scope tables (`domain_events`, `scheduled_job_runs`, `tenants`,
+`users`) have RLS disabled, so a grant is the honest answer there rather than a
+policy implying a protection that is not present.

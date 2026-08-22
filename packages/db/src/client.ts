@@ -17,6 +17,20 @@ export function createAppClient(): PrismaClient {
 }
 
 /**
+ * Platform client — connects as `aviora_platform` (docs/53).
+ *
+ * NOT the owner, so policies apply to it, and its `platform_access` policy
+ * grants nothing unless the transaction has set `app.platform = 'true'`. A
+ * platform query that forgets to declare itself sees zero rows rather than
+ * every tenant's — the same failure shape a tenant client with no tenant has.
+ *
+ * Use it through `withPlatform()`; nothing else sets the flag.
+ */
+export function createPlatformClient(): PrismaClient {
+  return new PrismaClient({ datasourceUrl: requireEnv('AVIORA_PLATFORM_DATABASE_URL') });
+}
+
+/**
  * A client on an explicitly given DSN — the dedicated-database path (ADR-002,
  * docs/31 §2). Connects as whatever role the DSN names, so a dedicated tenant
  * gets the same RLS treatment as the shared one when the DSN is the app role's.
