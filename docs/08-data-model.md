@@ -40,7 +40,17 @@ model MembershipPlan {
 ### 1.4 tenant_id convention
 
 - Every **tenant-owned** table has `tenant_id uuid NOT NULL REFERENCES tenants(id)` as its second column.
-- Every composite index leads with `tenant_id`.
+- Composite indexes lead with `tenant_id`, with one recorded exception:
+  `lessons_course_id_order_key` leads with `course_id`. It is a **uniqueness
+  constraint**, not an access path, and `course_id` is a foreign key to a
+  tenant-owned table — so it already implies the tenant, and every query for
+  lessons goes through `id` or `course_id` anyway.
+
+  Adding a `(tenant_id, …)` index there to satisfy this line would be a write
+  cost on every insert serving no read: verified — no query filters lessons by
+  tenant alone. The rule is right as a default; this records the one place it
+  does not apply and why, so the next person does not "fix" it.
+
 - Every unique business constraint is scoped by tenant: `UNIQUE(tenant_id, code)`, never `UNIQUE(code)`.
 - **Platform tables** (no `tenant_id`, RLS-exempt): `tenants`, `users`, `entitlements`, `permissions` — global identity and pure-platform configuration.
 
