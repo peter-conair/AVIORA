@@ -45,6 +45,9 @@ export function LeadsTab({ selectedLeadId, onSelectLead }: LeadsTabProps) {
   const [stageId, setStageId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Set when the server refused because this contact is already on someone's
+  // book. Holding it in state is what turns a dead end into a choice.
+  const [duplicateOwner, setDuplicateOwner] = useState<string | null>(null);
 
   const loadLeads = useCallback(async () => {
     const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
@@ -86,17 +89,17 @@ export function LeadsTab({ selectedLeadId, onSelectLead }: LeadsTabProps) {
     };
   }, [loadLeads]);
 
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitLead = async (allowDuplicate: boolean) => {
     setFormError(null);
     setSubmitting(true);
     try {
-      const body: Record<string, string> = { name };
+      const body: Record<string, string | boolean> = { name };
       if (email) body.email = email;
       if (phone) body.phone = phone;
       if (source) body.source = source;
       if (notes) body.notes = notes;
       if (stageId) body.stageId = stageId;
+      if (allowDuplicate) body.allowDuplicate = true;
       await api.post('/crm/leads', body);
       setName('');
       setEmail('');
@@ -104,12 +107,27 @@ export function LeadsTab({ selectedLeadId, onSelectLead }: LeadsTabProps) {
       setSource('');
       setNotes('');
       setStageId('');
+      setDuplicateOwner(null);
       await loadLeads();
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === 'CONFLICT') {
+        // Not a failure the user should have to decode — name who holds the
+        // contact and offer the way through, or the block is a dead end and
+        // they will retype the address slightly wrong to get past it.
+        const owner = (err.details as { ownerName?: string } | undefined)?.ownerName;
+        setDuplicateOwner(owner ?? t('leads.duplicateUnknownOwner'));
+        return;
+      }
       setFormError(err instanceof ApiError ? err.message : tc('errorGeneric'));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCreate = async (e: FormEvent) => {
+    e.preventDefault();
+    setDuplicateOwner(null);
+    await submitLead(false);
   };
 
   if (forbidden) {
@@ -167,6 +185,21 @@ export function LeadsTab({ selectedLeadId, onSelectLead }: LeadsTabProps) {
             ))}
           </Select>
           {formError ? <p className="text-sm text-red-600 sm:col-span-2">{formError}</p> : null}
+          {duplicateOwner ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 sm:col-span-2">
+              <p className="text-sm text-amber-900">
+                {t('leads.duplicateWarning', { owner: duplicateOwner })}
+              </p>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => void submitLead(true)}
+                className="mt-2 rounded-md border border-amber-400 px-3 py-1.5 text-sm font-medium text-amber-900 disabled:opacity-50"
+              >
+                {t('leads.duplicateCreateAnyway')}
+              </button>
+            </div>
+          ) : null}
           <div className="sm:col-span-2">
             <Button type="submit" disabled={submitting}>
               {submitting ? tc('saving') : t('leads.submit')}

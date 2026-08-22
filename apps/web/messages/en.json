@@ -118,7 +118,10 @@
       "convert": "Convert to customer",
       "converted": "Converted",
       "convertedHint": "This lead is already a customer.",
-      "markLost": "Mark lost"
+      "markLost": "Mark lost",
+      "duplicateWarning": "{owner} already has an open lead for this contact.",
+      "duplicateCreateAnyway": "Create it anyway",
+      "duplicateUnknownOwner": "Someone else"
     },
     "followUps": {
       "title": "Follow-ups",

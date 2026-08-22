@@ -118,7 +118,10 @@
       "convert": "เปลี่ยนเป็นลูกค้า",
       "converted": "เป็นลูกค้าแล้ว",
       "convertedHint": "ผู้สนใจรายนี้เป็นลูกค้าเรียบร้อยแล้ว",
-      "markLost": "ทำเครื่องหมายว่าไม่สำเร็จ"
+      "markLost": "ทำเครื่องหมายว่าไม่สำเร็จ",
+      "duplicateWarning": "{owner} มีลีดที่เปิดอยู่สำหรับผู้ติดต่อรายนี้แล้ว",
+      "duplicateCreateAnyway": "สร้างต่อไป",
+      "duplicateUnknownOwner": "สมาชิกท่านอื่น"
     },
     "followUps": {
       "title": "งานติดตาม",
