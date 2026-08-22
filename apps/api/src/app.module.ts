@@ -53,6 +53,7 @@ import { HealthController } from './modules/health/health.controller';
 import { HealthService } from './modules/health/health.service';
 import { HealthAccessService } from './modules/health/health-access.service';
 import { FieldEncryptionService } from './common/crypto/field-encryption.service';
+import { BlindIndexService } from './common/crypto/blind-index.service';
 import { CommunityController } from './modules/community/community.controller';
 import { CommunityService } from './modules/community/community.service';
 import { ChallengeController } from './modules/challenge/challenge.controller';
@@ -191,6 +192,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ActionAdapters,
     RewardService,
     FieldEncryptionService,
+    BlindIndexService,
     AiService,
     AnthropicProvider,
     GroundedProvider,
