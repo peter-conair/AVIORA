@@ -2974,3 +2974,14 @@ export interface TrackerStalled {
     neverStarted: boolean;
   }[];
 }
+
+export interface ChecklistWeek {
+  weekOf: string;
+  memberId: string;
+  isSelf: boolean;
+  days: string[];
+  daily: { id: string; code: string; name: string; done: string[] }[];
+  weekly: { id: string; code: string; name: string; done: boolean }[];
+  expectedDaily: number;
+  expectedWeekly: number;
+}

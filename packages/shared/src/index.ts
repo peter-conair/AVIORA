@@ -7,3 +7,4 @@ export * from './observability/ai-rates';
 export * from './prospecting/criteria';
 export * from './prospecting/memory-jogger';
 export * from './prospecting/tracker-templates';
+export * from './prospecting/daily-checklist';

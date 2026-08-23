@@ -71,6 +71,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 57  | [The workbook, end to end — what gets built and in what order](./57-workbook-roadmap.md)          | Sprint 39                                                 |
 | 58  | [The monthly goal sheet](./58-business-goals.md)                                                  | Sprint 39                                                 |
 | 59  | [The tracking sheets — one engine, three sheets](./59-tracking-sheets.md)                         | Sprint 40                                                 |
+| 60  | [The daily checklist](./60-daily-checklist.md)                                                    | Sprint 41                                                 |
 
 ## Canonical stack (see ADRs)
 

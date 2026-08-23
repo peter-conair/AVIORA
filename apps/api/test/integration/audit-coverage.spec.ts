@@ -34,6 +34,10 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
+    pattern: /^\/api\/v1\/checklist\/items\/[^/]+$/,
+    why: 'Ticking a daily checklist box is the most routine act in the product — eight a day per member. habit_logs already records the date and the member, which is what an audit row would say, and auditing it would bury the sensitive rows this log exists for (docs/60 §4).',
+  },
+  {
     pattern: /^\/api\/v1\/tracker\/entries\/[^/]+\/marks$/,
     why: 'Ticking a box on a follow-up sheet is routine work, and a busy line produces hundreds a week — auditing each would bury the rows this log exists for. The tick is not lost: tracker_marks stores when it happened and which member put it there, which is strictly more than an audit row would say (docs/59 §4). Adding a ROW to a sheet IS audited.',
   },

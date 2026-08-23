@@ -1054,6 +1054,10 @@ model Habit {
   memberId    String    @map("member_id") @db.Uuid
   code        String
   name        String
+  /// 'health' (docs/13 privacy applies) or 'business' (docs/60 — a coach may
+  /// see it, which is the entire point of the daily checklist). These are two
+  /// different promises and must never be resolved by the same query.
+  category    String    @default("health")
   cadence     String    @default("daily")
   targetUnit  String?   @map("target_unit")
   targetValue Decimal?  @map("target_value") @db.Decimal(10, 2)
@@ -1066,6 +1070,7 @@ model Habit {
 
   @@unique([memberId, code])
   @@index([tenantId, memberId, status])
+  @@index([tenantId, memberId, category])
   @@map("habits")
 }
 

@@ -351,3 +351,134 @@ describe('Health privacy — no role is a substitute for consent (spec §59)', (
     expect(rows.some((r) => r.action === 'health.grant.revoke')).toBe(true);
   });
 });
+
+/**
+ * Sprint 41 — the daily checklist (docs/60).
+ *
+ * It runs on the habits engine, which was built for health data and carries
+ * docs/13's promise that a leader sees nothing without a grant. Business habits
+ * invert that promise on purpose, so the tests that matter here are the two
+ * that keep the inversion from leaking: weekly must actually mean weekly, and a
+ * coach reading a downline's checklist must get no health row at all.
+ */
+describe('Sprint 41 — daily checklist', () => {
+  let dailyId = '';
+  let weeklyId = '';
+
+  it('gives a member the sixteen items without anybody configuring them', async () => {
+    const person = await login(`person-${RUN}@test.local`);
+    const res = await api('/api/v1/checklist', { token: person, tenant: tenantId });
+    expect(res.status).toBe(200);
+    expect(res.body.daily).toHaveLength(8);
+    expect(res.body.weekly).toHaveLength(8);
+    // Seven columns, Sunday first, because that is the sheet.
+    expect(res.body.days).toHaveLength(7);
+    expect(new Date(`${res.body.weekOf}T00:00:00Z`).getUTCDay()).toBe(0);
+    dailyId = res.body.daily[0].id;
+    weeklyId = res.body.weekly[0].id;
+  });
+
+  it('ticks one day without ticking the week', async () => {
+    const person = await login(`person-${RUN}@test.local`);
+    const week = await api('/api/v1/checklist', { token: person, tenant: tenantId });
+    const wednesday = week.body.days[3];
+
+    const res = await api(`/api/v1/checklist/items/${dailyId}`, {
+      method: 'PUT',
+      token: person,
+      tenant: tenantId,
+      body: JSON.stringify({ date: wednesday, done: true }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.logDate).toBe(wednesday);
+
+    const after = await api('/api/v1/checklist', { token: person, tenant: tenantId });
+    expect(after.body.daily.find((h: { id: string }) => h.id === dailyId).done).toEqual([
+      wednesday,
+    ]);
+  });
+
+  it('makes a weekly item mean the week, whichever day it was ticked', async () => {
+    const person = await login(`person-${RUN}@test.local`);
+    const week = await api('/api/v1/checklist', { token: person, tenant: tenantId });
+    const [sunday, , , wednesday, , friday] = week.body.days as string[];
+
+    const first = await api(`/api/v1/checklist/items/${weeklyId}`, {
+      method: 'PUT',
+      token: person,
+      tenant: tenantId,
+      body: JSON.stringify({ date: wednesday, done: true }),
+    });
+    // `cadence: 'weekly'` was accepted and stored since Sprint 6 and nothing
+    // read it, so this landed on Wednesday and a Friday tick made a SECOND log
+    // — "weekly" meant nothing at all (docs/60 §2).
+    expect(first.body.logDate).toBe(sunday);
+
+    const second = await api(`/api/v1/checklist/items/${weeklyId}`, {
+      method: 'PUT',
+      token: person,
+      tenant: tenantId,
+      body: JSON.stringify({ date: friday, done: true }),
+    });
+    expect(second.body.logDate).toBe(sunday);
+
+    const after = await api('/api/v1/checklist', { token: person, tenant: tenantId });
+    expect(after.body.weekly.find((h: { id: string }) => h.id === weeklyId).done).toBe(true);
+  });
+
+  it('takes a tick back', async () => {
+    const person = await login(`person-${RUN}@test.local`);
+    await api(`/api/v1/checklist/items/${weeklyId}`, {
+      method: 'PUT',
+      token: person,
+      tenant: tenantId,
+      body: JSON.stringify({ done: false }),
+    });
+    const after = await api('/api/v1/checklist', { token: person, tenant: tenantId });
+    expect(after.body.weekly.find((h: { id: string }) => h.id === weeklyId).done).toBe(false);
+  });
+
+  it("lets a leader read their member's checklist — and no health data with it", async () => {
+    const leader = await login(`leader-${RUN}@test.local`);
+    const res = await api(`/api/v1/checklist?memberId=${member.person}`, {
+      token: leader,
+      tenant: tenantId,
+    });
+    // Business activity is the one thing a coach IS meant to see, and there is
+    // no grant in place here.
+    expect(res.status).toBe(200);
+    expect(res.body.daily).toHaveLength(8);
+    expect(res.body.isSelf).toBe(false);
+
+    // Everything returned is a business item. The privacy boundary rests on
+    // the category filter, so it is asserted rather than assumed: this member
+    // has a health habit ('water', created earlier in this file) and it must
+    // not be here.
+    const items = [...res.body.daily, ...res.body.weekly];
+    expect(items.every((h: { code: string }) => h.code.startsWith('biz'))).toBe(true);
+    expect(items.map((h: { id: string }) => h.id)).not.toContain(habitId);
+    expect(items.map((h: { code: string }) => h.code)).not.toContain('water');
+  });
+
+  it('refuses a stranger', async () => {
+    const stranger = await login(`stranger-${RUN}@test.local`);
+    const res = await api(`/api/v1/checklist?memberId=${member.person}`, {
+      token: stranger,
+      tenant: tenantId,
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('refuses to tick somebody else’s box', async () => {
+    const leader = await login(`leader-${RUN}@test.local`);
+    // A tick is a claim that you did the work; a coach recording it for you
+    // would make the sheet worthless as a record of what happened.
+    const res = await api(`/api/v1/checklist/items/${dailyId}`, {
+      method: 'PUT',
+      token: leader,
+      tenant: tenantId,
+      body: JSON.stringify({ done: true }),
+    });
+    expect(res.status).toBe(403);
+  });
+});

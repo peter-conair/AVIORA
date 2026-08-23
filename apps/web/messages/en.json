@@ -1775,7 +1775,8 @@
       "customer": "Customer list",
       "report": "Report",
       "goals": "Goals",
-      "tracker": "Follow up"
+      "tracker": "Follow up",
+      "checklist": "Daily"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1828,6 +1829,21 @@
     "lastMoved": "stalled",
     "trackerEmpty": "Nobody on this sheet yet.",
     "addToSheet": "Put someone on this sheet",
-    "nobodyToAdd": "Everybody is already on it."
+    "nobodyToAdd": "Everybody is already on it.",
+    "everyDay": "Every day",
+    "everyWeek": "Every week",
+    "weekOf": "Week of {date}",
+    "doneToday": "{done} of {total} done today",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "days": {
+      "sun": "S",
+      "mon": "M",
+      "tue": "T",
+      "wed": "W",
+      "thu": "T",
+      "fri": "F",
+      "sat": "S"
+    }
   }
 }
