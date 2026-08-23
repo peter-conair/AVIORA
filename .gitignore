@@ -36,3 +36,6 @@ playwright-report/
 test-results/
 apps/web/playwright-report/
 apps/web/test-results/
+
+# a build must not share the dev server output dir (apps/web/next.config.ts)
+.next-build/

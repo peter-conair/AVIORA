@@ -21,7 +21,8 @@
     "db:restore-drill": "bash scripts/restore-drill.sh",
     "db:migration-rehearsal": "bash scripts/migration-rehearsal.sh",
     "db:outbox-load": "bash scripts/outbox-load.sh",
-    "db:crm-rehearsal": "scripts/crm-encryption-rehearsal.sh"
+    "db:crm-rehearsal": "scripts/crm-encryption-rehearsal.sh",
+    "verify": "scripts/verify.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
