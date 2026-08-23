@@ -3014,3 +3014,21 @@ export interface WeeklyUpdateResponse {
   };
   thisWeek: { namesAdded: number; ticks: number; checklistDone: number; neverStarted: number };
 }
+
+export interface StartStep {
+  key: string;
+  label: string;
+  hint: string;
+  href: string;
+  done: boolean;
+  /** Read from the member's own records, or asked because nothing can see it. */
+  source: 'computed' | 'manual';
+}
+
+export interface StartStatus {
+  steps: StartStep[];
+  doneCount: number;
+  total: number;
+  next: StartStep | null;
+  complete: boolean;
+}

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import {
   ERROR_CODES,
   PERMISSIONS,
+  START_TEMPLATE_CODE,
   TRACKER_TEMPLATE_SEEDS,
   newId,
   type TrackerTemplateSeed,
@@ -39,7 +40,15 @@ export class TrackerService {
    * would be the system arguing with its user.
    */
   private async ensureTemplates(tx: Tx, locale: Locale) {
-    const existing = await tx.trackerTemplate.findMany({ select: { code: true } });
+    const existing = await tx.trackerTemplate.findMany({
+      // The start path (docs/63) borrows this engine to store two ticks and is
+      // NOT a sheet. Counting it here made a tenant whose member opened the
+      // dashboard before the workbook look "already set up", so the three real
+      // sheets never seeded — for good. Found by the browser suite, because
+      // only a real visit puts those two screens in that order (docs/63 §7).
+      where: { code: { not: START_TEMPLATE_CODE } },
+      select: { code: true },
+    });
     const have = new Set(existing.map((t) => t.code));
     const missing = TRACKER_TEMPLATE_SEEDS.filter((seed) => !have.has(seed.code));
     if (missing.length === 0 || existing.length > 0) {

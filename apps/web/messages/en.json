@@ -1874,5 +1874,14 @@
     "questionHint": "Anything to ask.",
     "saveWeekly": "Save this week",
     "savedWeekly": "Saved"
+  },
+  "start": {
+    "title": "Start your business",
+    "intro": "Do these in order. Most tick themselves when you do the thing.",
+    "nextUp": "Do this next",
+    "goDoIt": "Go do it",
+    "markDone": "I did it",
+    "askedShort": "you tick",
+    "readShort": "auto"
   }
 }

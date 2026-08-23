@@ -34,6 +34,10 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
+    pattern: /^\/api\/v1\/start\/[^/]+$/,
+    why: 'A member ticking one of their own first steps. Only the two steps the system cannot observe are tickable at all, tracker_marks already records when and by whom, and an audit row would bury the sensitive entries this log exists for (docs/63 §4).',
+  },
+  {
     pattern: /^\/api\/v1\/weekly-update$/,
     why: 'Notes a member writes about their own week, in their own words, visible to their coach by design (docs/61). An audit row would be a second copy of prose the member already owns, and the sheet keeps no numbers to falsify — every figure on it is computed at read time.',
   },

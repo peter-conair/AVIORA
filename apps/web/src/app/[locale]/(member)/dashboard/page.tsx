@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { StartHereCard } from '@/components/prospecting/StartHereCard';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { api, ApiError } from '@/lib/api-client';
@@ -49,6 +50,9 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-slate-900">{t('title')}</h1>
+      {/* First, because a new member's other cards are all empty and none of
+          them says which to touch (docs/63). It removes itself when done. */}
+      <StartHereCard />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card title={t('membership.title')}>
           {data.membership ? (

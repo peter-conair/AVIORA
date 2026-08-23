@@ -896,6 +896,126 @@ describe('Sprint 40 — tracking sheets', () => {
   });
 });
 
+/**
+ * Sprint 44 — starting the business (docs/63).
+ *
+ * Spec §25 asks for an onboarding journey and docs/33 recorded it as covered by
+ * the learning module, which it was not: a new member met a dashboard of empty
+ * cards with nothing saying which to touch first.
+ *
+ * What is worth testing is that the path READS most of itself. A checklist that
+ * asks somebody to tick a box the system could have looked up stops being
+ * believed on about the third day.
+ */
+describe('Sprint 44 — the start path', () => {
+  it('gives a new member one thing to do, not eight empty cards', async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const res = await api('/api/v1/start', { token: outsider, tenant: tenantId });
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(8);
+    expect(res.body.complete).toBe(false);
+    // The whole point: what to do NEXT.
+    expect(res.body.next.key).toBe('dream');
+  });
+
+  it('reads the steps it can see instead of asking', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const before = await api('/api/v1/start', { token: seller, tenant: tenantId });
+    expect(before.body.steps.find((s: { key: string }) => s.key === 'goal').done).toBe(false);
+
+    await api('/api/v1/goals/business', {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ lifeGoal: 'เกษียณใน 5 ปี', volumeTargetMinor: 3_000_000 }),
+    });
+
+    const after = await api('/api/v1/start', { token: seller, tenant: tenantId });
+    // Nobody ticked anything. The goal row exists, so the step is done.
+    expect(after.body.steps.find((s: { key: string }) => s.key === 'goal').done).toBe(true);
+    expect(after.body.steps.find((s: { key: string }) => s.key === 'dream').done).toBe(true);
+  });
+
+  it('says which steps it measured and which it is asking about', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/start', { token: seller, tenant: tenantId });
+    const byKey = Object.fromEntries(
+      res.body.steps.map((s: { key: string; source: string }) => [s.key, s.source]),
+    );
+    expect(byKey.goal).toBe('computed');
+    expect(byKey.customer).toBe('computed');
+    // The paper says "Meet Coach for Script" and no table records a
+    // conversation, so this one is asked rather than guessed.
+    expect(byKey.meet_coach).toBe('manual');
+  });
+
+  it('lets a member tick the step nothing can observe', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/start/meet_coach', {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ done: true }),
+    });
+    expect(res.status).toBe(200);
+
+    const after = await api('/api/v1/start', { token: seller, tenant: tenantId });
+    expect(after.body.steps.find((s: { key: string }) => s.key === 'meet_coach').done).toBe(true);
+  });
+
+  it('refuses to let anybody tick a step the records decide', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // Otherwise a member could claim a first customer they do not have, and
+    // the path would say something the data flatly contradicts.
+    const res = await api('/api/v1/start/customer', {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ done: true }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('does not stop the real sheets from ever seeding', async () => {
+    // The order matters and is the whole bug: the start path creates a tracker
+    // template, and the tracker's "only seed an empty tenant" guard counted it.
+    // A member who opened the dashboard before the workbook got NO follow-up
+    // sheets, permanently.
+    const platform = await login(PLATFORM_EMAIL);
+    const email = `startfirst-${RUN}@test.local`;
+    const made = await api('/api/v1/platform/tenants', {
+      method: 'POST',
+      token: platform,
+      body: JSON.stringify({
+        code: `e2e_sf_${RUN}`,
+        name: 'Start First',
+        slug: `e2e-sf-${RUN}`,
+        adminEmail: email,
+        adminDisplayName: 'Admin',
+        adminPassword: PW,
+      }),
+    });
+    expect(made.status).toBe(201);
+    const freshTenant = made.body.tenant.id;
+    const token = await login(email);
+
+    // Dashboard first, workbook second.
+    await api('/api/v1/start', { token, tenant: freshTenant });
+    const sheets = await api('/api/v1/tracker/sheets', { token, tenant: freshTenant });
+    const codes = sheets.body.templates.map((t: { code: string }) => t.code);
+    expect(codes).toEqual(expect.arrayContaining(['follow_up', 'diamond', 'follow_up_6wny']));
+  });
+
+  it('does not put the start path among the sheets people fill in for others', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const sheets = await api('/api/v1/tracker/sheets', { token: seller, tenant: tenantId });
+    const codes = sheets.body.templates.map((t: { code: string }) => t.code);
+    // It borrows the tracker engine to store two ticks; it is not a sheet a
+    // coach works through for somebody else.
+    expect(codes).not.toContain('start');
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

@@ -48,6 +48,8 @@ import { CrmService } from './modules/crm/crm.service';
 import { CrmScopeService } from './modules/crm/crm-scope.service';
 import { ContactKeyService } from './modules/crm/contact-key.service';
 import { ProspectingService } from './modules/crm/prospecting.service';
+import { StartService } from './modules/start/start.service';
+import { StartController } from './modules/start/start.controller';
 import { WeeklyUpdateService } from './modules/weekly-update/weekly-update.service';
 import { WeeklyUpdateController } from './modules/weekly-update/weekly-update.controller';
 import { ChecklistService } from './modules/checklist/checklist.service';
@@ -156,6 +158,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     TrackerController,
     ChecklistController,
     WeeklyUpdateController,
+    StartController,
     AuditController,
     KnowledgeController,
     AiController,
@@ -199,6 +202,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     TrackerService,
     ChecklistService,
     WeeklyUpdateService,
+    StartService,
     KnowledgeService,
     HealthService,
     HealthAccessService,
