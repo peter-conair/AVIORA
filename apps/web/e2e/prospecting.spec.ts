@@ -58,6 +58,9 @@ test.describe('The prospecting workbook', () => {
     await page.goto('/th/prospecting');
 
     /* ── the goal comes first: a name list with no number is an address book ── */
+    // The page opens on the path tab (docs/67), so the goal sheet is a click
+    // away rather than the landing view.
+    await page.getByRole('button', { name: 'เป้าหมาย', exact: true }).click();
     await page.getByLabel('เป้ายอด').fill('30000');
     await page.getByLabel('เป้าจำนวนคน').fill('1');
     await page.getByRole('button', { name: 'บันทึกเป้าหมาย' }).click();

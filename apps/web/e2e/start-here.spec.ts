@@ -62,6 +62,8 @@ test.describe('Starting the business', () => {
     // Go and actually do it, on the goal screen.
     await page.getByRole('link', { name: 'ไปทำเลย' }).click();
     await page.waitForURL(/\/th\/prospecting/);
+    // The page opens on the path tab now (docs/67).
+    await page.getByRole('button', { name: 'เป้าหมาย', exact: true }).click();
     await page.getByLabel('เป้าหมายชีวิต').fill('เกษียณใน 5 ปี');
     await page.getByLabel('เป้ายอด').fill('30000');
     await page.getByRole('button', { name: 'บันทึกเป้าหมาย' }).click();
