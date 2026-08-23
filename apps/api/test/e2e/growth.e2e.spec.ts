@@ -1500,3 +1500,154 @@ describe('Sprint 42 — the weekly update computes what it reports', () => {
     expect(refused.status).toBe(403);
   });
 });
+
+/**
+ * Sprint 43 — the performance ladder (docs/62).
+ *
+ * 6% · 9% · 12% · 15% · 18% · 21% are the levels the business talks in, and the
+ * Diamond Check List already names three of them. They are ranks: the highest
+ * whose rules pass, recomputed monthly.
+ *
+ * The tests that matter are about the numbers NOT being in the code — the
+ * ladder ships as drafts with no thresholds, and the thing that makes that safe
+ * rather than dangerous is that it cannot be switched on in that state.
+ */
+describe('Sprint 43 — the performance ladder', () => {
+  let ladderTenant = '';
+  let ladderToken = '';
+  let sixId = '';
+
+  beforeAll(async () => {
+    const platform = await login(PLATFORM_EMAIL);
+    const email = `ladder-${RUN}@test.local`;
+    const res = await api('/api/v1/platform/tenants', {
+      method: 'POST',
+      token: platform,
+      body: JSON.stringify({
+        code: `e2e_ld_${RUN}`,
+        name: 'Ladder Co',
+        slug: `e2e-ld-${RUN}`,
+        adminEmail: email,
+        adminDisplayName: 'Admin',
+        adminPassword: PW,
+      }),
+    });
+    expect(res.status).toBe(201);
+    ladderTenant = res.body.tenant.id;
+    ladderToken = await login(email);
+  });
+
+  it('gives a brand-new tenant the ladder it talks in', async () => {
+    const res = await api('/api/v1/ranks', { token: ladderToken, tenant: ladderTenant });
+    expect(res.status).toBe(200);
+    const codes = res.body.ranks.map((r: { code: string }) => r.code);
+    expect(codes).toEqual(['pct_6', 'pct_9', 'pct_12', 'pct_15', 'pct_18', 'pct_21']);
+    sixId = res.body.ranks[0].id;
+  });
+
+  it('ships them switched off, with no thresholds invented for them', async () => {
+    const res = await api('/api/v1/ranks', { token: ladderToken, tenant: ladderTenant });
+    for (const rank of res.body.ranks) {
+      // What group volume earns 12% is the business's number. A figure written
+      // here would look authoritative because it is in the code.
+      expect(rank.status).toBe('draft');
+      expect(rank.qualifications[0].threshold).toBe(0);
+      expect(rank.qualifications[0].metric).toBe('downline_volume');
+      // Re-earned every month, not kept.
+      expect(rank.qualifications[0].window).toBe('calendar_month');
+    }
+  });
+
+  it('does not let anybody qualify for a level nobody has configured', async () => {
+    // Evaluation rather than /ranks/me, which needs the ranks entitlement and
+    // a tenant owner has no membership to carry one (a trap this codebase has
+    // already fallen into once).
+    const res = await api('/api/v1/ranks/evaluate', {
+      method: 'POST',
+      token: ladderToken,
+      tenant: ladderTenant,
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(201);
+    // A draft rank is never evaluated. If it were, a zero threshold would make
+    // every member 21% the instant they were looked at.
+    expect(res.body.results.every((r: { rankId: string | null }) => r.rankId === null)).toBe(true);
+  });
+
+  it('refuses to switch on a level with no threshold set', async () => {
+    const res = await api(`/api/v1/ranks/${sixId}`, {
+      method: 'PATCH',
+      token: ladderToken,
+      tenant: ladderTenant,
+      body: JSON.stringify({ status: 'active' }),
+    });
+    // This is the guard that makes shipping a blank ladder safe rather than a
+    // loaded gun.
+    expect(res.status).toBe(409);
+    expect(res.body.error.message).toMatch(/threshold/i);
+  });
+
+  it('takes the tenant’s own number and turns the level on', async () => {
+    const res = await api(`/api/v1/ranks/${sixId}`, {
+      method: 'PATCH',
+      token: ladderToken,
+      tenant: ladderTenant,
+      body: JSON.stringify({
+        status: 'active',
+        qualifications: [
+          {
+            metric: 'downline_volume',
+            comparator: 'gte',
+            threshold: 2_000_000,
+            window: 'calendar_month',
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.rank.status).toBe('active');
+    expect(res.body.rank.qualifications[0].threshold).toBe(2_000_000);
+
+    // And now it evaluates — nobody has the volume, so nobody is 6% yet, which
+    // is the difference between "switched on" and "handed out".
+    const evaluated = await api('/api/v1/ranks/evaluate', {
+      method: 'POST',
+      token: ladderToken,
+      tenant: ladderTenant,
+      body: JSON.stringify({}),
+    });
+    expect(evaluated.body.results.every((r: { rankId: string | null }) => r.rankId === null)).toBe(
+      true,
+    );
+  });
+
+  it('carries the courses that get you there', async () => {
+    const courseId = '01a02a00-0000-7000-8000-00000000c0de';
+    const patched = await api(`/api/v1/ranks/${sixId}`, {
+      method: 'PATCH',
+      token: ladderToken,
+      tenant: ladderTenant,
+      body: JSON.stringify({ recommendedCourseIds: [courseId] }),
+    });
+    expect(patched.status).toBe(200);
+
+    const list = await api('/api/v1/ranks', { token: ladderToken, tenant: ladderTenant });
+    const six = list.body.ranks.find((r: { code: string }) => r.code === 'pct_6');
+    // /ranks/me has returned this since Sprint 27 and no screen ever showed
+    // it, so the learning path was invisible (docs/62 §4). There was no way to
+    // SET it either until this endpoint existed.
+    expect(six.recommendedCourseIds).toEqual([courseId]);
+  });
+
+  it('leaves a tenant that built its own ladder alone', async () => {
+    // Tenant A already has bronze/silver from earlier in this file. Seeding six
+    // draft rows underneath somebody's own ladder would be the system arguing
+    // with its user.
+    const res = await api('/api/v1/ranks', {
+      token: await login(`admin-a-${RUN}@test.local`),
+      tenant: tenantId,
+    });
+    const codes = res.body.ranks.map((r: { code: string }) => r.code);
+    expect(codes).not.toContain('pct_6');
+  });
+});

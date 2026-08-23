@@ -832,7 +832,12 @@
       "endReferral": "End",
       "referralEnded": "Ended",
       "membersUnavailable": "No members to link yet.",
-      "showEnded": "Show ended edges"
+      "showEnded": "Show ended edges",
+      "draftBadge": "needs a number",
+      "draftActivate": "Turn it on",
+      "draftPlaceholder": "Group volume per month",
+      "draftHint": "This level is off until you set the volume it needs, in {currency}. The figure is your business's, not ours.",
+      "draftThresholdLabel": "Volume needed for {name}"
     },
     "compensation": {
       "forbidden": "This area is outside your permissions.",
@@ -1482,7 +1487,8 @@
     "metricDownlineVolumeAny": "Downline volume",
     "windowPeriod": "This run's period",
     "graphCompensation": "compensation graph",
-    "graphReferral": "referral graph"
+    "graphReferral": "referral graph",
+    "learnToGetThere": "Learn this to get there"
   },
   "earnings": {
     "title": "Compensation earnings",

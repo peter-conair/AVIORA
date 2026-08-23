@@ -324,8 +324,15 @@ export function RanksTab() {
                       </span>
                       <span className="block break-all text-xs text-slate-500">{rank.code}</span>
                     </span>
-                    <Badge tone="gray">{t('level', { level: rank.level })}</Badge>
+                    <Badge tone={rank.status === 'draft' ? 'amber' : 'gray'}>
+                      {rank.status === 'draft'
+                        ? t('draftBadge')
+                        : t('level', { level: rank.level })}
+                    </Badge>
                   </div>
+                  {rank.status === 'draft' ? (
+                    <DraftLadderRow rank={rank} currency={currency} onSaved={loadRanks} />
+                  ) : null}
                   {rank.qualifications.length === 0 ? (
                     <p className="text-xs text-slate-500">{t('noQualifications')}</p>
                   ) : (
@@ -654,6 +661,80 @@ export function RanksTab() {
           </Card>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * A seeded ladder rung, waiting for the tenant's own number (docs/62 §3).
+ *
+ * The ladder ships as drafts because what group volume earns 12% belongs to the
+ * business, not to this codebase. This is the one screen that turns that from
+ * an honest gap into a usable one: type the volume, switch it on. The server
+ * refuses to activate a rung still set to zero, so the button cannot hand every
+ * member a level by accident.
+ */
+function DraftLadderRow({
+  rank,
+  currency,
+  onSaved,
+}: {
+  rank: RankDefinition;
+  currency: string;
+  onSaved: () => void | Promise<void>;
+}) {
+  const t = useTranslations('admin.growth');
+  const tc = useTranslations('common');
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const activate = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await api.patch(`/ranks/${rank.id}`, {
+        status: 'active',
+        qualifications: [
+          {
+            metric: 'downline_volume',
+            comparator: 'gte',
+            // Entered in whole units, stored in minor, like all money here.
+            threshold: Math.round(Number(value) * 100),
+            window: 'calendar_month',
+          },
+        ],
+      });
+      await onSaved();
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.message : tc('errorGeneric'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+      <p className="text-xs text-amber-900">{t('draftHint', { currency })}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <input
+          aria-label={t('draftThresholdLabel', { name: rank.name })}
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={t('draftPlaceholder')}
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+        <button
+          type="button"
+          disabled={saving || !value.trim()}
+          onClick={() => void activate()}
+          className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {t('draftActivate')}
+        </button>
+      </div>
+      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
     </div>
   );
 }

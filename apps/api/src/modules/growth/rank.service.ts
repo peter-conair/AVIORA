@@ -1,5 +1,12 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { ERROR_CODES, EVENTS } from '@aviora/shared';
+import {
+  ERROR_CODES,
+  EVENTS,
+  LADDER_METRIC,
+  LADDER_UNSET_THRESHOLD,
+  LADDER_WINDOW,
+  RANK_LADDER,
+} from '@aviora/shared';
 import { appendEvent, type Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { tenantCurrency } from '../../common/money/currency';
@@ -27,7 +34,7 @@ export interface CreateRankInput {
   code: string;
   name: string;
   level: number;
-  status?: 'active' | 'archived';
+  status?: 'active' | 'archived' | 'draft';
   requalifyWindowDays?: number;
   /** Courses to suggest to a member working towards this rank (docs/27 §3).
    *  Recommendation only — a rank is earned by its qualifications. */
@@ -75,6 +82,9 @@ export class RankService {
   /** The ladder, with the currency its money thresholds are quoted in. */
   list() {
     return this.db.tx(async (tx) => {
+      // A tenant that has never opened the rank editor still sees the ladder
+      // it talks in — as drafts it must put its own numbers into (docs/62).
+      await this.ensureLadder(tx);
       const [ranks, currency] = await Promise.all([
         tx.rankDefinition.findMany({
           orderBy: { level: 'asc' },
@@ -83,6 +93,130 @@ export class RankService {
         tenantCurrency(tx),
       ]);
       return { ranks, currency };
+    });
+  }
+
+  /**
+   * The performance ladder, seeded on first read (docs/62).
+   *
+   * Only into a tenant with NO ranks at all — a tenant that built its own
+   * ladder, or deleted ours, must not find six draft rows appear underneath it.
+   * Seeded as `draft` with a zero threshold, because what group volume earns
+   * 12% is the business's number and not mine.
+   */
+  private async ensureLadder(tx: Tx) {
+    const existing = await tx.rankDefinition.count();
+    if (existing > 0) return;
+    for (const rung of RANK_LADDER) {
+      const rank = await tx.rankDefinition.create({
+        data: {
+          tenantId: this.db.tenantId,
+          code: rung.code,
+          name: rung.name.th,
+          level: rung.level,
+          // Never 'active': a ladder rank with a zero threshold would qualify
+          // every member for 21% the moment it was evaluated.
+          status: 'draft',
+          // A performance level is re-earned every month, not kept.
+          requalifyWindowDays: 31,
+          recommendedCourseIds: [],
+        },
+      });
+      await tx.rankQualification.create({
+        data: {
+          tenantId: this.db.tenantId,
+          rankId: rank.id,
+          metric: LADDER_METRIC,
+          comparator: 'gte',
+          threshold: LADDER_UNSET_THRESHOLD,
+          window: LADDER_WINDOW,
+        },
+      });
+    }
+  }
+
+  /**
+   * Set a rank's numbers, and turn it on.
+   *
+   * The guard is the point: activating a rank whose thresholds are all zero
+   * would qualify every member for it instantly, and the seeded ladder ships
+   * in exactly that state on purpose. Refusing here is what makes seeding a
+   * blank ladder safe rather than a loaded gun (docs/62 §3).
+   */
+  async update(
+    id: string,
+    input: {
+      name?: string;
+      level?: number;
+      status?: 'active' | 'archived' | 'draft';
+      requalifyWindowDays?: number | null;
+      recommendedCourseIds?: string[];
+      qualifications?: QualificationInput[];
+    },
+  ) {
+    return this.db.tx(async (tx) => {
+      const rank = await tx.rankDefinition.findFirst({
+        where: { id },
+        include: { qualifications: true },
+      });
+      if (!rank) {
+        throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Rank not found' });
+      }
+
+      const nextQualifications = input.qualifications ?? rank.qualifications;
+      if (
+        input.status === 'active' &&
+        (nextQualifications.length === 0 ||
+          nextQualifications.every((q) => (q.threshold ?? 0) <= LADDER_UNSET_THRESHOLD))
+      ) {
+        throw new ConflictException({
+          code: ERROR_CODES.CONFLICT,
+          message:
+            'This rank has no threshold set, so every member would qualify for it. ' +
+            'Set the volume it requires before turning it on.',
+        });
+      }
+
+      if (input.qualifications) {
+        await tx.rankQualification.deleteMany({ where: { rankId: id } });
+        for (const qualification of input.qualifications) {
+          await tx.rankQualification.create({
+            data: {
+              tenantId: this.db.tenantId,
+              rankId: id,
+              metric: qualification.metric,
+              comparator: qualification.comparator ?? 'gte',
+              threshold: qualification.threshold,
+              window: qualification.window ?? 'lifetime',
+              params: qualification.params as object | undefined,
+            },
+          });
+        }
+      }
+
+      const updated = await tx.rankDefinition.update({
+        where: { id },
+        data: {
+          ...(input.name === undefined ? {} : { name: input.name }),
+          ...(input.level === undefined ? {} : { level: input.level }),
+          ...(input.status === undefined ? {} : { status: input.status }),
+          ...(input.requalifyWindowDays === undefined
+            ? {}
+            : { requalifyWindowDays: input.requalifyWindowDays }),
+          ...(input.recommendedCourseIds === undefined
+            ? {}
+            : { recommendedCourseIds: input.recommendedCourseIds }),
+        },
+        include: { qualifications: true },
+      });
+      await this.audit.record({
+        action: 'growth.rank.update',
+        entityType: 'rank_definition',
+        entityId: id,
+        before: { status: rank.status, qualifications: rank.qualifications.length },
+        after: { status: updated.status, qualifications: updated.qualifications.length },
+      });
+      return updated;
     });
   }
 

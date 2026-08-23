@@ -1374,7 +1374,14 @@ export interface RankMeResponse {
   currency: string;
   current: CurrentRank | null;
   highest: RankRef | null;
-  next: RankRef | null;
+  /**
+   * The rank being worked towards, and the courses that help get there.
+   *
+   * `recommendedCourseIds` has been on the response since Sprint 27 and was
+   * missing from this type, so nothing could render it and the learning path
+   * was invisible (docs/62 §4).
+   */
+  next: (RankRef & { recommendedCourseIds?: string[] }) | null;
   missing: RankRequirementGap[];
 }
 

@@ -1,4 +1,13 @@
-import { Body, Controller, ForbiddenException, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { z } from 'zod';
 import { ENTITLEMENTS, ERROR_CODES, PERMISSIONS } from '@aviora/shared';
@@ -25,11 +34,22 @@ const createSchema = z.object({
   code: z.string().regex(/^[a-z0-9-]{2,40}$/),
   name: z.string().min(1).max(160),
   level: z.number().int().min(0).max(1000),
-  status: z.enum(['active', 'archived']).optional(),
+  status: z.enum(['active', 'archived', 'draft']).optional(),
   requalifyWindowDays: z.number().int().positive().max(3650).optional(),
   /** Course ids to suggest on the way to this rank (docs/27 §3). */
   recommendedCourseIds: z.array(z.string().uuid()).max(20).optional(),
   qualifications: z.array(qualificationSchema).max(20).default([]),
+});
+
+const updateRankSchema = z.object({
+  name: z.string().min(1).max(160).optional(),
+  level: z.number().int().min(0).max(1000).optional(),
+  // 'draft' is how the seeded ladder ships: present and named, but never
+  // evaluated until somebody puts the business's own numbers in (docs/62).
+  status: z.enum(['active', 'archived', 'draft']).optional(),
+  requalifyWindowDays: z.number().int().positive().max(3650).nullish(),
+  recommendedCourseIds: z.array(z.string().uuid()).max(20).optional(),
+  qualifications: z.array(qualificationSchema).max(20).optional(),
 });
 
 const evaluateSchema = z.object({
@@ -76,6 +96,15 @@ export class RankController {
   @RequireEntitlements(ENTITLEMENTS.RANKS)
   async me() {
     return await this.ranks.me(this.memberId());
+  }
+
+  @Patch(':id')
+  @RequirePermissions(PERMISSIONS.RANK_MANAGE)
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(updateRankSchema)) body: z.infer<typeof updateRankSchema>,
+  ) {
+    return { rank: await this.ranks.update(id, body) };
   }
 
   @Post('evaluate')

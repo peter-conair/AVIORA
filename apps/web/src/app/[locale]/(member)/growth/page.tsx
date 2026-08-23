@@ -14,10 +14,13 @@ import {
   type RanksResponse,
   type ReferralEdge,
   type ReferralMeResponse,
+  type Course,
+  type CoursesResponse,
 } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { formatDate, formatMoney } from '@/lib/format';
+import Link from 'next/link';
 
 export default function GrowthPage() {
   const t = useTranslations('growth');
@@ -27,6 +30,7 @@ export default function GrowthPage() {
   const [rank, setRank] = useState<RankMeResponse | null>(null);
   const [referrals, setReferrals] = useState<ReferralMeResponse | null>(null);
   const [ladder, setLadder] = useState<RankDefinition[] | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   /** The plan does not include `growth.ranks` — a refusal, not a failure. */
@@ -55,6 +59,17 @@ export default function GrowthPage() {
       .catch((err: unknown) => {
         if (cancelled) return;
         if (isEntitlementRequired(err)) setUnavailable(true);
+      });
+
+    // Titles for the recommended course ids. A failure here loses the reading
+    // list and nothing else, so it never surfaces an error.
+    api
+      .get<CoursesResponse>('/courses')
+      .then((res) => {
+        if (!cancelled) setCourses(res.courses);
+      })
+      .catch(() => {
+        if (!cancelled) setCourses([]);
       });
 
     api
@@ -128,6 +143,12 @@ export default function GrowthPage() {
   // Recognition and qualification are different facts. The best rank ever held
   // is shown only when it is not the rank held now, and never in its place.
   const showHighest = !!highest && highest.id !== current?.id;
+
+  // Only courses the member can actually open. An id pointing at a course
+  // they have no access to would render as a dead link.
+  const recommended = (rank?.next?.recommendedCourseIds ?? [])
+    .map((id) => courses.find((c) => c.id === id))
+    .filter((c): c is Course => !!c);
 
   return (
     <div className="flex flex-col gap-4">
@@ -216,6 +237,30 @@ export default function GrowthPage() {
                     </ul>
                   )}
                 </div>
+
+                {/* What to LEARN to get there. The ids have been on this
+                    response since Sprint 27 and no screen ever showed them, so
+                    the ladder told a member what they were short of and never
+                    what to do about it (docs/62 §4). */}
+                {recommended.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      {t('learnToGetThere')}
+                    </span>
+                    <ul className="flex flex-col divide-y divide-slate-100">
+                      {recommended.map((course) => (
+                        <li key={course.id} className="py-2">
+                          <Link
+                            href={`/${locale}/learning`}
+                            className="text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                          >
+                            {course.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             )}
           </Card>

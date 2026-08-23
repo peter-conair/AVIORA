@@ -8,3 +8,4 @@ export * from './prospecting/criteria';
 export * from './prospecting/memory-jogger';
 export * from './prospecting/tracker-templates';
 export * from './prospecting/daily-checklist';
+export * from './prospecting/rank-ladder';

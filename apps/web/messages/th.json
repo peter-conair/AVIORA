@@ -832,7 +832,12 @@
       "endReferral": "สิ้นสุด",
       "referralEnded": "สิ้นสุดแล้ว",
       "membersUnavailable": "ยังไม่มีสมาชิกให้เชื่อมโยง",
-      "showEnded": "แสดงความสัมพันธ์ที่สิ้นสุดแล้ว"
+      "showEnded": "แสดงความสัมพันธ์ที่สิ้นสุดแล้ว",
+      "draftBadge": "ยังไม่ได้ตั้งเกณฑ์",
+      "draftActivate": "เปิดใช้งาน",
+      "draftPlaceholder": "ยอดกลุ่มต่อเดือน",
+      "draftHint": "ระดับนี้ยังปิดอยู่จนกว่าจะใส่ยอดที่ต้องทำ (สกุล {currency}) — ตัวเลขนี้เป็นของธุรกิจคุณ ไม่ใช่ของระบบ",
+      "draftThresholdLabel": "ยอดที่ต้องทำสำหรับ {name}"
     },
     "compensation": {
       "forbidden": "ส่วนนี้อยู่นอกขอบเขตสิทธิ์ของคุณ",
@@ -1482,7 +1487,8 @@
     "metricDownlineVolumeAny": "ยอดซื้อของสายล่าง",
     "windowPeriod": "รอบที่คำนวณ",
     "graphCompensation": "สายแผนตอบแทน",
-    "graphReferral": "สายการแนะนำ"
+    "graphReferral": "สายการแนะนำ",
+    "learnToGetThere": "เรียนอะไรถึงจะไปถึง"
   },
   "earnings": {
     "title": "รายได้จากแผนตอบแทน",
