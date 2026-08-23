@@ -698,6 +698,8 @@ model Customer {
   @@index([tenantId, emailBidx])
   @@index([tenantId, phoneBidx])
   @@map("customers")
+  consents CustomerConsent[]
+  photos   ProgressPhoto[]
 }
 
 model FollowUp {
@@ -2297,4 +2299,55 @@ model WeeklyUpdate {
   @@unique([tenantId, memberId, weekOf])
   @@index([tenantId, weekOf])
   @@map("weekly_updates")
+}
+
+/// A customer's consent to something being done with their data (docs/65).
+///
+/// Modelled on `HealthDataGrant`: given, revocable, and never deleted so the
+/// record of what was agreed survives the withdrawal of it. Unlike that one this
+/// is consent to PROCESS rather than permission to view — the customer is not a
+/// member and has no account to grant anything from, so the member who took the
+/// consent records it and is named.
+model CustomerConsent {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  customerId         String    @map("customer_id") @db.Uuid
+  /// 'progress_photo' for now. A purpose per thing consented to, never one
+  /// blanket yes — consent to be photographed is not consent to anything else.
+  purpose            String
+  grantedAt          DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  recordedByMemberId String    @map("recorded_by_member_id") @db.Uuid
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz(6)
+  /// How it was taken — "signed the form", "said yes on the phone".
+  note               String?
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, purpose])
+  @@index([tenantId, customerId, revokedAt])
+  @@map("customer_consents")
+}
+
+/// A before/after photograph (docs/65).
+///
+/// The bytes live in object storage; this row is the only way to find them, so
+/// deleting the row and the object together is what withdrawing consent means.
+model ProgressPhoto {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  customerId         String   @map("customer_id") @db.Uuid
+  /// Which checkpoint on the sheet it belongs to, e.g. `before_photo`.
+  stepKey            String   @map("step_key")
+  takenAt            DateTime @default(now()) @map("taken_at") @db.Timestamptz(6)
+  /// Opaque key in the storage adapter. Never a URL: a URL that works without
+  /// passing through this API is a photograph with no access control on it.
+  storageKey         String   @map("storage_key")
+  contentType        String   @map("content_type")
+  byteSize           Int      @map("byte_size")
+  uploadedByMemberId String   @map("uploaded_by_member_id") @db.Uuid
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, customerId, takenAt])
+  @@map("progress_photos")
 }

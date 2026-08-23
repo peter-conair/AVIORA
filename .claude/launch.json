@@ -5,13 +5,15 @@
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@aviora/web", "dev"],
-      "port": 3020
+      "port": 3020,
+      "autoPort": false
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@aviora/api", "dev"],
-      "port": 3021
+      "port": 3021,
+      "autoPort": false
     }
   ]
 }

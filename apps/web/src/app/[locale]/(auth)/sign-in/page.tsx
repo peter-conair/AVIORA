@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { DevUserPicker } from '@/components/dev/DevUserPicker';
 
 function SignInForm() {
   const t = useTranslations('auth');
@@ -28,23 +29,34 @@ function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [tenantChoices, setTenantChoices] = useState<TenantSummary[] | null>(null);
 
+  /**
+   * Where a freshly signed-in caller belongs — asked once, of the server.
+   *
+   * Shared with the developer picker on purpose: a shortcut that lands
+   * somewhere the real form would not is a shortcut that hides the bug you
+   * were about to look for.
+   */
+  const routeAfterSignIn = async () => {
+    const me = await api.get<MeResponse>('/auth/me');
+    if (isPlatformAdmin(me.user)) {
+      router.push('/platform');
+      return;
+    }
+    if (me.tenants.length === 1) {
+      setTenantId(me.tenants[0].tenantId);
+      router.push('/dashboard');
+      return;
+    }
+    setTenantChoices(me.tenants);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
       await api.post<LoginResponse>('/auth/login', { email, password });
-      const me = await api.get<MeResponse>('/auth/me');
-      if (isPlatformAdmin(me.user)) {
-        router.push('/platform');
-        return;
-      }
-      if (me.tenants.length === 1) {
-        setTenantId(me.tenants[0].tenantId);
-        router.push('/dashboard');
-        return;
-      }
-      setTenantChoices(me.tenants);
+      await routeAfterSignIn();
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
         setError(t('invalidCredentials'));
@@ -124,6 +136,13 @@ function SignInForm() {
           </form>
         </Card>
       )}
+
+      {/* Compiled away entirely in a production build: `NODE_ENV` is inlined at
+          build time, so the picker and its request never reach the bundle. The
+          API keeps its own flag regardless — this only decides whether to ask. */}
+      {process.env.NODE_ENV !== 'production' && !tenantChoices ? (
+        <DevUserPicker onSignedIn={routeAfterSignIn} />
+      ) : null}
     </main>
   );
 }

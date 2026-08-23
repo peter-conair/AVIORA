@@ -82,3 +82,7 @@ Building half of that to make a checkbox look complete would be the wrong trade.
 The smallest honest next step is the storage itself — a bucket, signed upload
 URLs, and a deletion path — and it should be its own piece of work with its own
 privacy decision, not a corner of a programme sprint.
+
+**Built in Sprint 46 (docs/65),** with that privacy decision made first: consent
+per purpose, checked live on every upload, and withdrawing it destroys the
+photographs rather than hiding them.

@@ -34,6 +34,14 @@ export const AUDITED_ROUTES = new Map<string, string>([
   ['PUT /api/v1/goals/business', 'goal.business.set'],
   ['PATCH /api/v1/ranks/:id', 'growth.rank.update'],
   ['POST /api/v1/tracker/sheets/:code/entries', 'tracker.entry.add'],
+  // Registers only when AVIORA_DEV_LOGIN=true, which is a local .env thing —
+  // so this sweep never saw it on CI, and the route went undeclared from the
+  // day it was written. It DOES audit; it had simply never been listed.
+  ['POST /api/v1/dev/login', 'auth.dev_login'],
+  ['POST /api/v1/crm/customers/:id/photo-consent', 'crm.consent.grant'],
+  ['DELETE /api/v1/crm/customers/:id/photo-consent', 'crm.consent.revoke'],
+  ['POST /api/v1/crm/customers/:id/photos', 'crm.photo.upload'],
+  ['DELETE /api/v1/photos/:id', 'crm.photo.delete'],
   ['POST /api/v1/crm/leads', 'crm.lead.create'],
   ['PATCH /api/v1/crm/leads/:id', 'crm.lead.update'],
   ['PATCH /api/v1/crm/leads/:id/scores', 'crm.lead.score'],

@@ -11,6 +11,7 @@ import { TenantContextMiddleware } from './common/tenant/tenant-context.middlewa
 import { TenantContextAccessor } from './common/tenant/tenant-context.accessor';
 import { HealthController as HealthCheckController } from './common/health/health.controller';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
+import { devLoginEnabled } from './common/auth/dev-login';
 import { PermissionsGuard } from './common/auth/permissions.guard';
 import { RateCounter } from './common/rate/rate-counter';
 import { RateTierGuard } from './common/rate/rate-tier.guard';
@@ -24,6 +25,7 @@ import { SponsorshipModule } from './modules/sponsorship/sponsorship.module';
 import { PartnerModule } from './modules/partner/partner.module';
 
 import { AuthController } from './modules/identity/auth.controller';
+import { DevAuthController } from './modules/identity/dev-auth.controller';
 import { AuthService } from './modules/identity/auth.service';
 import { MembersController } from './modules/identity/members.controller';
 import { PlatformController } from './modules/platform/platform.controller';
@@ -48,6 +50,9 @@ import { CrmService } from './modules/crm/crm.service';
 import { CrmScopeService } from './modules/crm/crm-scope.service';
 import { ContactKeyService } from './modules/crm/contact-key.service';
 import { ProspectingService } from './modules/crm/prospecting.service';
+import { StorageModule } from './common/storage/storage.module';
+import { PhotosService } from './modules/photos/photos.service';
+import { PhotosController } from './modules/photos/photos.controller';
 import { StartService } from './modules/start/start.service';
 import { StartController } from './modules/start/start.controller';
 import { WeeklyUpdateService } from './modules/weekly-update/weekly-update.service';
@@ -97,6 +102,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
 
 @Module({
   imports: [
+    StorageModule,
     CoreModule,
     ClsModule.forRoot({
       global: true,
@@ -142,6 +148,11 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
   controllers: [
     HealthCheckController,
     AuthController,
+    // The password-free developer door, and the ONLY thing standing between it
+    // and production: a controller that is never registered has no route to
+    // find. The handlers re-check the same flag, but this is the line that
+    // matters — see common/auth/dev-login.ts.
+    ...(devLoginEnabled() ? [DevAuthController] : []),
     MembersController,
     PlatformController,
     // The tenant-database map and dry run live beside the other platform
@@ -159,6 +170,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ChecklistController,
     WeeklyUpdateController,
     StartController,
+    PhotosController,
     AuditController,
     KnowledgeController,
     AiController,
@@ -203,6 +215,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ChecklistService,
     WeeklyUpdateService,
     StartService,
+    PhotosService,
     KnowledgeService,
     HealthService,
     HealthAccessService,

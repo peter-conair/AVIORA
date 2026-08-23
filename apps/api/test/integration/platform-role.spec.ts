@@ -88,6 +88,24 @@ describe('It is not the owner (docs/53 §2)', () => {
     ).rejects.toThrow();
   });
 
+  /**
+   * Tables the platform role must NOT be able to read, with the reason.
+   *
+   * The same shape as `UNAUDITED` in audit-coverage: the invariant holds
+   * everywhere else, and an exception is a decision somebody made out loud
+   * rather than a gap nobody noticed.
+   */
+  const NO_PLATFORM_READ: Array<{ table: string; why: string }> = [
+    {
+      table: 'customer_consents',
+      why: 'Consent is between a customer and the member who took it (docs/65 §3). The platform operator reading it is not what the customer agreed to.',
+    },
+    {
+      table: 'progress_photos',
+      why: 'A customer consented to their salesperson holding their photograph, not to the platform operator being able to look at it (docs/65 §3). Cross-tenant support access to before/after pictures of people is not a trade worth making for easier debugging.',
+    },
+  ];
+
   it('carries a policy on every table that has tenant_isolation', async () => {
     // If a table gained tenant_isolation later without platform_access, a
     // platform view over it would silently return nothing — the quiet
@@ -99,10 +117,22 @@ describe('It is not the owner (docs/53 §2)', () => {
        WHERE n.nspname = 'public'
          AND EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation')
          AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid AND p.polname = 'platform_access')`;
+    const excluded = new Set(NO_PLATFORM_READ.map((e) => e.table));
     expect(
-      gaps.map((g) => g.relname),
+      gaps.map((g) => g.relname).filter((name) => !excluded.has(name)),
       'these tables are tenant-isolated but have no platform policy, so a ' +
-        'platform read over them returns nothing rather than failing loudly',
+        'platform read over them returns nothing rather than failing loudly. ' +
+        'If that is deliberate, add it to NO_PLATFORM_READ with the reason.',
     ).toEqual([]);
+
+    // And the exclusions must still be real: an entry left behind after its
+    // table gained a policy would quietly stop protecting anything.
+    const stillExcluded = gaps.map((g) => g.relname);
+    for (const entry of NO_PLATFORM_READ) {
+      expect(
+        stillExcluded,
+        `${entry.table} now has a platform policy — remove it from NO_PLATFORM_READ`,
+      ).toContain(entry.table);
+    }
   });
 });

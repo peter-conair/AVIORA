@@ -1176,6 +1176,172 @@ describe('Sprint 45 — columns that ask for a number', () => {
   });
 });
 
+/**
+ * Sprint 46 — before/after photographs, gated on consent (docs/65).
+ *
+ * The most sensitive thing this product holds. Every test here is about the two
+ * rules that make holding it defensible: nothing is stored without a live
+ * consent, and withdrawing consent destroys what it permitted.
+ */
+describe('Sprint 46 — photographs and consent', () => {
+  const ONE_PIXEL_PNG =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  let customerId = '';
+  let photoId = '';
+
+  beforeAll(async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const customers = await api('/api/v1/crm/customers', { token: seller, tenant: tenantId });
+    customerId = customers.body.customers[0].id;
+  });
+
+  it('refuses to store a photograph nobody consented to', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        stepKey: 'before_photo',
+        contentType: 'image/png',
+        dataBase64: ONE_PIXEL_PNG,
+      }),
+    });
+    // Before anything else works, this must not.
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toMatch(/consent/i);
+  });
+
+  it('records the consent, and who took it', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const granted = await api(`/api/v1/crm/customers/${customerId}/photo-consent`, {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ note: 'เซ็นใบยินยอมแล้ว' }),
+    });
+    expect(granted.status).toBe(201);
+
+    const read = await api(`/api/v1/crm/customers/${customerId}/photo-consent`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(read.body.granted).toBe(true);
+    // How it was taken matters if anybody ever asks.
+    expect(read.body.note).toBe('เซ็นใบยินยอมแล้ว');
+  });
+
+  it('stores it once there is consent, and hands the bytes back', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        stepKey: 'before_photo',
+        contentType: 'image/png',
+        dataBase64: ONE_PIXEL_PNG,
+      }),
+    });
+    expect(res.status).toBe(201);
+    photoId = res.body.photo.id;
+
+    const list = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(list.body.photos).toHaveLength(1);
+    // The storage key never leaves the server — it is the one thing that would
+    // let somebody fetch the bytes without coming back through this API.
+    expect(list.body.photos[0]).not.toHaveProperty('storageKey');
+  });
+
+  it('refuses a file that is not an image', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        stepKey: 'before_photo',
+        contentType: 'application/pdf',
+        dataBase64: ONE_PIXEL_PNG,
+      }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("does not show one member's customer photos to another", async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const list = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      token: outsider,
+      tenant: tenantId,
+    });
+    expect(list.status).toBe(404);
+
+    const bytes = await api(`/api/v1/photos/${photoId}/content`, {
+      token: outsider,
+      tenant: tenantId,
+    });
+    expect(bytes.status).toBe(404);
+  });
+
+  it('destroys the photographs when consent is withdrawn', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const revoked = await api(`/api/v1/crm/customers/${customerId}/photo-consent`, {
+      method: 'DELETE',
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(revoked.status).toBe(200);
+    // Not hidden. Hiding would leave the customer's picture in a bucket
+    // belonging to somebody they have told to stop.
+    expect(revoked.body.photosDeleted).toBe(1);
+
+    const list = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(list.body.photos).toHaveLength(0);
+
+    const bytes = await api(`/api/v1/photos/${photoId}/content`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(bytes.status).toBe(404);
+  });
+
+  it('keeps the record that consent was given and then withdrawn', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const read = await api(`/api/v1/crm/customers/${customerId}/photo-consent`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    // The photographs go; the record of what was agreed and when it ended is
+    // exactly what somebody might later need.
+    expect(read.body.granted).toBe(false);
+    expect(read.body.grantedAt).toBeTruthy();
+    expect(read.body.revokedAt).toBeTruthy();
+  });
+
+  it('will not take another photograph after the withdrawal', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/photos`, {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        stepKey: 'before_photo',
+        contentType: 'image/png',
+        dataBase64: ONE_PIXEL_PNG,
+      }),
+    });
+    // Consent is checked live on every upload. "They consented last month" is
+    // not a fact about now.
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

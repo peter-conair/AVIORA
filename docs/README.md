@@ -76,6 +76,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 62  | [The performance ladder — 6% · 9% · 12% · 15% · 18% · 21%](./62-performance-ladder.md)            | Sprint 43                                                 |
 | 63  | [Starting the business](./63-starting-the-business.md)                                            | Sprint 44                                                 |
 | 64  | [6WNY — from a checklist to a programme](./64-six-wny-programme.md)                               | Sprint 45                                                 |
+| 65  | [Before/after photographs, and consent](./65-progress-photos.md)                                  | Sprint 46                                                 |
 
 ## Canonical stack (see ADRs)
 
