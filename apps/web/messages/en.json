@@ -1776,7 +1776,8 @@
       "report": "Report",
       "goals": "Goals",
       "tracker": "Follow up",
-      "checklist": "Daily"
+      "checklist": "Daily",
+      "weekly": "Weekly"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1844,6 +1845,28 @@
       "thu": "T",
       "fri": "F",
       "sat": "S"
-    }
+    },
+    "whereYouStand": "Where you stand",
+    "thisWeekDid": "What you did this week",
+    "remainingVolume": "Still to find",
+    "daysLeft": "Days left in the month",
+    "noTarget": "no target",
+    "noTargetSet": "No target set for this month, so there is nothing to be behind on.",
+    "onPace": "On pace — {done}% of the target done.",
+    "behindPace": "{done}% of the target done, {gone}% of the month gone.",
+    "namesAdded": "Names added",
+    "ticksMade": "Steps ticked",
+    "checklistDone": "Checklist boxes",
+    "neverStartedCount": "Never started",
+    "progressionTitle": "Progression",
+    "progressionHint": "How far has each thing from the start of the month got — and if not, why?",
+    "prospectTitle": "New prospects",
+    "prospectHint": "Who is interesting right now, what have you done with them, what next?",
+    "planTitle": "Continuing plan",
+    "planHint": "Where is the rest of the volume coming from? Adjust the target?",
+    "questionTitle": "Q & A",
+    "questionHint": "Anything to ask.",
+    "saveWeekly": "Save this week",
+    "savedWeekly": "Saved"
   }
 }

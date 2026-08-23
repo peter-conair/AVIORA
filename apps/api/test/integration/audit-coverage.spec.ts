@@ -34,6 +34,10 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
+    pattern: /^\/api\/v1\/weekly-update$/,
+    why: 'Notes a member writes about their own week, in their own words, visible to their coach by design (docs/61). An audit row would be a second copy of prose the member already owns, and the sheet keeps no numbers to falsify — every figure on it is computed at read time.',
+  },
+  {
     pattern: /^\/api\/v1\/checklist\/items\/[^/]+$/,
     why: 'Ticking a daily checklist box is the most routine act in the product — eight a day per member. habit_logs already records the date and the member, which is what an audit row would say, and auditing it would bury the sensitive rows this log exists for (docs/60 §4).',
   },

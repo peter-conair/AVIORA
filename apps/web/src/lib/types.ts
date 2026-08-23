@@ -2985,3 +2985,25 @@ export interface ChecklistWeek {
   expectedDaily: number;
   expectedWeekly: number;
 }
+
+export interface WeeklyUpdateResponse {
+  weekOf: string;
+  month: string;
+  memberId: string;
+  isSelf: boolean;
+  update: {
+    progressionNote: string | null;
+    prospectNote: string | null;
+    planNote: string | null;
+    questionNote: string | null;
+  } | null;
+  progression: {
+    volume: { targetMinor: number | null; actualMinor: number; remainingMinor: number | null };
+    newPartners: { target: number | null; actual: number };
+    daysLeftInMonth: number;
+    elapsedShare: number;
+    achievedShare: number | null;
+    onPace: boolean | null;
+  };
+  thisWeek: { namesAdded: number; ticks: number; checklistDone: number; neverStarted: number };
+}

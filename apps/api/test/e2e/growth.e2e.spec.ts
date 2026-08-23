@@ -1397,3 +1397,106 @@ describe('Sprint 39 — business goals read the same metrics as ranks', () => {
     expect(res.status).toBe(403);
   });
 });
+
+/**
+ * Sprint 42 — the weekly review (docs/61).
+ *
+ * The sheet is four prose boxes. What is worth testing is the half that is NOT
+ * prose: every number on it is computed at read time, so a member cannot retype
+ * last week's figure and a coach cannot be shown a stale one.
+ */
+describe('Sprint 42 — the weekly update computes what it reports', () => {
+  it('stores the words and none of the numbers', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const saved = await api('/api/v1/weekly-update', {
+      method: 'PUT',
+      token,
+      tenant: tenantId,
+      body: JSON.stringify({
+        progressionNote: 'ยอดยังไม่ถึง เพราะติดวันหยุด',
+        prospectNote: 'คุยกับพี่แดงแล้ว รอปิด',
+      }),
+    });
+    expect(saved.status).toBe(200);
+    // Only the four note columns exist on the row — there is nowhere for a
+    // number to be stored, which is what stops one going stale.
+    expect(Object.keys(saved.body.update)).toEqual(
+      expect.arrayContaining(['progressionNote', 'prospectNote', 'planNote', 'questionNote']),
+    );
+    expect(Object.keys(saved.body.update)).not.toContain('volumeActualMinor');
+  });
+
+  it('reports the month the week belongs to, not whatever is open', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    // 2026-03-04 is a Wednesday; its week starts Sunday 2026-03-01.
+    const res = await api('/api/v1/weekly-update?weekOf=2026-03-04', {
+      token,
+      tenant: tenantId,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.weekOf).toBe('2026-03-01');
+    expect(res.body.month).toBe('2026-03-01');
+  });
+
+  it('counts the money the goal counts, not a second tally', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    const goal = await api('/api/v1/goals/business', { token, tenant: tenantId });
+    const weekly = await api('/api/v1/weekly-update', { token, tenant: tenantId });
+    // Two screens quoting different figures for one month is the failure this
+    // whole design exists to prevent (docs/58 §3.1).
+    expect(weekly.body.progression.volume.actualMinor).toBe(goal.body.progress.volume.actualMinor);
+  });
+
+  it('says how much month is left next to how far behind you are', async () => {
+    const token = await login(`vera-${RUN}@test.local`);
+    // A month that has entirely finished, so `elapsedShare` is 1 whatever day
+    // this test runs on. Asserting against the CURRENT month would pass all
+    // month and flip on the 1st, when almost none of it has elapsed yet.
+    await api('/api/v1/goals/business?month=2026-03-01', {
+      method: 'PUT',
+      token,
+      tenant: tenantId,
+      body: JSON.stringify({ volumeTargetMinor: 100_000_000 }),
+    });
+    const res = await api('/api/v1/weekly-update?weekOf=2026-03-04', {
+      token,
+      tenant: tenantId,
+    });
+    const p = res.body.progression;
+
+    expect(p.volume.targetMinor).toBe(100_000_000);
+    expect(p.volume.remainingMinor).toBe(100_000_000 - p.volume.actualMinor);
+    expect(p.elapsedShare).toBe(1);
+    expect(p.daysLeftInMonth).toBe(0);
+    // The month is over and the target was not met, so the flag must say so
+    // rather than being null or optimistic.
+    expect(p.onPace).toBe(false);
+  });
+
+  it('leaves the pace unanswered when no target was set', async () => {
+    const token = await login(`wren-${RUN}@test.local`);
+    const res = await api('/api/v1/weekly-update', { token, tenant: tenantId });
+    // Not `false`. A member who set no target is not behind — reporting them
+    // as behind would be the screen inventing a judgement.
+    expect(res.body.progression.onPace).toBeNull();
+    expect(res.body.progression.achievedShare).toBeNull();
+  });
+
+  it('lets a leader read it and refuses a stranger', async () => {
+    const leader = await login(`admin-a-${RUN}@test.local`);
+    const asLeader = await api(`/api/v1/weekly-update?memberId=${m.vera}`, {
+      token: leader,
+      tenant: tenantId,
+    });
+    // Holding the sheet at the weekly meeting is the entire point of it.
+    expect(asLeader.status).toBe(200);
+    expect(asLeader.body.isSelf).toBe(false);
+
+    const stranger = await login(`yuki-${RUN}@test.local`);
+    const refused = await api(`/api/v1/weekly-update?memberId=${m.vera}`, {
+      token: stranger,
+      tenant: tenantId,
+    });
+    expect(refused.status).toBe(403);
+  });
+});

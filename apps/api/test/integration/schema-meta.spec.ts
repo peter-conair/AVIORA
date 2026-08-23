@@ -27,6 +27,7 @@ const TENANT_OWNED_TABLES = [
   'lessons',
   'learning_progress',
   'business_goals',
+  'weekly_updates',
   'tracker_templates',
   'tracker_steps',
   'tracker_entries',

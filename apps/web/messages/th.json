@@ -1776,7 +1776,8 @@
       "report": "รายงาน",
       "goals": "เป้าหมาย",
       "tracker": "ติดตามผล",
-      "checklist": "ทำทุกวัน"
+      "checklist": "ทำทุกวัน",
+      "weekly": "รายสัปดาห์"
     },
     "lists": {
       "sponsor": "รายชื่อผู้ร่วมธุรกิจ",
@@ -1844,6 +1845,28 @@
       "thu": "พฤ",
       "fri": "ศ",
       "sat": "ส"
-    }
+    },
+    "whereYouStand": "ตอนนี้อยู่ตรงไหน",
+    "thisWeekDid": "สัปดาห์นี้ทำอะไรไปบ้าง",
+    "remainingVolume": "ยอดที่ยังต้องหา",
+    "daysLeft": "เหลืออีกกี่วันในเดือนนี้",
+    "noTarget": "ยังไม่ตั้งเป้า",
+    "noTargetSet": "เดือนนี้ยังไม่ได้ตั้งเป้า จึงยังไม่มีอะไรให้บอกว่าช้าหรือเร็ว",
+    "onPace": "ทันเป้า — ทำได้แล้ว {done}% ของเป้า",
+    "behindPace": "ทำได้ {done}% ของเป้า แต่เดือนผ่านไปแล้ว {gone}%",
+    "namesAdded": "รายชื่อที่เพิ่ม",
+    "ticksMade": "ขั้นตอนที่ติ๊ก",
+    "checklistDone": "ช่องเช็คลิสต์",
+    "neverStartedCount": "ยังไม่เริ่มเลย",
+    "progressionTitle": "Progression Update",
+    "progressionHint": "จากแผนต้นเดือนแต่ละเรื่องทำถึงไหนแล้ว ถึง / ไม่ถึง เพราะอะไร",
+    "prospectTitle": "New Prospect Update",
+    "prospectHint": "สถานการณ์ปัจจุบันมีใครน่าสนใจบ้าง ทำอะไรกับเค้าไปบ้าง และมีแผนจะทำอะไรกับเค้า",
+    "planTitle": "Continuous Plan",
+    "planHint": "ยอดส่วนที่เหลือจะมายังไง / ปรับเป้าหมาย",
+    "questionTitle": "Q & A",
+    "questionHint": "คำถามเพิ่มเติม",
+    "saveWeekly": "บันทึกสัปดาห์นี้",
+    "savedWeekly": "บันทึกแล้ว"
   }
 }

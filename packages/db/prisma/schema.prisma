@@ -146,6 +146,7 @@ model Member {
   @@index([tenantId, status])
   @@map("members")
   businessGoals BusinessGoal[]
+  weeklyUpdates WeeklyUpdate[]
 }
 
 model Role {
@@ -2261,4 +2262,32 @@ model TrackerMark {
   @@unique([entryId, stepId])
   @@index([tenantId, entryId])
   @@map("tracker_marks")
+}
+
+/// The weekly review sheet (docs/61). One per member per week.
+///
+/// Only the WORDS are stored. Every number on the screen is computed at read
+/// time from the goal, the orders and the sheets — a member retyping last
+/// week's figure into this week's box is how a paper system loses touch with
+/// what actually happened (docs/57 §4).
+model WeeklyUpdate {
+  id       String   @id @default(uuid(7)) @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  memberId String   @map("member_id") @db.Uuid
+  /// The Sunday that starts the week, matching the daily checklist.
+  weekOf   DateTime @map("week_of") @db.Date
+
+  progressionNote String? @map("progression_note")
+  prospectNote    String? @map("prospect_note")
+  planNote        String? @map("plan_note")
+  questionNote    String? @map("question_note")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@unique([tenantId, memberId, weekOf])
+  @@index([tenantId, weekOf])
+  @@map("weekly_updates")
 }

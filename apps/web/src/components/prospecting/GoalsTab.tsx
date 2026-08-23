@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { api, ApiError, isForbidden } from '@/lib/api-client';
 import { Card } from '@/components/ui/Card';
@@ -25,11 +25,30 @@ export function GoalsTab() {
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
+  /** See WeeklyUpdateTab: a load landing mid-sentence must not erase it. */
+  const [dirty, setDirty] = useState(false);
+  /**
+   * A ref as well as state, because `load()` closes over `dirty` at the moment
+   * it is created. A request that resolves AFTER the person starts typing was
+   * still reading `false` and reseeding the boxes over their words — which is
+   * why the first fix passed alone and failed under a loaded test run, where
+   * the response lands later.
+   */
+  const dirtyRef = useRef(false);
+  const markDirty = () => {
+    dirtyRef.current = true;
+    setDirty(true);
+  };
+  const clearDirty = () => {
+    dirtyRef.current = false;
+    setDirty(false);
+  };
 
   const load = useCallback(async () => {
     try {
       const res = await api.get<BusinessGoalResponse>('/goals/business');
       setData(res);
+      if (dirtyRef.current) return;
       setDraft({
         shortTerm: res.goal?.shortTerm ?? '',
         midTerm: res.goal?.midTerm ?? '',
@@ -51,7 +70,7 @@ export function GoalsTab() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dirty]);
 
   useEffect(() => {
     void load();
@@ -77,6 +96,7 @@ export function GoalsTab() {
         developCustomersActual: Number(draft.developCustomersActual ?? 0),
         developPartnersActual: Number(draft.developPartnersActual ?? 0),
       });
+      clearDirty();
       await load();
     } catch (err: unknown) {
       setError(err instanceof ApiError ? err.message : tc('errorGeneric'));
@@ -114,7 +134,10 @@ export function GoalsTab() {
       <span className="text-sm text-slate-600">{label}</span>
       <textarea
         value={draft[key] ?? ''}
-        onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+        onChange={(e) => {
+          setDraft({ ...draft, [key]: e.target.value });
+          markDirty();
+        }}
         rows={2}
         className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
       />
@@ -128,7 +151,10 @@ export function GoalsTab() {
         aria-label={label}
         inputMode="numeric"
         value={draft[key] ?? ''}
-        onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+        onChange={(e) => {
+          setDraft({ ...draft, [key]: e.target.value });
+          markDirty();
+        }}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
       />
     </label>
