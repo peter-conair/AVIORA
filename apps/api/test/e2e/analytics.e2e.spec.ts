@@ -319,6 +319,41 @@ function expectNoHealthAnywhere(label: string, body: unknown): void {
   expect(found, `${label} leaked health data:\n  ${found.join('\n  ')}`).toEqual([]);
 }
 
+/**
+ * Whether a NUMBER appears anywhere in a response, compared exactly.
+ *
+ * `mentions` substring-searches the serialised body, which is right for codes,
+ * names and uuids and wrong for numbers: looking for "5.5" also matches 15.5,
+ * 5.50 and 1005.5. It found one of those the day a seeded curriculum shifted an
+ * unrelated analytics figure, and reported a health-data leak that had not
+ * happened.
+ *
+ * The assertion it serves is a real one, so it is sharpened rather than
+ * dropped.
+ */
+function mentionsNumber(body: unknown, value: number): boolean {
+  let found = false;
+  const walk = (node: unknown): void => {
+    if (found || node === null || node === undefined) return;
+    if (typeof node === 'number') {
+      if (node === value) found = true;
+      return;
+    }
+    // A number that travelled as a string still counts as leaked.
+    if (typeof node === 'string') {
+      if (node.trim() !== '' && Number(node) === value) found = true;
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+      return;
+    }
+    if (typeof node === 'object') for (const item of Object.values(node)) walk(item);
+  };
+  walk(body);
+  return found;
+}
+
 function mentions(body: unknown, token: string): boolean {
   return JSON.stringify(body ?? null)
     .toLowerCase()
@@ -831,7 +866,7 @@ describe('Analytics — health data never leaves the member (docs/28 §2)', () =
     ];
     for (const res of bodies) {
       expect(res.status).toBe(200);
-      expect(mentions(res.body, String(IDENTIFYING_SLEEP_AVERAGE))).toBe(false);
+      expect(mentionsNumber(res.body, IDENTIFYING_SLEEP_AVERAGE)).toBe(false);
       expectNoHealthAnywhere('a 90-day dashboard', res.body);
     }
   });
