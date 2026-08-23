@@ -2952,7 +2952,14 @@ export interface TrackerSheetList {
 export interface TrackerSheet {
   template: { id: string; code: string; name: string; subjectType: string };
   stages: string[];
-  steps: { id: string; key: string; label: string; stageLabel: string | null }[];
+  steps: {
+    id: string;
+    key: string;
+    label: string;
+    stageLabel: string | null;
+    /** Set when the column asks for a number in this unit (docs/64 §2). */
+    captureUnit: string | null;
+  }[];
   entries: {
     id: string;
     subjectId: string;
@@ -2962,6 +2969,10 @@ export interface TrackerSheet {
     lastMarkedAt: string | null;
     completedAt: string | null;
     done: string[];
+    /** Readings by step id, for the columns that asked for one. */
+    values: Record<string, number>;
+    /** First and latest per unit — the before-and-after, derived. */
+    change: Record<string, { first: number; latest: number; delta: number }>;
     doneCount: number;
     stepCount: number;
   }[];

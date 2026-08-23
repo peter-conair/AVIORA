@@ -15,6 +15,12 @@ export interface TrackerStepSeed {
   key: string;
   label: { en: string; th: string };
   stage?: { en: string; th: string };
+  /**
+   * A unit turns this column from a tick into a measurement (docs/64 §2).
+   * "ชั่งน้ำหนัก (kg.)" ticked is a note that the scales were used; the number
+   * they gave is the thing the customer came for.
+   */
+  captureUnit?: string;
 }
 
 export interface TrackerTemplateSeed {
@@ -30,6 +36,13 @@ const s = (key: string, en: string, th: string, stage?: [string, string]): Track
   key,
   label: { en, th },
   ...(stage ? { stage: { en: stage[0], th: stage[1] } } : {}),
+});
+
+/** A column that asks for a number in `unit`. */
+const measure = (key: string, en: string, th: string, unit: string): TrackerStepSeed => ({
+  key,
+  label: { en, th },
+  captureUnit: unit,
 });
 
 /** FOLLOW UP SHEET — the master grid a prospect is walked through. */
@@ -138,23 +151,23 @@ const SIX_WNY: TrackerTemplateSeed = {
   order: 3,
   steps: [
     ...[
-      s('before_weight', 'Weight (kg)', 'ชั่งน้ำหนัก (kg.)'),
-      s('before_measure', 'Measurements (cm)', 'วัดสัดส่วน (cm.)'),
+      measure('before_weight', 'Weight (kg)', 'ชั่งน้ำหนัก', 'kg'),
+      measure('before_measure', 'Waist (cm)', 'วัดรอบเอว', 'cm'),
       s('before_photo', 'Photo before', 'ถ่ายรูป Before'),
       s('before_member_pack', '6WNY Member Pack', '6WNY Member Pack'),
       s('before_how_to_eat', 'Taught how to eat', 'สอนวิธีการกิน'),
       s('before_order', 'Ordered', 'สั่งวิธีการแนะนำในนิจ'),
     ].map((step) => ({ ...step, stage: { en: 'Before the course', th: 'ก่อนเริ่มคอร์ส' } })),
     ...[
-      s('d4_weight', 'Weight (kg)', 'ชั่งน้ำหนัก (kg.)'),
-      s('d4_measure', 'Measurements (cm)', 'วัดสัดส่วน (cm.)'),
+      measure('d4_weight', 'Weight (kg)', 'ชั่งน้ำหนัก', 'kg'),
+      measure('d4_measure', 'Waist (cm)', 'วัดรอบเอว', 'cm'),
       s('d4_encourage', 'Encouraged', 'ทำแคปชั่นให้คำชมเชย'),
       s('d4_share', 'Shared their result', 'เชียร์รังจังโซด โิตากนพร้'),
       s('d4_invite_buzz', 'Invited to Buzz Click 6WNY', 'ชวนเข้า Buzz Click 6WNY ช่วงเทรก'),
     ].map((step) => ({ ...step, stage: { en: 'Day 4', th: '4 วัน' } })),
     ...[
-      s('d7_weight', 'Weight (kg)', 'ชั่งน้ำหนัก (kg.)'),
-      s('d7_measure', 'Measurements (cm)', 'วัดสัดส่วน (cm.)'),
+      measure('d7_weight', 'Weight (kg)', 'ชั่งน้ำหนัก', 'kg'),
+      measure('d7_measure', 'Waist (cm)', 'วัดรอบเอว', 'cm'),
       s('d7_encourage', 'Encouraged', 'ทำแคปชั่นให้คำชมเชย'),
       s('d7_wording', 'Taught the wording', 'สอน wording การชวนคนมาต่อเนื่อง'),
       s('d7_share', 'Shared their result', 'เชียร์รังจังโซด โิตากนพร้'),
@@ -162,16 +175,16 @@ const SIX_WNY: TrackerTemplateSeed = {
       s('d7_beginner', '6WNY Beginner', '6WNY Beginner'),
     ].map((step) => ({ ...step, stage: { en: 'Day 7', th: '7 วัน' } })),
     ...[
-      s('d14_weight', 'Weight (kg)', 'ชั่งน้ำหนัก (kg.)'),
-      s('d14_measure', 'Measurements (cm)', 'วัดสัดส่วน (cm.)'),
+      measure('d14_weight', 'Weight (kg)', 'ชั่งน้ำหนัก', 'kg'),
+      measure('d14_measure', 'Waist (cm)', 'วัดรอบเอว', 'cm'),
       s('d14_photo_after', 'Photo before/after', 'ถ่ายรูป Before After'),
       s('d14_model_7_11', 'Model 7-11', 'Model 7-11'),
       s('d14_business_plan', 'Business Plan', 'Business Plan'),
       s('d14_gg_pack_1', 'GG Pack 1', 'GG Pack 1'),
     ].map((step) => ({ ...step, stage: { en: 'Day 14', th: '14 วัน' } })),
     ...[
-      s('w3_weight', 'Weight (kg)', 'ชั่งน้ำหนัก (kg.)'),
-      s('w3_measure', 'Measurements (cm)', 'วัดสัดส่วน (cm.)'),
+      measure('w3_weight', 'Weight (kg)', 'ชั่งน้ำหนัก', 'kg'),
+      measure('w3_measure', 'Waist (cm)', 'วัดรอบเอว', 'cm'),
       s('w3_two_years', '2 Years retire', '2 Years retire'),
       s('w3_gg_pack_2', 'GG Pack 2', 'GG Pack 2'),
       s('w3_6wny_advance', '6WNY Advance', '6WNY Advance'),

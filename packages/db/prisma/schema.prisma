@@ -2205,6 +2205,10 @@ model TrackerStep {
   label      String
   stageLabel String? @map("stage_label")
   order      Int     @default(0)
+  /// When set, this column asks for a NUMBER in this unit rather than a tick —
+  /// "ชั่งน้ำหนัก (kg.)" is a measurement, and a tick throws the measurement
+  /// away (docs/64 §2).
+  captureUnit String? @map("capture_unit")
 
   template TrackerTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   marks    TrackerMark[]
@@ -2254,6 +2258,9 @@ model TrackerMark {
   stepId   String   @map("step_id") @db.Uuid
   markedAt DateTime @default(now()) @map("marked_at") @db.Timestamptz(6)
   markedByMemberId String? @map("marked_by_member_id") @db.Uuid
+  /// The number, for a step that asks for one. Kept beside the date, which is
+  /// what makes before-and-after derivable rather than remembered.
+  value    Decimal? @db.Decimal(10, 2)
   note     String?
 
   entry TrackerEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)

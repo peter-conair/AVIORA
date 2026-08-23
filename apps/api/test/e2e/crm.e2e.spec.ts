@@ -1016,6 +1016,166 @@ describe('Sprint 44 — the start path', () => {
   });
 });
 
+/**
+ * Sprint 45 — 6WNY as a measured programme (docs/64).
+ *
+ * The 6WNY sheet says "ชั่งน้ำหนัก (kg.)" at every stage. Recorded as a tick it
+ * says the scales were used and throws away what they said — which is the only
+ * thing the customer came for.
+ */
+describe('Sprint 45 — columns that ask for a number', () => {
+  let entryId = '';
+  let steps: { id: string; key: string; captureUnit: string | null }[] = [];
+
+  it('marks the weigh-in columns as measurements, and the rest as ticks', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const sheet = await api('/api/v1/tracker/sheets/follow_up_6wny', {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(sheet.status).toBe(200);
+    steps = sheet.body.steps;
+    const weighIns = steps.filter((s) => s.captureUnit === 'kg');
+    // One at every stage: before, day 4, day 7, day 14, week 3.
+    expect(weighIns).toHaveLength(5);
+    expect(steps.filter((s) => s.captureUnit === 'cm')).toHaveLength(5);
+    // Everything else stays a tick — a unit on every column would turn a
+    // checklist into a form.
+    expect(steps.filter((s) => s.captureUnit === null).length).toBeGreaterThan(20);
+  });
+
+  it('keeps the reading, not just the fact that somebody weighed them', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const customers = await api('/api/v1/crm/customers', { token: seller, tenant: tenantId });
+    const subjectId = customers.body.customers[0].id;
+
+    const added = await api('/api/v1/tracker/sheets/follow_up_6wny/entries', {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ subjectId }),
+    });
+    expect(added.status).toBe(201);
+    entryId = added.body.entry.id;
+
+    const before = steps.find((s) => s.key === 'before_weight')!;
+    const res = await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: before.id, done: true, value: 82.4 }),
+    });
+    expect(res.status).toBe(200);
+
+    const sheet = await api('/api/v1/tracker/sheets/follow_up_6wny', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const row = sheet.body.entries.find((e: { id: string }) => e.id === entryId);
+    expect(row.values[before.id]).toBe(82.4);
+  });
+
+  it('gives back before and after without storing a second copy of either', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    for (const [key, value] of [
+      ['d7_weight', 79.8],
+      ['w3_weight', 76.5],
+    ] as const) {
+      const step = steps.find((s) => s.key === key)!;
+      await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+        method: 'PUT',
+        token: seller,
+        tenant: tenantId,
+        body: JSON.stringify({ stepId: step.id, done: true, value }),
+      });
+    }
+    const sheet = await api('/api/v1/tracker/sheets/follow_up_6wny', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const row = sheet.body.entries.find((e: { id: string }) => e.id === entryId);
+    // 82.4 → 76.5. Derived from the marks in column order, which on a staged
+    // sheet IS chronological, so it cannot drift from what was recorded.
+    expect(row.change.kg.first).toBe(82.4);
+    expect(row.change.kg.latest).toBe(76.5);
+    expect(row.change.kg.delta).toBe(-5.9);
+  });
+
+  it('takes a corrected reading, unlike a corrected tick', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const step = steps.find((s) => s.key === 'w3_weight')!;
+    await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: step.id, done: true, value: 75.9 }),
+    });
+    const sheet = await api('/api/v1/tracker/sheets/follow_up_6wny', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const row = sheet.body.entries.find((e: { id: string }) => e.id === entryId);
+    // Ticking twice keeps the first DATE, because when it happened is the fact.
+    // Somebody re-reading the scales is different: the new number is the true
+    // one, and refusing it would leave a wrong weight on the record for ever.
+    expect(row.change.kg.latest).toBe(75.9);
+  });
+
+  it('seeds the programme the sheet follows up on', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    // A sheet tracking a programme nobody can learn or buy is a checklist
+    // wearing a programme's name — which is all 6WNY was after Sprint 40.
+    const courses = await api('/api/v1/courses', { token: seller, tenant: tenantId });
+    const course = courses.body.courses.find((c: { code: string }) => c.code === '6wny');
+    expect(course).toBeTruthy();
+    expect(course.lessons).toHaveLength(6);
+  });
+
+  it('will not sell the pack until somebody prices it', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const offerings = await api('/api/v1/offerings', { token: seller, tenant: tenantId });
+    // What 6WNY costs is the business's number, so it seeds at zero as a draft
+    // — and a pack that could be bought for nothing is worse than one that
+    // cannot be bought yet.
+    expect(offerings.body.offerings.some((o: { code: string }) => o.code === '6wny-pack')).toBe(
+      false,
+    );
+
+    const raw = await owner.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+      return tx.offering.findFirst({ where: { code: '6wny-pack' } });
+    });
+    expect(raw).toBeTruthy();
+    expect(raw!.status).toBe('draft');
+    expect(raw!.priceMinor).toBe(0);
+
+    // Deliberately NOT asserted through the cart here: this suite's seller has
+    // no commerce entitlement, so the cart refuses at the earlier gate and the
+    // assertion would pass without the draft status doing any of the work.
+    // The cart's own guard is `status: 'active'` in cart.service.ts, which
+    // commerce.e2e covers.
+  });
+
+  it('ignores a number sent for a column that only wants a tick', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const plain = steps.find((s) => s.captureUnit === null)!;
+    await api(`/api/v1/tracker/entries/${entryId}/marks`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ stepId: plain.id, done: true, value: 999 }),
+    });
+    const sheet = await api('/api/v1/tracker/sheets/follow_up_6wny', {
+      token: seller,
+      tenant: tenantId,
+    });
+    const row = sheet.body.entries.find((e: { id: string }) => e.id === entryId);
+    // Otherwise a stray number lands on a column with no unit and the
+    // before-and-after starts counting things that are not measurements.
+    expect(row.values[plain.id]).toBeUndefined();
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

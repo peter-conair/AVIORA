@@ -20,6 +20,8 @@ const entrySchema = z.object({
 const markSchema = z.object({
   stepId: z.string().uuid(),
   done: z.boolean(),
+  /** The reading, for a column that asks for one (docs/64 §2). */
+  value: z.number().min(0).max(100_000).nullish(),
 });
 
 @Controller('tracker')
@@ -93,6 +95,14 @@ export class TrackerController {
     @Body(new ZodPipe(markSchema)) body: z.infer<typeof markSchema>,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { entry: await this.tracker.setMark(this.actor(user), id, body.stepId, body.done) };
+    return {
+      entry: await this.tracker.setMark(
+        this.actor(user),
+        id,
+        body.stepId,
+        body.done,
+        body.value ?? undefined,
+      ),
+    };
   }
 }

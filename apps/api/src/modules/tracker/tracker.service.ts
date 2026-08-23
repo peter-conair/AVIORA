@@ -2,6 +2,10 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import {
   ERROR_CODES,
   PERMISSIONS,
+  SIX_WNY_COURSE_CODE,
+  SIX_WNY_LESSONS,
+  SIX_WNY_OFFERING,
+  SIX_WNY_OFFERING_CODE,
   START_TEMPLATE_CODE,
   TRACKER_TEMPLATE_SEEDS,
   newId,
@@ -9,6 +13,7 @@ import {
 } from '@aviora/shared';
 import { type Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { tenantCurrency } from '../../common/money/currency';
 import { AuditService } from '../../common/audit/audit.service';
 import type { TeamActor } from '../team/team-scope.service';
 import { CrmScopeService } from '../crm/crm-scope.service';
@@ -59,6 +64,59 @@ export class TrackerService {
     for (const seed of missing) {
       await this.createFromSeed(tx, seed, locale);
     }
+    await this.ensureSixWny(tx, locale);
+  }
+
+  /**
+   * The 6WNY programme that the 6WNY sheet follows up on (docs/64 §4).
+   *
+   * Seeded alongside the sheet because a sheet tracking a programme nobody can
+   * learn or buy is a checklist wearing a programme's name. The course is a
+   * spine — six weeks with a title each — and the pack carries NO PRICE: what
+   * it costs is the business's number, so it seeds as a draft that cannot be
+   * sold until somebody sets one.
+   */
+  private async ensureSixWny(tx: Tx, locale: Locale) {
+    const course = await tx.course.findFirst({ where: { code: SIX_WNY_COURSE_CODE } });
+    if (!course) {
+      const created = await tx.course.create({
+        data: {
+          tenantId: this.db.tenantId,
+          code: SIX_WNY_COURSE_CODE,
+          title: locale === 'en' ? '6WNY — six weeks' : '6WNY — 6 สัปดาห์',
+          description:
+            locale === 'en'
+              ? 'The six-week programme, week by week.'
+              : 'โปรแกรม 6 สัปดาห์ ทีละสัปดาห์',
+        },
+      });
+      await tx.lesson.createMany({
+        data: SIX_WNY_LESSONS.map((lesson) => ({
+          tenantId: this.db.tenantId,
+          courseId: created.id,
+          order: lesson.order,
+          title: lesson.title[locale],
+        })),
+      });
+    }
+
+    const offering = await tx.offering.findFirst({ where: { code: SIX_WNY_OFFERING_CODE } });
+    if (!offering) {
+      await tx.offering.create({
+        data: {
+          tenantId: this.db.tenantId,
+          code: SIX_WNY_OFFERING_CODE,
+          name: SIX_WNY_OFFERING.name[locale],
+          description: SIX_WNY_OFFERING.description[locale],
+          kind: 'one_time',
+          currency: await tenantCurrency(tx),
+          // Zero and draft: a pack that could be bought for nothing is worse
+          // than a pack that cannot be bought yet.
+          priceMinor: 0,
+          status: 'draft',
+        },
+      });
+    }
   }
 
   private async createFromSeed(tx: Tx, seed: TrackerTemplateSeed, locale: Locale) {
@@ -82,6 +140,7 @@ export class TrackerService {
         key: step.key,
         label: step.label[locale],
         stageLabel: step.stage?.[locale] ?? null,
+        captureUnit: step.captureUnit ?? null,
         order: index,
       })),
     });
@@ -114,7 +173,7 @@ export class TrackerService {
       const entries = await tx.trackerEntry.findMany({
         where: { templateId: template.id, ...this.scope.whereOwner(owners) },
         orderBy: [{ groupLabel: 'asc' }, { startedAt: 'asc' }],
-        include: { marks: { select: { stepId: true, markedAt: true } } },
+        include: { marks: { select: { stepId: true, markedAt: true, value: true } } },
       });
 
       const names = await this.subjectNames(
@@ -139,9 +198,15 @@ export class TrackerService {
           key: s.key,
           label: s.label,
           stageLabel: s.stageLabel,
+          captureUnit: s.captureUnit,
         })),
         entries: entries.map((entry) => {
           const done = new Set(entry.marks.map((m) => m.stepId));
+          const values = new Map(
+            entry.marks
+              .filter((m) => m.value !== null)
+              .map((m) => [m.stepId, Number(m.value)] as const),
+          );
           return {
             id: entry.id,
             subjectId: entry.subjectId,
@@ -151,6 +216,11 @@ export class TrackerService {
             lastMarkedAt: entry.lastMarkedAt,
             completedAt: entry.completedAt,
             done: template.steps.filter((s) => done.has(s.id)).map((s) => s.id),
+            values: Object.fromEntries(values),
+            // First and latest for each unit, which is the before-and-after the
+            // customer actually came for — derived, never a second stored copy
+            // that could disagree with the marks (docs/64 §3).
+            change: changeByUnit(template.steps, entry.marks),
             doneCount: done.size,
             stepCount: template.steps.length,
           };
@@ -250,7 +320,13 @@ export class TrackerService {
    * this is not a boolean column: "done" cannot answer "nobody in this line has
    * moved in two months", and that is the question the sheet exists to ask.
    */
-  async setMark(actor: TeamActor, entryId: string, stepId: string, done: boolean) {
+  async setMark(
+    actor: TeamActor,
+    entryId: string,
+    stepId: string,
+    done: boolean,
+    value?: number | null,
+  ) {
     const result = await this.db.tx(async (tx) => {
       const entry = await tx.trackerEntry.findFirst({ where: { id: entryId } });
       if (!entry) {
@@ -277,10 +353,13 @@ export class TrackerService {
             entryId,
             stepId,
             markedByMemberId: actor.memberId ?? null,
+            value: step.captureUnit ? (value ?? null) : null,
           },
           // Ticking twice is the same tick: keep the first date, because when
-          // it happened is the fact being recorded.
-          update: {},
+          // it happened is the fact being recorded. A corrected MEASUREMENT is
+          // different — somebody re-read the scales, and the new number is the
+          // true one.
+          update: step.captureUnit && value !== undefined ? { value } : {},
         });
       } else {
         await tx.trackerMark.deleteMany({ where: { entryId, stepId } });
@@ -361,4 +440,34 @@ export class TrackerService {
       };
     });
   }
+}
+
+/**
+ * First and latest reading per unit (docs/64 §3).
+ *
+ * Derived from the marks rather than stored, so it cannot drift from them. The
+ * steps are in column order, which IS chronological on a staged sheet — day 4
+ * comes before day 14 because that is how the sheet is laid out, not because of
+ * when somebody happened to tick it.
+ */
+function changeByUnit(
+  steps: { id: string; captureUnit: string | null }[],
+  marks: { stepId: string; value: unknown }[],
+): Record<string, { first: number; latest: number; delta: number }> {
+  const valueOf = new Map(
+    marks.filter((m) => m.value !== null).map((m) => [m.stepId, Number(m.value)] as const),
+  );
+  const out: Record<string, { first: number; latest: number; delta: number }> = {};
+  for (const step of steps) {
+    if (!step.captureUnit) continue;
+    const value = valueOf.get(step.id);
+    if (value === undefined || Number.isNaN(value)) continue;
+    const seen = out[step.captureUnit];
+    if (!seen) out[step.captureUnit] = { first: value, latest: value, delta: 0 };
+    else {
+      seen.latest = value;
+      seen.delta = Math.round((value - seen.first) * 100) / 100;
+    }
+  }
+  return out;
 }

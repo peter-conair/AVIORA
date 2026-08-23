@@ -114,10 +114,14 @@ export function TrackerTab() {
     }
   };
 
-  const toggle = async (entryId: string, stepId: string, done: boolean) => {
+  const toggle = async (entryId: string, stepId: string, done: boolean, value?: number) => {
     setBusy(entryId + stepId);
     try {
-      await api.put(`/tracker/entries/${entryId}/marks`, { stepId, done });
+      await api.put(`/tracker/entries/${entryId}/marks`, {
+        stepId,
+        done,
+        ...(value === undefined ? {} : { value }),
+      });
       await load();
     } catch (err: unknown) {
       setError(err instanceof ApiError ? err.message : tc('errorGeneric'));
@@ -239,6 +243,27 @@ export function TrackerTab() {
                       {entry.doneCount} / {entry.stepCount}
                     </span>
                   </button>
+                  {/* The result, not the activity. A customer on a six-week
+                      programme came for this number (docs/64 §3). */}
+                  {Object.entries(entry.change ?? {}).length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {Object.entries(entry.change).map(([unit, c]) => (
+                        <span
+                          key={unit}
+                          className={`rounded-full px-2 py-0.5 text-xs ${
+                            c.delta < 0
+                              ? 'bg-teal-50 text-teal-800'
+                              : c.delta > 0
+                                ? 'bg-amber-50 text-amber-800'
+                                : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {c.first} → {c.latest} {unit}
+                          {c.delta !== 0 ? ` (${c.delta > 0 ? '+' : ''}${c.delta})` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
                       className="h-full rounded-full bg-teal-600"
@@ -260,6 +285,20 @@ export function TrackerTab() {
                               .filter((s) => stageOf(s.stageLabel) === stage)
                               .map((step) => {
                                 const ticked = done.has(step.id);
+                                if (step.captureUnit) {
+                                  // A number, because a tick here would record
+                                  // that the scales were used and throw away
+                                  // what they said.
+                                  return (
+                                    <MeasureField
+                                      key={step.id}
+                                      step={step}
+                                      value={entry.values?.[step.id]}
+                                      disabled={busy === entry.id + step.id}
+                                      onSave={(n) => void toggle(entry.id, step.id, true, n)}
+                                    />
+                                  );
+                                }
                                 return (
                                   <button
                                     key={step.id}
@@ -290,5 +329,52 @@ export function TrackerTab() {
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * One measurement column (docs/64 §2).
+ *
+ * Committed on blur rather than on every keystroke: a weigh-in typed as "7",
+ * "76", "76.", "76.5" would otherwise write four readings, and the first three
+ * are wrong.
+ */
+function MeasureField({
+  step,
+  value,
+  disabled,
+  onSave,
+}: {
+  step: { id: string; label: string; captureUnit: string | null };
+  value: number | undefined;
+  disabled: boolean;
+  onSave: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(value === undefined ? '' : String(value));
+
+  useEffect(() => {
+    setDraft(value === undefined ? '' : String(value));
+  }, [value]);
+
+  const commit = () => {
+    const n = Number(draft);
+    if (draft.trim() === '' || Number.isNaN(n) || n === value) return;
+    onSave(n);
+  };
+
+  return (
+    <label className="flex items-center gap-1 rounded-full border border-slate-300 px-2 py-1 text-xs">
+      <span className="text-slate-600">{step.label}</span>
+      <input
+        aria-label={`${step.label} (${step.captureUnit})`}
+        inputMode="decimal"
+        disabled={disabled}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        className="w-14 rounded border border-slate-200 px-1 py-0.5 text-right disabled:opacity-50"
+      />
+      <span className="text-slate-400">{step.captureUnit}</span>
+    </label>
   );
 }
