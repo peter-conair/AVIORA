@@ -156,6 +156,31 @@
       "phone": "เบอร์โทร",
       "status": "สถานะ",
       "created": "สร้างเมื่อ"
+    },
+    "card": {
+      "title": "ทะเบียนลูกค้า — {name}",
+      "externalCode": "ABO #",
+      "expires": "หมดอายุ",
+      "birthDate": "วันเกิด",
+      "idNumber": "เลขบัตรประชาชน",
+      "reveal": "แสดงเลข",
+      "noIdNumber": "ยังไม่มีในระบบ",
+      "setIdNumber": "บันทึกเลขใหม่",
+      "revealIsRecorded": "การกดแสดงเลขจะถูกบันทึกไว้ใน audit log",
+      "note": "บันทึก",
+      "save": "บันทึกทะเบียน",
+      "months": "การสั่งซื้อปี {year}",
+      "orderedCount": "สั่งซื้อ {count} เดือน",
+      "monthLabel": "เดือน {month}",
+      "monthsLegend": "เดือนสีเข้มมาจากออร์เดอร์ที่ชำระแล้ว แก้ด้วยมือไม่ได้ · เดือนสีอ่อนคือที่คุณติ๊กเอง",
+      "photos": "รูป Before / After",
+      "needConsent": "ถ่ายรูปไม่ได้จนกว่าลูกค้าจะให้ความยินยอม",
+      "recordConsent": "บันทึกความยินยอม",
+      "consentNote": "บันทึกผ่านแอป",
+      "consentOn": "มีความยินยอมแล้ว",
+      "addPhoto": "เพิ่มรูป",
+      "withdrawConsent": "ถอนความยินยอม ({count} รูป)",
+      "withdrawDeletes": "การถอนจะลบรูปทั้งหมดถาวร"
     }
   },
   "followUpsPage": {

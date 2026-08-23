@@ -156,6 +156,31 @@
       "phone": "Phone",
       "status": "Status",
       "created": "Created"
+    },
+    "card": {
+      "title": "Index card — {name}",
+      "externalCode": "ABO #",
+      "expires": "Expires",
+      "birthDate": "Date of birth",
+      "idNumber": "ID number",
+      "reveal": "Show it",
+      "noIdNumber": "None on file",
+      "setIdNumber": "Set a new ID number",
+      "revealIsRecorded": "Showing it is recorded in the audit log.",
+      "note": "Note",
+      "save": "Save card",
+      "months": "Orders in {year}",
+      "orderedCount": "{count} months with an order",
+      "monthLabel": "Month {month}",
+      "monthsLegend": "Solid months came from a paid order and cannot be changed by hand. Pale ones you ticked.",
+      "photos": "Before / after photos",
+      "needConsent": "No photos can be taken until this customer has consented.",
+      "recordConsent": "Record their consent",
+      "consentNote": "Recorded in the app",
+      "consentOn": "Consent on file.",
+      "addPhoto": "Add a photo",
+      "withdrawConsent": "Withdraw consent ({count} photos)",
+      "withdrawDeletes": "Withdrawing deletes every photo permanently."
     }
   },
   "followUpsPage": {

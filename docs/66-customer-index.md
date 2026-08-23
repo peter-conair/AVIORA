@@ -73,3 +73,31 @@ Fixed by setting the key in this suite like all the others, and by asserting the
 save's own status so the next failure of this shape lands where it happened
 rather than three assertions downstream. Reproduced locally by unsetting the key
 before believing the fix.
+
+## 7. The screen (Sprint 48)
+
+Sprints 46 and 47 shipped API-only, which left consent, photographs and the card
+built and unreachable — the failure docs/63 was written about, repeated by the
+person who wrote it.
+
+The card opens **under the customer list** rather than on a page of its own. The
+list is how somebody finds a customer, and losing it to navigate back is the
+friction that stops cards being kept up to date.
+
+Three things on the screen are deliberately awkward, and all three are the
+point:
+
+- **The identity number is never rendered.** A masked field, a button, and the
+  sentence _"การกดแสดงเลขจะถูกบันทึกไว้ใน audit log"_ shown **before** it is
+  pressed rather than after.
+- **A month the system saw for itself is not clickable.** Not "clickable and
+  then refused" — the server refuses too, but a button that looks pressable and
+  is not teaches people the screen is broken.
+- **The photo section does not exist without consent.** Not a disabled uploader:
+  there is nothing to press until consent is recorded, and the withdrawal button
+  states what it destroys before it is pressed.
+
+`img` points at the API's own origin. A relative path would ask the web server
+for a photograph it has never heard of — and the cookie travels because the two
+hosts are same-site, which is the only reason an `<img>` can be used for an
+authenticated route at all.

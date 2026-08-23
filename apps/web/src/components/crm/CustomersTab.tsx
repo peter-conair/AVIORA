@@ -6,6 +6,7 @@ import { api, ApiError, isForbidden } from '@/lib/api-client';
 import type { CrmCustomer, CrmCustomersResponse } from '@/lib/types';
 import { Badge, statusTone } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { CustomerCard } from './CustomerCard';
 import { formatDate } from '@/lib/format';
 
 export function CustomersTab() {
@@ -17,6 +18,8 @@ export function CustomersTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
+  /** The index card opens under the row, so the list stays the way in. */
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +72,16 @@ export function CustomersTab() {
             <tbody>
               {customers.map((customer) => (
                 <tr key={customer.id} className="border-b border-slate-100 last:border-0">
-                  <td className="py-2 pr-3 font-medium text-slate-800">{customer.name}</td>
+                  <td className="py-2 pr-3 font-medium text-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(openId === customer.id ? null : customer.id)}
+                      aria-expanded={openId === customer.id}
+                      className="text-left underline-offset-2 hover:underline"
+                    >
+                      {customer.name}
+                    </button>
+                  </td>
                   <td className="py-2 pr-3 text-slate-600">{customer.email ?? '—'}</td>
                   <td className="py-2 pr-3 text-slate-600">{customer.phone ?? '—'}</td>
                   <td className="py-2 pr-3">
@@ -82,6 +94,14 @@ export function CustomersTab() {
           </table>
         </div>
       )}
+      {/* The card opens under the list rather than on a page of its own: the
+          list is how somebody finds a customer, and losing it to navigate back
+          is the friction that stops cards being kept up to date. */}
+      {openId ? (
+        <div className="mt-4">
+          <CustomerCard customerId={openId} />
+        </div>
+      ) : null}
     </Card>
   );
 }

@@ -3043,3 +3043,44 @@ export interface StartStatus {
   next: StartStep | null;
   complete: boolean;
 }
+
+/* ── customer index card (docs/66) ───────────────────────────────────────── */
+
+export interface CustomerCard {
+  year: number;
+  customer: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    externalCode: string | null;
+    membershipExpiresAt: string | null;
+    birthDate: string | null;
+    note: string | null;
+    /** Whether one is on file — never the number itself (docs/66 §2). */
+    hasIdNumber: boolean;
+  };
+  months: {
+    month: number;
+    ordered: boolean;
+    source: 'computed' | 'manual';
+    totalMinor: number | null;
+  }[];
+  orderedCount: number;
+}
+
+export interface PhotoConsent {
+  purpose: string;
+  granted: boolean;
+  grantedAt: string | null;
+  revokedAt: string | null;
+  note: string | null;
+}
+
+export interface ProgressPhoto {
+  id: string;
+  stepKey: string;
+  takenAt: string;
+  contentType: string;
+  byteSize: number;
+}
