@@ -57,3 +57,19 @@ The card is a customer record and goes through `CrmScopeService` like every
 other one: a member sees their own book, a leader their org's, and a test pins
 that somebody else's card is a 404 rather than a 403 — an outsider should not
 learn that a customer exists by being refused.
+
+## 6. It passed here and failed on CI
+
+The three assertions about the identity number failed on CI and nowhere else,
+and none of them mentioned a key: `expected false to be true`, `null and string
+is invalid for this assertion`, `expected 0 to be greater than 0`.
+
+One cause. `FieldEncryptionService` fails closed, **CI deliberately carries no
+PII key**, and every suite that needs one sets its own with `??=`. This suite
+never had — it had never encrypted anything before the card arrived. The save
+threw, and three later assertions reported the consequences instead.
+
+Fixed by setting the key in this suite like all the others, and by asserting the
+save's own status so the next failure of this shape lands where it happened
+rather than three assertions downstream. Reproduced locally by unsetting the key
+before believing the fix.

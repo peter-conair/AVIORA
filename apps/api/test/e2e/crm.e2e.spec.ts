@@ -96,6 +96,11 @@ async function addMember(adminToken: string, email: string, name: string): Promi
 
 beforeAll(async () => {
   process.env.AVIORA_OUTBOX_DISABLED = 'true'; // relay driven manually in tests
+  // The index card encrypts identity numbers and the service fails closed, so
+  // without a key the save throws. CI deliberately carries no PII key, and
+  // every suite that needs one sets its own — this one did not until the card
+  // arrived, and the omission surfaced as three unrelated-looking assertions.
+  process.env.AVIORA_PII_ENCRYPTION_KEY ??= Buffer.alloc(32, 41).toString('base64');
   owner = createOwnerClient();
   await ensureAppRole(owner);
   for (const key of Object.values(PERMISSIONS)) {
@@ -1385,12 +1390,15 @@ describe('Sprint 47 — the customer index card', () => {
 
   it('never puts the identity number on the card', async () => {
     const seller = await login(`seller-${RUN}@test.local`);
-    await api(`/api/v1/crm/customers/${customerId}/card`, {
+    const saved = await api(`/api/v1/crm/customers/${customerId}/card`, {
       method: 'PUT',
       token: seller,
       tenant: tenantId,
       body: JSON.stringify({ idNumber: '1103700123456' }),
     });
+    // Asserted so a refused save fails HERE rather than as three puzzling
+    // assertions further down about a number that was never stored.
+    expect(saved.status).toBe(200);
 
     const card = await api(`/api/v1/crm/customers/${customerId}/card`, {
       token: seller,
