@@ -1808,7 +1808,8 @@
       "goals": "Goals",
       "tracker": "Follow up",
       "checklist": "Daily",
-      "weekly": "Weekly"
+      "weekly": "Weekly",
+      "path": "Path"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1908,5 +1909,18 @@
     "markDone": "I did it",
     "askedShort": "you tick",
     "readShort": "auto"
+  },
+  "path": {
+    "intro": "What to know, and what to do — at each stage.",
+    "progress": "{done} of {total} stages behind you",
+    "toKnow": "What to know",
+    "toDo": "What to do",
+    "youAreHere": "you are here",
+    "later": "later",
+    "notYet": "not yet",
+    "done": "done",
+    "reading": "reading",
+    "lessons": "{count} lessons",
+    "noEnd": "This stage has no finish line — the percentage levels take over from here."
   }
 }

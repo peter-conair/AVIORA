@@ -3084,3 +3084,24 @@ export interface ProgressPhoto {
   contentType: string;
   byteSize: number;
 }
+
+/* ── learning path (docs/67) ─────────────────────────────────────────────── */
+
+export interface LearningPathResponse {
+  stages: {
+    key: string;
+    label: string;
+    cleared: boolean;
+    know: {
+      courseId: string | null;
+      code: string;
+      title: string;
+      lessonCount: number;
+      status: 'not_started' | 'in_progress' | 'completed' | string;
+    }[];
+    do: { key: string; label: string; href: string; done: boolean; source: string }[];
+  }[];
+  currentStageKey: string | null;
+  clearedCount: number;
+  total: number;
+}

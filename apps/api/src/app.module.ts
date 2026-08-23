@@ -55,6 +55,8 @@ import { CustomerIndexService } from './modules/customer-index/customer-index.se
 import { CustomerIndexController } from './modules/customer-index/customer-index.controller';
 import { PhotosService } from './modules/photos/photos.service';
 import { PhotosController } from './modules/photos/photos.controller';
+import { LearningPathService } from './modules/learning-path/learning-path.service';
+import { LearningPathController } from './modules/learning-path/learning-path.controller';
 import { StartService } from './modules/start/start.service';
 import { StartController } from './modules/start/start.controller';
 import { WeeklyUpdateService } from './modules/weekly-update/weekly-update.service';
@@ -172,6 +174,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ChecklistController,
     WeeklyUpdateController,
     StartController,
+    LearningPathController,
     PhotosController,
     CustomerIndexController,
     AuditController,
@@ -218,6 +221,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ChecklistService,
     WeeklyUpdateService,
     StartService,
+    LearningPathService,
     PhotosService,
     CustomerIndexService,
     KnowledgeService,

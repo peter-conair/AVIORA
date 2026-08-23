@@ -1506,6 +1506,95 @@ describe('Sprint 47 — the customer index card', () => {
   });
 });
 
+/**
+ * Sprint 49 — the learning path (docs/67).
+ *
+ * Two questions at every stage: what to know, what to do. Both halves existed
+ * and neither was joined to the other — the start path covered the first stage
+ * of "do" and stopped, and "know" was an empty array on a rank nobody had
+ * filled in.
+ */
+describe('Sprint 49 — what to know and what to do', () => {
+  it('seeds a curriculum nobody had to write', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+    expect(res.body.stages).toHaveLength(5);
+    // Real courses, with real lessons, that a member can actually start.
+    const first = res.body.stages[0];
+    expect(first.know.length).toBeGreaterThan(0);
+    expect(first.know[0].courseId).toBeTruthy();
+    expect(first.know[0].lessonCount).toBeGreaterThan(0);
+  });
+
+  it('says what to do as well as what to read', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    const first = res.body.stages.find((s: { key: string }) => s.key === 'know_the_business');
+    // A curriculum with no actions is a reading list, and reading a list is not
+    // what moves a business.
+    expect(first.do.map((d: { key: string }) => d.key)).toEqual(['dream', 'goal', 'names']);
+    expect(first.do.every((d: { source: string }) => d.source === 'computed')).toBe(true);
+  });
+
+  it('points at the earliest gap, not the furthest thing achieved', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+
+    // Real life does not go in order: this seller has closed customers while
+    // their name list is still short, so stage 2 is cleared and stage 1 is not.
+    const cleared = new Set(
+      res.body.stages
+        .filter((s: { cleared: boolean }) => s.cleared)
+        .map((s: { key: string }) => s.key),
+    );
+    expect(cleared.has('first_customer')).toBe(true);
+    expect(cleared.has('know_the_business')).toBe(false);
+
+    // And `current` is the EARLIEST gap rather than the next unreached stage.
+    // Somebody selling on four names is not ahead of the path — they are one
+    // short conversation away from running out of people, and the path should
+    // say so rather than congratulate them (docs/67 §4).
+    expect(res.body.currentStageKey).toBe('know_the_business');
+  });
+
+  it('agrees with the start path about where they are', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const [path, start] = await Promise.all([
+      api('/api/v1/learning-path', { token: seller, tenant: tenantId }),
+      api('/api/v1/start', { token: seller, tenant: tenantId }),
+    ]);
+    const pathCustomer = path.body.stages
+      .flatMap((s: { do: { key: string; done: boolean }[] }) => s.do)
+      .find((d: { key: string }) => d.key === 'customer');
+    const startCustomer = start.body.steps.find((s: { key: string }) => s.key === 'customer');
+    // Both read the same evidence on purpose. Two screens telling a member they
+    // are at different places is worse than either being wrong alone.
+    expect(pathCustomer.done).toBe(startCustomer.done);
+  });
+
+  it('does not pretend the last stage ever finishes', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    const last = res.body.stages[res.body.stages.length - 1];
+    expect(last.key).toBe('build');
+    // Building lines has no completion. The percentage ladder takes over from
+    // here, and a tick against it would be a lie with a certificate.
+    expect(last.cleared).toBe(false);
+  });
+
+  it('names duplication as its own stage, reached only through somebody else', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    const stage = res.body.stages.find((s: { key: string }) => s.key === 'duplicate');
+    expect(stage).toBeTruthy();
+    // The only stage that cannot be reached by working harder alone: it needs
+    // somebody you sponsored to sponsor somebody.
+    expect(stage.do[0].key).toBe('duplicated');
+    expect(stage.cleared).toBe(false);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers
