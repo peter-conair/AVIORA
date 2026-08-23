@@ -79,14 +79,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @aviora/shared build
       - run: pnpm --filter @aviora/db build
-      - name: blind-index key for this run
+      - name: encryption keys for this run
         # Generated, not committed. CI must run the state production runs in —
         # without a key the CRM falls back to comparing plaintext and matches a
         # phone only if it was typed the same way twice, so the suite passes for
         # the wrong reason (it did exactly that once, docs/55 §2.1). A fresh
         # random key is enough because nothing computed with it outlives the run,
         # and a literal here would be committed key material even as a fake.
-        run: echo "AVIORA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+        run: |
+          echo "AVIORA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          # The index card encrypts identity numbers and FieldEncryptionService
+          # fails closed, so without this the API refuses the save and the
+          # browser test reports a missing masked field three steps later
+          # (docs/66 §6). Generated, never committed, same as above.
+          echo "AVIORA_PII_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: migrate
         run: pnpm --filter @aviora/db exec prisma migrate deploy
       - name: app role
@@ -130,14 +136,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @aviora/shared build
       - run: pnpm --filter @aviora/db build
-      - name: blind-index key for this run
+      - name: encryption keys for this run
         # Generated, not committed. CI must run the state production runs in —
         # without a key the CRM falls back to comparing plaintext and matches a
         # phone only if it was typed the same way twice, so the suite passes for
         # the wrong reason (it did exactly that once, docs/55 §2.1). A fresh
         # random key is enough because nothing computed with it outlives the run,
         # and a literal here would be committed key material even as a fake.
-        run: echo "AVIORA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+        run: |
+          echo "AVIORA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          # The index card encrypts identity numbers and FieldEncryptionService
+          # fails closed, so without this the API refuses the save and the
+          # browser test reports a missing masked field three steps later
+          # (docs/66 §6). Generated, never committed, same as above.
+          echo "AVIORA_PII_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: migrate + app role + seed
         run: |
           pnpm --filter @aviora/db exec prisma migrate deploy
