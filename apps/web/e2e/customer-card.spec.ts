@@ -77,6 +77,10 @@ test.describe('The customer index card', () => {
     await page.getByLabel('ABO #').fill('ABO-99120');
     await page.getByLabel('บันทึกเลขใหม่').fill('1103700123456');
     await page.getByRole('button', { name: 'บันทึกทะเบียน' }).click();
+    // Asserted first, so a refused save fails here rather than as a missing
+    // masked field three lines down that says nothing about why (docs/66 §6).
+    await expect(page.getByText('ABO-99120')).toHaveCount(0);
+    await expect(page.getByLabel('ABO #')).toHaveValue('ABO-99120');
 
     // Never on the card. A button reveals it, and says the reveal is recorded
     // BEFORE it is pressed.
