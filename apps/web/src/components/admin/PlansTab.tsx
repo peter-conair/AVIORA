@@ -178,7 +178,7 @@ export function PlansTab() {
                   <label key={item.key} className="flex items-start gap-2 text-sm text-slate-700">
                     <input
                       type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                       checked={selectedKeys.includes(item.key)}
                       onChange={() => toggleKey(item.key)}
                     />

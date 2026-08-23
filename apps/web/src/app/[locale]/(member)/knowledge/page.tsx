@@ -162,7 +162,7 @@ export default function KnowledgePage() {
                           {href ? (
                             <Link
                               href={href}
-                              className="block rounded-lg border border-slate-200 p-3 hover:border-teal-600 hover:bg-teal-50/40"
+                              className="block rounded-lg border border-slate-200 p-3 hover:border-brand-600 hover:bg-brand-50/40"
                             >
                               {inner}
                             </Link>
@@ -205,7 +205,7 @@ export default function KnowledgePage() {
               <li key={goal.id}>
                 <Link
                   href={`/knowledge/journey/${encodeURIComponent(goal.code)}`}
-                  className="flex h-full flex-col gap-1 rounded-lg border border-slate-200 p-3 hover:border-teal-600 hover:bg-teal-50/40"
+                  className="flex h-full flex-col gap-1 rounded-lg border border-slate-200 p-3 hover:border-brand-600 hover:bg-brand-50/40"
                 >
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-slate-900">{goal.name}</span>

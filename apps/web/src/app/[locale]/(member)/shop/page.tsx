@@ -198,7 +198,7 @@ export default function ShopPage() {
                     ) : null}
 
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <span className="text-lg font-bold text-teal-700">
+                      <span className="text-lg font-bold text-brand-700">
                         {formatMoney(offering.priceMinor, offering.currency, locale)}
                       </span>
                       {offering.priceMinor !== offering.listPriceMinor ? (
@@ -245,7 +245,7 @@ export default function ShopPage() {
           ) : (
             <div className="flex flex-col gap-4">
               {placedNumber ? (
-                <p className="rounded-lg bg-teal-50 p-2 text-sm text-teal-800">
+                <p className="rounded-lg bg-brand-50 p-2 text-sm text-brand-800">
                   {t('checkoutDone', { number: placedNumber })}
                 </p>
               ) : null}
@@ -327,7 +327,7 @@ export default function ShopPage() {
                           placeholder={t('couponPlaceholder')}
                           aria-label={t('couponPlaceholder')}
                           onChange={(e) => setCouponCode(e.target.value)}
-                          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600"
+                          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
                         />
                         <Button
                           type="button"
@@ -352,7 +352,7 @@ export default function ShopPage() {
                     {cart.discountMinor > 0 ? (
                       <div className="flex flex-wrap justify-between gap-x-3">
                         <dt className="text-slate-500">{t('discount')}</dt>
-                        <dd className="text-teal-700">
+                        <dd className="text-brand-700">
                           −{formatMoney(cart.discountMinor, cart.currency, locale)}
                         </dd>
                       </div>

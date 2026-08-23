@@ -79,7 +79,7 @@ export function LearningPathTab() {
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
                   stage.cleared
-                    ? 'bg-teal-50 text-teal-700'
+                    ? 'bg-brand-50 text-brand-700'
                     : isCurrent
                       ? 'bg-amber-100 text-amber-800'
                       : 'bg-slate-100 text-slate-400'
@@ -104,7 +104,7 @@ export function LearningPathTab() {
                         >
                           <Link
                             href={`/${locale}/learning`}
-                            className="min-w-0 text-sm text-teal-700 underline-offset-2 hover:underline"
+                            className="min-w-0 text-sm text-brand-700 underline-offset-2 hover:underline"
                           >
                             {course.title}
                           </Link>
@@ -144,7 +144,7 @@ export function LearningPathTab() {
                           </Link>
                           <span
                             className={`shrink-0 text-xs ${
-                              action.done ? 'text-teal-700' : 'text-slate-400'
+                              action.done ? 'text-brand-700' : 'text-slate-400'
                             }`}
                           >
                             {action.done ? '✓' : t('notYet')}

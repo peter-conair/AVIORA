@@ -45,7 +45,7 @@ export default function IngredientPage() {
   }, [code]);
 
   const backLink = (
-    <Link href="/knowledge" className="text-sm font-medium text-teal-700 hover:underline">
+    <Link href="/knowledge" className="text-sm font-medium text-brand-700 hover:underline">
       {t('backToKnowledge')}
     </Link>
   );

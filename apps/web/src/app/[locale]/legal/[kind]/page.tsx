@@ -131,7 +131,7 @@ export default function LegalPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href="/dashboard" className="text-lg font-bold tracking-tight text-teal-700">
+        <Link href="/dashboard" className="text-lg font-bold tracking-tight text-brand-700">
           AVIORA
         </Link>
         <Link
@@ -218,7 +218,7 @@ export default function LegalPage() {
                   <span className="text-sm text-slate-600">{t('alreadyOnThisVersion')}</span>
                 ) : null}
                 {accepted ? (
-                  <span className="text-sm text-teal-700">
+                  <span className="text-sm text-brand-700">
                     {accepted.alreadyAccepted
                       ? t('acceptedAlready', { version: accepted.acceptance.version })
                       : t('acceptedNow', {
@@ -235,7 +235,7 @@ export default function LegalPage() {
               <div className="mt-3">
                 <Link
                   href="/sign-in"
-                  className="inline-flex rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+                  className="inline-flex rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
                 >
                   {t('signInAction')}
                 </Link>

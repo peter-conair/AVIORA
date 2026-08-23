@@ -79,6 +79,8 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 65  | [Before/after photographs, and consent](./65-progress-photos.md)                                  | Sprint 46                                                 |
 | 66  | [The customer index card](./66-customer-index.md)                                                 | Sprint 47                                                 |
 | 67  | [The learning path — what to know, what to do](./67-learning-path.md) | Sprint 49 |
+| 68  | [White-label that reaches the product](./68-brand-theming.md) | Sprint 50 |
+| 68  | [Stairstep–breakaway plans — a domain primer](./68-network-plan-primer.md) | Reference |
 
 ## Canonical stack (see ADRs)
 

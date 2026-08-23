@@ -173,7 +173,7 @@ export default function TeamsPage() {
                       style={{ paddingInlineStart: `${0.5 + depth * 0.85}rem` }}
                       className={`flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg py-1.5 pe-2 text-left text-sm ${
                         active
-                          ? 'bg-teal-50 font-semibold text-teal-800 ring-1 ring-inset ring-teal-600/20'
+                          ? 'bg-brand-50 font-semibold text-brand-800 ring-1 ring-inset ring-brand-600/20'
                           : 'text-slate-700 hover:bg-slate-50'
                       }`}
                     >
@@ -373,7 +373,7 @@ export default function TeamsPage() {
                                 <button
                                   type="button"
                                   onClick={() => void loadDetail(child.id)}
-                                  className="text-left font-medium text-teal-700 hover:underline"
+                                  className="text-left font-medium text-brand-700 hover:underline"
                                 >
                                   {child.name}
                                   <span className="ms-2 font-mono text-xs text-slate-400">
@@ -401,7 +401,7 @@ export default function TeamsPage() {
                       type="button"
                       onClick={() => setHistoryOpen((open) => !open)}
                       aria-expanded={historyOpen}
-                      className="text-sm font-medium text-teal-700 hover:underline"
+                      className="text-sm font-medium text-brand-700 hover:underline"
                     >
                       {historyOpen ? t('history.hide') : t('history.show')}
                     </button>

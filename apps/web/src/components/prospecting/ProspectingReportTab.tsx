@@ -64,7 +64,7 @@ export function ProspectingReportTab() {
               {list.top.map((entry) => (
                 <li key={entry.id} className="flex items-center justify-between gap-2 py-2">
                   <span className="min-w-0 truncate text-sm text-slate-700">{entry.name}</span>
-                  <span className="shrink-0 text-sm font-semibold text-teal-700">
+                  <span className="shrink-0 text-sm font-semibold text-brand-700">
                     {entry.score} / {list.scoreMax}
                   </span>
                 </li>

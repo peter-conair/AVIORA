@@ -184,7 +184,7 @@ export function TaxRulesCard() {
                       <button
                         type="button"
                         onClick={() => edit(rule)}
-                        className="rounded-lg px-2 py-1 text-xs font-medium text-teal-800 hover:bg-teal-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+                        className="rounded-lg px-2 py-1 text-xs font-medium text-brand-800 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                       >
                         {t('editAction')}
                       </button>
@@ -246,7 +246,7 @@ export function TaxRulesCard() {
                 type="checkbox"
                 checked={inclusive}
                 onChange={(e) => setInclusive(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
               />
               <span className="flex min-w-0 flex-col">
                 <span className="text-sm font-medium text-slate-700">{t('inclusive')}</span>
@@ -277,7 +277,7 @@ export function TaxRulesCard() {
                 {saving ? tc('saving') : t('submit')}
               </Button>
               {saved ? (
-                <span className="text-sm text-teal-700">
+                <span className="text-sm text-brand-700">
                   {t('savedNote', {
                     country: saved.country,
                     region: saved.region ?? t('countryWide'),

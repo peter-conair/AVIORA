@@ -988,7 +988,7 @@ export function AutomationTab() {
               {savingRule ? tc('saving') : t('submitRule')}
             </Button>
             {ruleCreated ? (
-              <span className="text-sm text-teal-700">
+              <span className="text-sm text-brand-700">
                 {t('ruleCreated', { name: ruleCreated })}
               </span>
             ) : null}
@@ -1270,7 +1270,7 @@ export function AutomationTab() {
               {savingReward ? tc('saving') : t('submitReward')}
             </Button>
             {rewardCreated ? (
-              <span className="text-sm text-teal-700">
+              <span className="text-sm text-brand-700">
                 {t('rewardCreated', { name: rewardCreated })}
               </span>
             ) : null}

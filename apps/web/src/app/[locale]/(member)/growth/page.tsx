@@ -171,7 +171,7 @@ export default function GrowthPage() {
             <div className="flex flex-col gap-2">
               {current ? (
                 <>
-                  <span className="break-words text-2xl font-bold text-teal-700">
+                  <span className="break-words text-2xl font-bold text-brand-700">
                     {current.name}
                   </span>
                   {current.evaluatedAt ? (
@@ -252,7 +252,7 @@ export default function GrowthPage() {
                         <li key={course.id} className="py-2">
                           <Link
                             href={`/${locale}/learning`}
-                            className="text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                            className="text-sm font-medium text-brand-700 underline-offset-2 hover:underline"
                           >
                             {course.title}
                           </Link>
@@ -333,7 +333,7 @@ export default function GrowthPage() {
                     <li
                       key={step.id}
                       className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-2 py-1.5 ${
-                        here ? 'bg-teal-50 ring-1 ring-inset ring-teal-600/20' : ''
+                        here ? 'bg-brand-50 ring-1 ring-inset ring-brand-600/20' : ''
                       }`}
                     >
                       <span className="min-w-0 break-words text-sm text-slate-800">

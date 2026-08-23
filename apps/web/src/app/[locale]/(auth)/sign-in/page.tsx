@@ -78,7 +78,7 @@ function SignInForm() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4 py-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-teal-700">AVIORA</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-brand-700">AVIORA</h1>
         <p className="mt-1 text-sm text-slate-500">{t('title')}</p>
       </div>
 
@@ -100,7 +100,7 @@ function SignInForm() {
                   <button
                     type="button"
                     onClick={() => handlePickTenant(tn.tenantId)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-800 hover:border-teal-600 hover:bg-teal-50"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-800 hover:border-brand-600 hover:bg-brand-50"
                   >
                     {tn.name}
                     <span className="block text-xs font-normal text-slate-400">{tn.slug}</span>

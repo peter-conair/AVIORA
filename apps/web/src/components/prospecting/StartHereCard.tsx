@@ -61,7 +61,7 @@ export function StartHereCard() {
 
       <div className="mt-3 flex items-center gap-2">
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-teal-600" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-brand-600" style={{ width: `${pct}%` }} />
         </div>
         <span className="shrink-0 text-sm text-slate-600">
           {data.doneCount} / {data.total}
@@ -69,8 +69,10 @@ export function StartHereCard() {
       </div>
 
       {data.next ? (
-        <div className="mt-3 rounded-lg border border-teal-200 bg-teal-50 p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-teal-800">{t('nextUp')}</p>
+        <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50 p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-brand-800">
+            {t('nextUp')}
+          </p>
           <p className="mt-1 text-sm font-semibold text-slate-900">{data.next.label}</p>
           <p className="mt-0.5 text-xs text-slate-600">{data.next.hint}</p>
           {data.next.source === 'manual' ? (
@@ -80,14 +82,14 @@ export function StartHereCard() {
               type="button"
               disabled={busy}
               onClick={() => void tick(data.next!.key, true)}
-              className="mt-2 rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              className="mt-2 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
             >
               {t('markDone')}
             </button>
           ) : (
             <Link
               href={`/${locale}${data.next.href}`}
-              className="mt-2 inline-block rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white"
+              className="mt-2 inline-block rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white"
             >
               {t('goDoIt')}
             </Link>
@@ -105,7 +107,7 @@ export function StartHereCard() {
             </span>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                step.done ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-400'
+                step.done ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-400'
               }`}
             >
               {step.done ? '✓' : step.source === 'manual' ? t('askedShort') : t('readShort')}

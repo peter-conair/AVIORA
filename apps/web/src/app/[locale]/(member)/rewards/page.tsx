@@ -106,7 +106,7 @@ export default function RewardsPage() {
           <Card title={t('standingTitle')}>
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <span className="text-2xl font-bold text-teal-700">
+                <span className="text-2xl font-bold text-brand-700">
                   {t('points', { points: standing.points })}
                 </span>
                 <span className="text-sm text-slate-600">
@@ -117,7 +117,10 @@ export default function RewardsPage() {
                 className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
                 aria-hidden="true"
               >
-                <div className="h-full rounded-full bg-teal-700" style={{ width: `${percent}%` }} />
+                <div
+                  className="h-full rounded-full bg-brand-700"
+                  style={{ width: `${percent}%` }}
+                />
               </div>
               <p className="text-xs text-slate-500">
                 {t('toNextLevel', { points: standing.pointsToNextLevel })}
@@ -133,10 +136,10 @@ export default function RewardsPage() {
                 {standing.badges.map((badge) => (
                   <li
                     key={badge.badgeCode}
-                    className="flex flex-col gap-0.5 rounded-lg bg-teal-50 px-3 py-2 ring-1 ring-inset ring-teal-600/20"
+                    className="flex flex-col gap-0.5 rounded-lg bg-brand-50 px-3 py-2 ring-1 ring-inset ring-brand-600/20"
                   >
-                    <span className="text-sm font-medium text-teal-800">{badge.badgeName}</span>
-                    <span className="text-xs text-teal-700/80">
+                    <span className="text-sm font-medium text-brand-800">{badge.badgeName}</span>
+                    <span className="text-xs text-brand-700/80">
                       {t('awardedAt', { date: formatDate(badge.awardedAt, locale) })}
                     </span>
                   </li>
@@ -182,7 +185,7 @@ export default function RewardsPage() {
                     <li
                       key={row.memberId}
                       className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-2 py-1.5 ${
-                        mine ? 'bg-teal-50 ring-1 ring-inset ring-teal-600/20' : ''
+                        mine ? 'bg-brand-50 ring-1 ring-inset ring-brand-600/20' : ''
                       }`}
                     >
                       <span className="flex min-w-0 flex-wrap items-center gap-2">

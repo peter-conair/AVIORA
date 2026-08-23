@@ -187,7 +187,7 @@ export default function ChallengesPage() {
                         type="button"
                         onClick={() => handleSelect(challenge.id)}
                         aria-expanded={open}
-                        className="text-sm font-medium text-teal-700 hover:underline"
+                        className="text-sm font-medium text-brand-700 hover:underline"
                       >
                         {open ? t('hideLeaderboard') : t('showLeaderboard')}
                       </button>
@@ -226,7 +226,7 @@ export default function ChallengesPage() {
                                       key={row.memberId}
                                       className={`flex flex-col gap-1 rounded-lg p-2 ${
                                         row.isMe
-                                          ? 'bg-teal-50 ring-1 ring-inset ring-teal-600/20'
+                                          ? 'bg-brand-50 ring-1 ring-inset ring-brand-600/20'
                                           : 'bg-white'
                                       }`}
                                     >
@@ -255,7 +255,7 @@ export default function ChallengesPage() {
                                         aria-hidden="true"
                                       >
                                         <div
-                                          className="h-full rounded-full bg-teal-700"
+                                          className="h-full rounded-full bg-brand-700"
                                           style={{ width: `${ratio}%` }}
                                         />
                                       </div>

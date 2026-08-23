@@ -171,7 +171,7 @@ export function AppShell({ children }: AppShellProps) {
         aria-current={active ? 'page' : undefined}
         className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
           active
-            ? 'bg-teal-50 font-semibold text-teal-800'
+            ? 'bg-brand-50 font-semibold text-brand-800'
             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
         }`}
       >
@@ -190,7 +190,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3">
           <Link
             href={HOME.href}
-            className="truncate text-lg font-bold tracking-tight text-teal-700 [color:var(--brand-primary,currentColor)]"
+            className="truncate text-lg font-bold tracking-tight text-brand-700 [color:var(--brand-primary,currentColor)]"
           >
             {appName ?? 'AVIORA'}
           </Link>
@@ -201,7 +201,7 @@ export function AppShell({ children }: AppShellProps) {
                 aria-label={t('tenant')}
                 value={selectedTenant}
                 onChange={(e) => handleTenantChange(e.target.value)}
-                className="max-w-[8.5rem] truncate rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-600"
+                className="max-w-[8.5rem] truncate rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-600"
               >
                 {tenants.map((tn) => (
                   <option key={tn.tenantId} value={tn.tenantId}>
@@ -270,7 +270,7 @@ export function AppShell({ children }: AppShellProps) {
                 aria-current={active ? 'page' : undefined}
                 className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[11px] font-medium ${
                   active
-                    ? 'text-teal-700 [color:var(--brand-primary,currentColor)]'
+                    ? 'text-brand-700 [color:var(--brand-primary,currentColor)]'
                     : 'text-slate-500'
                 }`}
               >
@@ -286,7 +286,7 @@ export function AppShell({ children }: AppShellProps) {
             aria-expanded={menuOpen}
             aria-haspopup="dialog"
             className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[11px] font-medium ${
-              menuOpen ? 'text-teal-700' : 'text-slate-500'
+              menuOpen ? 'text-brand-700' : 'text-slate-500'
             }`}
           >
             <NavIcon name={menuOpen ? 'close' : 'menu'} />
@@ -339,7 +339,7 @@ export function AppShell({ children }: AppShellProps) {
                           aria-current={active ? 'page' : undefined}
                           className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium ${
                             active
-                              ? 'border-teal-600 bg-teal-50 text-teal-800'
+                              ? 'border-brand-600 bg-brand-50 text-brand-800'
                               : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                           }`}
                         >

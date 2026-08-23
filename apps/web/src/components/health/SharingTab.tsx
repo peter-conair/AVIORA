@@ -111,7 +111,7 @@ export function SharingTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-xl border border-teal-600/20 bg-teal-50 p-3 text-sm text-teal-900">
+      <p className="rounded-xl border border-brand-600/20 bg-brand-50 p-3 text-sm text-brand-900">
         {t('sharing.privacyNote')}
       </p>
 
@@ -207,7 +207,7 @@ export function SharingTab() {
                 </span>
                 <Link
                   href={`/health/members/${encodeURIComponent(grant.memberId)}`}
-                  className="text-sm font-medium text-teal-700 hover:underline"
+                  className="text-sm font-medium text-brand-700 hover:underline"
                 >
                   {t('sharing.viewSummary')}
                 </Link>

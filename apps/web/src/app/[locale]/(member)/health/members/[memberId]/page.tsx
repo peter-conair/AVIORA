@@ -70,7 +70,7 @@ export default function SharedMemberHealthPage() {
   }, [memberId]);
 
   const backLink = (
-    <Link href="/health" className="text-sm font-medium text-teal-700 hover:underline">
+    <Link href="/health" className="text-sm font-medium text-brand-700 hover:underline">
       {t('coach.back')}
     </Link>
   );

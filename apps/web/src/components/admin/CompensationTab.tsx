@@ -550,7 +550,7 @@ export function CompensationTab() {
                               ))}
                             </ul>
                           )}
-                          <p className="min-w-0 break-words text-xs font-medium text-teal-800">
+                          <p className="min-w-0 break-words text-xs font-medium text-brand-800">
                             {payoutText(toPayout(rule.payout), plan.currency)}
                           </p>
                         </li>
@@ -605,7 +605,7 @@ export function CompensationTab() {
                   {savingPlan ? tc('saving') : t('submitPlan')}
                 </Button>
                 {planCreated ? (
-                  <span className="text-sm text-teal-700">
+                  <span className="text-sm text-brand-700">
                     {t('planCreated', { name: planCreated })}
                   </span>
                 ) : null}
@@ -899,7 +899,7 @@ export function CompensationTab() {
                     {savingRule ? tc('saving') : t('submitRule')}
                   </Button>
                   {ruleCreated ? (
-                    <span className="text-sm text-teal-700">
+                    <span className="text-sm text-brand-700">
                       {t('ruleCreated', { name: ruleCreated })}
                     </span>
                   ) : null}
@@ -954,7 +954,7 @@ export function CompensationTab() {
                     {savingRun ? tc('saving') : t('submitRun')}
                   </Button>
                   {runCreated === null ? null : (
-                    <span className="text-sm text-teal-700">
+                    <span className="text-sm text-brand-700">
                       {runCreated ? t('runCreated') : t('runExisted')}
                     </span>
                   )}
@@ -1157,7 +1157,7 @@ export function CompensationTab() {
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                 checked={includeEnded}
                 onChange={(e) => void handleToggleEnded(e.target.checked)}
               />

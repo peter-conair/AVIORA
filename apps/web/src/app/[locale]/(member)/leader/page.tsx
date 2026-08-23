@@ -88,7 +88,7 @@ export default function LeaderPage() {
 
                 <Link
                   href={{ pathname: '/teams', query: { team: entry.team.id } }}
-                  className="text-sm font-medium text-teal-700 hover:underline"
+                  className="text-sm font-medium text-brand-700 hover:underline"
                 >
                   {t('viewInOrg')}
                 </Link>

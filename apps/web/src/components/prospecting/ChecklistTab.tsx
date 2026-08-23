@@ -151,7 +151,7 @@ export function ChecklistTab() {
                           onClick={() => void toggleDaily(habit.id, day, !done)}
                           className={`h-7 w-7 rounded-md border text-xs disabled:opacity-40 ${
                             done
-                              ? 'border-teal-600 bg-teal-600 text-white'
+                              ? 'border-brand-600 bg-brand-600 text-white'
                               : 'border-slate-300 text-transparent'
                           }`}
                         >
@@ -180,7 +180,7 @@ export function ChecklistTab() {
                 onClick={() => void toggleWeekly(habit.id, !habit.done)}
                 className={`h-7 w-7 shrink-0 rounded-md border text-xs disabled:opacity-40 ${
                   habit.done
-                    ? 'border-teal-600 bg-teal-600 text-white'
+                    ? 'border-brand-600 bg-brand-600 text-white'
                     : 'border-slate-300 text-transparent'
                 }`}
               >

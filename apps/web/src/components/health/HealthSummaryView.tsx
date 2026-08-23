@@ -50,7 +50,7 @@ export function HealthSummaryView({ summary }: HealthSummaryViewProps) {
                     aria-hidden="true"
                   >
                     <div
-                      className="h-full rounded-full bg-teal-700"
+                      className="h-full rounded-full bg-brand-700"
                       style={{ width: `${ratio}%` }}
                     />
                   </div>

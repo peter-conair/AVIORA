@@ -209,7 +209,7 @@ export default function AssistantPage() {
                 <button
                   type="button"
                   onClick={handleNewConversation}
-                  className="text-sm font-medium text-teal-700 hover:underline"
+                  className="text-sm font-medium text-brand-700 hover:underline"
                 >
                   {t('newConversation')}
                 </button>
@@ -226,7 +226,7 @@ export default function AssistantPage() {
                         onClick={() => void handleOpenConversation(conversation.id)}
                         className={`w-full truncate rounded-lg px-2 py-1.5 text-start text-sm ${
                           conversationId === conversation.id
-                            ? 'bg-teal-700 text-white'
+                            ? 'bg-brand-700 text-white'
                             : 'text-slate-700 hover:bg-slate-100'
                         }`}
                       >
@@ -269,7 +269,7 @@ export default function AssistantPage() {
                       <div
                         className={`max-w-[85%] whitespace-pre-line rounded-2xl px-3 py-2 text-sm ${
                           message.role === 'user'
-                            ? 'bg-teal-700 text-white'
+                            ? 'bg-brand-700 text-white'
                             : 'bg-slate-100 text-slate-800'
                         }`}
                       >
@@ -302,7 +302,7 @@ export default function AssistantPage() {
                   placeholder={t('inputPlaceholder')}
                   aria-label={t('inputLabel')}
                   maxLength={2000}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
                 />
                 <Button type="submit" disabled={sending || question.trim().length < 2}>
                   {sending ? t('sending') : t('send')}

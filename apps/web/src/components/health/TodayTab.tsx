@@ -292,7 +292,7 @@ export function TodayTab() {
               {recording ? tc('saving') : t('metrics.submit')}
             </Button>
             {metricSaved ? (
-              <span className="text-sm text-teal-700">{t('metrics.saved')}</span>
+              <span className="text-sm text-brand-700">{t('metrics.saved')}</span>
             ) : null}
           </div>
         </form>

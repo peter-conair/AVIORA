@@ -233,7 +233,7 @@ export function CustomerCard({ customerId }: { customerId: string }) {
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="mt-3 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="mt-3 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {t('save')}
         </button>
@@ -257,8 +257,8 @@ export function CustomerCard({ customerId }: { customerId: string }) {
                 className={`rounded-md border py-2 text-xs ${
                   box.ordered
                     ? fromSystem
-                      ? 'border-teal-700 bg-teal-700 text-white'
-                      : 'border-teal-600 bg-teal-50 text-teal-800'
+                      ? 'border-brand-700 bg-brand-700 text-white'
+                      : 'border-brand-600 bg-brand-50 text-brand-800'
                     : 'border-slate-300 text-slate-500'
                 } disabled:opacity-100`}
               >
@@ -280,14 +280,14 @@ export function CustomerCard({ customerId }: { customerId: string }) {
               type="button"
               disabled={busy}
               onClick={() => void setConsentTo(true)}
-              className="mt-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="mt-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               {t('recordConsent')}
             </button>
           </>
         ) : (
           <>
-            <p className="text-sm text-teal-800">{t('consentOn')}</p>
+            <p className="text-sm text-brand-800">{t('consentOn')}</p>
             <input
               ref={fileRef}
               type="file"
