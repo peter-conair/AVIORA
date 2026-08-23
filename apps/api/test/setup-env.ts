@@ -7,6 +7,18 @@ dotenv.config({
 });
 
 /**
+ * Tests never get the developer sign-in door, whatever the local .env says.
+ *
+ * Two reasons, and the second is the one that matters. The obvious one: the
+ * route sweep enumerates every registered route and holds each to the isolation
+ * contract, so a bypass mounted only on somebody's laptop would fail the suite
+ * there and pass in CI. The real one: these tests are the description of how
+ * the product behaves, and the product does not have this door. A suite that
+ * runs with it open is testing a build nobody ships.
+ */
+delete process.env.AVIORA_DEV_LOGIN;
+
+/**
  * The outbox relay is cross-tenant by design (FOR UPDATE SKIP LOCKED), so an
  * API server pointed at the same database will drain the events these tests
  * assert on — producing failures that look like product bugs. Fail fast with
