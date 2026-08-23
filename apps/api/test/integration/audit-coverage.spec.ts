@@ -34,6 +34,10 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
+    pattern: /^\/api\/v1\/crm\/customers\/[^/]+\/months$/,
+    why: 'Ticking a month on the twelve-box grid, and only for months the system cannot see an order in — a paid month is refused. customer_month_orders already records who ticked it and when, and a busy book produces these by the dozen (docs/66 §4).',
+  },
+  {
     pattern: /^\/api\/v1\/start\/[^/]+$/,
     why: 'A member ticking one of their own first steps. Only the two steps the system cannot observe are tickable at all, tracker_marks already records when and by whom, and an audit row would bury the sensitive entries this log exists for (docs/63 §4).',
   },

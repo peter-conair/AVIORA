@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 export const TENANT_OWNED_MODELS = new Set<string>([
   'BusinessGoal',
   'CustomerConsent',
+  'CustomerMonthOrder',
   'ProgressPhoto',
   'WeeklyUpdate',
   'TrackerTemplate',

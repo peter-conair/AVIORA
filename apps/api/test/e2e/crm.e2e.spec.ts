@@ -1342,6 +1342,162 @@ describe('Sprint 46 — photographs and consent', () => {
   });
 });
 
+/**
+ * Sprint 47 — the customer index card (docs/66).
+ *
+ * ABO#, expiry, ID#, date of birth, a note, and twelve boxes for the year. The
+ * boxes are the only thing on the card a computer answers better than the
+ * person holding it, and the identity number is the thing it must be most
+ * careful with.
+ */
+describe('Sprint 47 — the customer index card', () => {
+  let customerId = '';
+  const YEAR = 2031;
+
+  beforeAll(async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const customers = await api('/api/v1/crm/customers', { token: seller, tenant: tenantId });
+    customerId = customers.body.customers[0].id;
+  });
+
+  it('saves the card', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/card`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        externalCode: 'ABO-771203',
+        membershipExpiresAt: '2032-01-31',
+        birthDate: '1988-04-17',
+        note: 'ชอบ Breakfast Set',
+      }),
+    });
+    expect(res.status).toBe(200);
+
+    const card = await api(`/api/v1/crm/customers/${customerId}/card?year=${YEAR}`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(card.body.customer.externalCode).toBe('ABO-771203');
+    expect(card.body.customer.note).toBe('ชอบ Breakfast Set');
+  });
+
+  it('never puts the identity number on the card', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    await api(`/api/v1/crm/customers/${customerId}/card`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ idNumber: '1103700123456' }),
+    });
+
+    const card = await api(`/api/v1/crm/customers/${customerId}/card`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    // Whether one is on file, never what it is. Returning it with the card
+    // would put an identity number on somebody's screen every time they
+    // glanced at a customer, with nothing recording that it happened.
+    expect(card.body.customer.hasIdNumber).toBe(true);
+    expect(card.body.customer).not.toHaveProperty('idNumber');
+    expect(JSON.stringify(card.body)).not.toContain('1103700123456');
+  });
+
+  it('stores the identity number encrypted, and hands it back on request', async () => {
+    const row = await owner.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+      return tx.customer.findFirst({ where: { id: customerId } });
+    });
+    // The row itself must not contain it.
+    expect(row!.idNumberEncrypted).not.toContain('1103700123456');
+    expect(row!.idNumberEncrypted).toMatch(/^enc\.v1\./);
+
+    const seller = await login(`seller-${RUN}@test.local`);
+    const revealed = await api(`/api/v1/crm/customers/${customerId}/id-number`, {
+      method: 'POST',
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(revealed.status).toBe(201);
+    expect(revealed.body.idNumber).toBe('1103700123456');
+  });
+
+  it('records that somebody read it', async () => {
+    const admin = await login(`admin-${RUN}@test.local`);
+    const audit = await api('/api/v1/audit-logs?action=crm.customer.id_number.read', {
+      token: admin,
+      tenant: tenantId,
+    });
+    // Reading an identity number is an act, and an act nobody can see happening
+    // is one nobody can question.
+    expect(audit.status).toBe(200);
+    expect(audit.body.auditLogs.length).toBeGreaterThan(0);
+    // The row must not carry the number it recorded somebody reading.
+    expect(JSON.stringify(audit.body)).not.toContain('1103700123456');
+  });
+
+  it('gives twelve boxes and says which the system saw for itself', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const card = await api(`/api/v1/crm/customers/${customerId}/card?year=${YEAR}`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(card.body.months).toHaveLength(12);
+    expect(card.body.months.map((m: { month: number }) => m.month)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]);
+    // Nothing is ordered in a year nothing happened in.
+    expect(card.body.orderedCount).toBe(0);
+  });
+
+  it('lets a month the system cannot see be ticked by hand', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/months`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ year: YEAR, month: 3, ordered: true }),
+    });
+    expect(res.status).toBe(200);
+
+    const card = await api(`/api/v1/crm/customers/${customerId}/card?year=${YEAR}`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    const march = card.body.months.find((m: { month: number }) => m.month === 3);
+    expect(march.ordered).toBe(true);
+    // A lot of this business happens outside the system; a grid that could only
+    // see what the system sold would be blank for most customers.
+    expect(march.source).toBe('manual');
+    expect(card.body.orderedCount).toBe(1);
+  });
+
+  it('takes a hand tick back', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    await api(`/api/v1/crm/customers/${customerId}/months`, {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ year: YEAR, month: 3, ordered: false }),
+    });
+    const card = await api(`/api/v1/crm/customers/${customerId}/card?year=${YEAR}`, {
+      token: seller,
+      tenant: tenantId,
+    });
+    expect(card.body.orderedCount).toBe(0);
+  });
+
+  it("does not show one member's card to another", async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const res = await api(`/api/v1/crm/customers/${customerId}/card`, {
+      token: outsider,
+      tenant: tenantId,
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

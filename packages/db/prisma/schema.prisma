@@ -686,6 +686,22 @@ model Customer {
   emailBidx           String?  @map("email_bidx")
   phoneBidx           String?  @map("phone_bidx")
   status              String   @default("active")
+
+  /* ── the customer index card (docs/66) ─────────────────────────────────── */
+  /// ABO#, membership number — the business's own account number for them.
+  externalCode        String?   @map("external_code")
+  /// When that membership runs out, so a renewal can be seen coming.
+  membershipExpiresAt DateTime? @map("membership_expires_at") @db.Date
+  /// Date of birth. Kept as a date because the only thing it is for is knowing
+  /// when to send a greeting, and an age would be stale within a year.
+  birthDate           DateTime? @map("birth_date") @db.Date
+  /// A national identity number, ALWAYS encrypted at rest (docs/66 §3). The
+  /// column name says so, because a column called `idNumber` holding
+  /// ciphertext is how somebody later writes plaintext into it.
+  idNumberEncrypted   String?   @map("id_number_encrypted")
+  /// The NOTE box on the card.
+  note                String?
+
   convertedFromLeadId String?  @map("converted_from_lead_id") @db.Uuid
   metadata            Json?
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -700,6 +716,7 @@ model Customer {
   @@map("customers")
   consents CustomerConsent[]
   photos   ProgressPhoto[]
+  monthOrders CustomerMonthOrder[]
 }
 
 model FollowUp {
@@ -2350,4 +2367,29 @@ model ProgressPhoto {
 
   @@index([tenantId, customerId, takenAt])
   @@map("progress_photos")
+}
+
+/// One month of the SOP grid on the customer index card (docs/66 §4).
+///
+/// The paper has twelve boxes per customer and a tick in each month they
+/// ordered. A tick is only recorded here when the system CANNOT see the order —
+/// where a real paid order exists the month is derived from it, because a
+/// hand-ticked month that disagrees with the orders table is a month nobody can
+/// resolve.
+model CustomerMonthOrder {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  year       Int
+  /// 1–12.
+  month      Int
+  note       String?
+  markedByMemberId String @map("marked_by_member_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, year, month])
+  @@index([tenantId, customerId, year])
+  @@map("customer_month_orders")
 }

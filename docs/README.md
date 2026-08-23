@@ -77,6 +77,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 63  | [Starting the business](./63-starting-the-business.md)                                            | Sprint 44                                                 |
 | 64  | [6WNY — from a checklist to a programme](./64-six-wny-programme.md)                               | Sprint 45                                                 |
 | 65  | [Before/after photographs, and consent](./65-progress-photos.md)                                  | Sprint 46                                                 |
+| 66  | [The customer index card](./66-customer-index.md)                                                 | Sprint 47                                                 |
 
 ## Canonical stack (see ADRs)
 

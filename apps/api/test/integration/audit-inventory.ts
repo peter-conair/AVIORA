@@ -38,6 +38,8 @@ export const AUDITED_ROUTES = new Map<string, string>([
   // so this sweep never saw it on CI, and the route went undeclared from the
   // day it was written. It DOES audit; it had simply never been listed.
   ['POST /api/v1/dev/login', 'auth.dev_login'],
+  ['PUT /api/v1/crm/customers/:id/card', 'crm.customer.card'],
+  ['POST /api/v1/crm/customers/:id/id-number', 'crm.customer.id_number.read'],
   ['POST /api/v1/crm/customers/:id/photo-consent', 'crm.consent.grant'],
   ['DELETE /api/v1/crm/customers/:id/photo-consent', 'crm.consent.revoke'],
   ['POST /api/v1/crm/customers/:id/photos', 'crm.photo.upload'],

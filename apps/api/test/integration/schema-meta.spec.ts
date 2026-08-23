@@ -28,6 +28,7 @@ const TENANT_OWNED_TABLES = [
   'learning_progress',
   'business_goals',
   'customer_consents',
+  'customer_month_orders',
   'progress_photos',
   'weekly_updates',
   'tracker_templates',

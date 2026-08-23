@@ -51,6 +51,8 @@ import { CrmScopeService } from './modules/crm/crm-scope.service';
 import { ContactKeyService } from './modules/crm/contact-key.service';
 import { ProspectingService } from './modules/crm/prospecting.service';
 import { StorageModule } from './common/storage/storage.module';
+import { CustomerIndexService } from './modules/customer-index/customer-index.service';
+import { CustomerIndexController } from './modules/customer-index/customer-index.controller';
 import { PhotosService } from './modules/photos/photos.service';
 import { PhotosController } from './modules/photos/photos.controller';
 import { StartService } from './modules/start/start.service';
@@ -171,6 +173,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     WeeklyUpdateController,
     StartController,
     PhotosController,
+    CustomerIndexController,
     AuditController,
     KnowledgeController,
     AiController,
@@ -216,6 +219,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     WeeklyUpdateService,
     StartService,
     PhotosService,
+    CustomerIndexService,
     KnowledgeService,
     HealthService,
     HealthAccessService,
