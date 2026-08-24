@@ -3,14 +3,23 @@ import { ERROR_CODES, EVENTS } from '@aviora/shared';
 import { appendEvent, type Tx } from '@aviora/db';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
-import { computeMetrics, passes, requirementKey, type MetricRequirement } from '../growth/metrics';
+import {
+  computeMetrics,
+  legVolumes,
+  passes,
+  requirementKey,
+  type MetricRequirement,
+  type MetricScope,
+} from '../growth/metrics';
 import { MAX_COMPENSATION_DEPTH, compensationGraph } from './placement.service';
 import {
   basisRequirement,
   conditionRequirement,
+  differentialAmount,
   parseConditions,
   parsePayout,
   payoutAmount,
+  type DifferentialLeg,
   type RuleCondition,
   type RulePayout,
 } from './rules';
@@ -43,6 +52,11 @@ interface LoadedRule {
  * of `periodEnd` over the as-of graph traversal, so recomputing a draft over
  * unchanged source data produces identical entries and an entry can be
  * explained a year later without re-running anything.
+ *
+ * Computation is TWO passes over the members, not one — see `computeInto`. That
+ * is the whole structural cost of supporting stairstep plans, and it is paid
+ * whether or not a plan uses them, because a run that changed shape depending
+ * on its rules would be a second engine wearing the first one's name.
  */
 @Injectable()
 export class RunService {
@@ -271,23 +285,48 @@ export class RunService {
         orderBy: { id: 'asc' },
         select: { id: true },
       });
+
+      const scopeFor = (memberId: string): MetricScope => ({
+        tx,
+        tenantId: this.db.tenantId,
+        memberId,
+        asOf: run.periodEnd,
+        // a run is a snapshot of a period, so a `period` window means this
+        // run's window and nothing else
+        periodStart: run.periodStart,
+        maxDepth: MAX_COMPENSATION_DEPTH,
+        // The compensation graph is walked through its own adapter; the
+        // shared calculator never learns its table exists.
+        graphs: { compensation: compensationGraph },
+      });
+
+      // PASS ONE — resolve every member before paying anybody.
+      //
+      // A differential owes what the payee's rate exceeds the LEG's rate by, so
+      // the payout for one member is not a function of that member alone
+      // (docs/69 §3). Computing and paying in a single loop would read a leg's
+      // metrics before or after its own turn depending on id order, which is a
+      // plan that pays differently on Tuesday. Two passes is the smallest
+      // structure in which that cannot happen.
+      const metricsByMember = new Map<string, Record<string, number>>();
       for (const member of members) {
-        const values = await computeMetrics(
-          {
-            tx,
-            tenantId: this.db.tenantId,
-            memberId: member.id,
-            asOf: run.periodEnd,
-            // a run is a snapshot of a period, so a `period` window means this
-            // run's window and nothing else
-            periodStart: run.periodStart,
-            maxDepth: MAX_COMPENSATION_DEPTH,
-            // The compensation graph is walked through its own adapter; the
-            // shared calculator never learns its table exists.
-            graphs: { compensation: compensationGraph },
-          },
-          requirements,
-        );
+        metricsByMember.set(member.id, await computeMetrics(scopeFor(member.id), requirements));
+      }
+      // A leg may be headed by somebody who is no longer active, and their rate
+      // still decides what their upline is owed. Resolved on demand rather than
+      // by widening pass one, so an archived member costs a query only where
+      // they are actually part of somebody's line.
+      const valuesFor = async (memberId: string): Promise<Record<string, number>> => {
+        const cached = metricsByMember.get(memberId);
+        if (cached) return cached;
+        const computed = await computeMetrics(scopeFor(memberId), requirements);
+        metricsByMember.set(memberId, computed);
+        return computed;
+      };
+
+      // PASS TWO — pay.
+      for (const member of members) {
+        const values = metricsByMember.get(member.id) ?? {};
         for (const rule of rules) {
           const checks = rule.conditions.map((condition) => ({
             metric: condition.metric,
@@ -301,11 +340,30 @@ export class RunService {
 
           const basis = basisRequirement(rule.payout);
           const basisValue = basis ? (values[requirementKey(basis)] ?? 0) : 0;
-          const amount = payoutAmount(rule.payout, basisValue);
+
+          let amountMinor: number;
+          let uncappedMinor: number;
+          let capApplied: boolean;
+          let differential: { ratePercent: number; legs: DifferentialLeg[] } | null = null;
+
+          if (rule.payout.kind === 'differential' && basis) {
+            const legs = await legVolumes(scopeFor(member.id), basis);
+            const rated = [];
+            for (const leg of legs) {
+              const legValues = await valuesFor(leg.memberId);
+              rated.push({ ...leg, basisMinor: legValues[requirementKey(basis)] ?? 0 });
+            }
+            const computed = differentialAmount(rule.payout, basisValue, rated);
+            ({ amountMinor, uncappedMinor, capApplied } = computed);
+            differential = { ratePercent: computed.ratePercent, legs: computed.legs };
+          } else {
+            ({ amountMinor, uncappedMinor, capApplied } = payoutAmount(rule.payout, basisValue));
+          }
+
           // A qualifying rule that comes to nothing is not a payment; a zero
           // row would still land in the run's totals and in the member's
           // earnings view.
-          if (amount.amountMinor <= 0) continue;
+          if (amountMinor <= 0) continue;
 
           await tx.commissionEntry.create({
             data: {
@@ -316,7 +374,7 @@ export class RunService {
               // Carried through as the label it is. Nothing above branched on
               // it and nothing below will (docs/26 §1).
               bonusType: rule.bonusType,
-              amountMinor: amount.amountMinor,
+              amountMinor,
               currency: run.currency,
               basis: {
                 ruleCode: rule.code,
@@ -325,13 +383,14 @@ export class RunService {
                 payout: {
                   ...rule.payout,
                   ...(basis ? { basisValue } : {}),
-                  uncappedMinor: amount.uncappedMinor,
-                  capApplied: amount.capApplied,
+                  ...(differential ?? {}),
+                  uncappedMinor,
+                  capApplied,
                 },
               } as object,
             },
           });
-          totalMinor += amount.amountMinor;
+          totalMinor += amountMinor;
           entryCount += 1;
         }
       }

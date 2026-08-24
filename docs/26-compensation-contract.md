@@ -162,7 +162,63 @@ number that has not been signed off.
 `CommissionRunCreated`, `CommissionRunApproved`, `CommissionEarned` (per entry,
 on approval), `CompensationPlacementCreated`, `CompensationPlacementEnded`.
 
-## 9. Out of scope for this sprint
+## 9. The vocabulary was extended once, and this is the record of it
+
+§1 claimed all eleven bonus types are one sentence — conditions, then a fixed
+amount or a percentage. That claim was tested against the stairstep–breakaway
+family (docs/69) and **failed in two places**, both the same failure: `fixed`
+and `percent` resolve a payout from the payee alone, and a stairstep plan
+cannot. What it owes on a line depends on the rate **that line** reached in the
+same period.
+
+No threshold, no bonus type and no extra condition could say that. So §1's own
+instruction applied — _"a signal to extend the condition/payout vocabulary —
+never to add a branch named after somebody's plan"_ — and the vocabulary grew by
+exactly two things:
+
+| Addition                    | Where                    | What it says                                                                                                                    |
+| --------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `differential` payout kind  | `payout.kind`            | Pay my rate minus the rate the leg already earned, on that leg's volume. Carries `tiers` — the ladder, in the tenant's numbers. |
+| `excludeLegsAtOrAboveMinor` | condition/basis `params` | A leg at or above this stops counting toward `downline_volume`.                                                                 |
+
+Three properties make this an extension rather than a plan in the code:
+
+- **A plan that does not use them never mentions them.** Tenant B's milestone
+  plan is unchanged, byte for byte, and the two rules that describe it still
+  produce the amounts they always did.
+- **No number in the ladder is ours.** `tiers` is empty of defaults. A rung is
+  a row, refused at write time if the rungs are out of order (nobody could
+  check that against their plan document) and if a single rung pays 0% (it
+  computes, pays nothing, for ever — docs/62 §3's trap in the other direction).
+- **Breakaway is not implemented.** It falls out. A leg on the same rung as the
+  payee has a flat step between them, so the subtraction is zero and the
+  differential ends. Nothing in the engine says the word.
+
+### The cost: computation is two passes
+
+The one structural change. A run resolves **every** member before it pays
+**any**, because a payout that reads another member's resolved rate cannot be
+computed in the same loop that resolves it — id order would decide the amount,
+and a plan that pays differently on Tuesday is not a plan.
+
+Both passes run for every plan, including plans with no differential rule. A
+run that changed shape depending on its rules would be a second engine wearing
+the first one's name.
+
+### What is still not expressible
+
+The ladder lives on the rule that uses it, not on the plan. One differential
+rule is the normal case; a plan that grows a second one is the moment to hoist
+`tiers` to `compensation_plans`, and the shape was chosen so that hoist is a
+data move rather than a rewrite.
+
+It is deliberately **not** read from the rank ladder (docs/62), though a tenant
+will usually type the same numbers into both. A run must be reproducible from
+source data as of its period, and `rank_progress` holds whatever the last
+evaluation left there — replaying an old run against it would pay a different
+number, and neither figure could then be defended.
+
+## 10. Out of scope for this sprint
 
 - **Paying anyone.** A run produces entries; moving money is a payout provider,
   and the same seam as commerce payments applies.
