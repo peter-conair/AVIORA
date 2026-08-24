@@ -3105,3 +3105,37 @@ export interface LearningPathResponse {
   clearedCount: number;
   total: number;
 }
+
+/* ── the plan (docs/69) ──────────────────────────────────────────────────── */
+
+export interface PlanRate {
+  value: number | null;
+  source: 'measured' | 'assumed' | 'unknown';
+  sample: number;
+}
+
+export interface PlanResponse {
+  month: string;
+  target: { volumeMinor: number | null; newPartners: number | null };
+  rates: { averageOrder: PlanRate; contactRate: PlanRate; conversionRate: PlanRate };
+  /** Which single missing number breaks the chain, if any. */
+  blockedBy: 'no_target' | 'order_value' | 'conversion_rate' | 'contact_rate' | null;
+  funnel: {
+    step: 'names' | 'contacted' | 'customers';
+    need: number | null;
+    have: number;
+    short: number | null;
+  }[];
+  nameList: { target: number; have: number };
+  today: {
+    unrated: { id: string; name: string }[];
+    dueFollowUps: {
+      id: string;
+      dueAt: string;
+      leadId: string | null;
+      customerId: string | null;
+      notes: string | null;
+    }[];
+    neverStarted: { id: string; subjectId: string; subjectType: string }[];
+  };
+}

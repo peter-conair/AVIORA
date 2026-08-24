@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { PlanTab } from '@/components/prospecting/PlanTab';
 import { LearningPathTab } from '@/components/prospecting/LearningPathTab';
 import { GoalsTab } from '@/components/prospecting/GoalsTab';
 import { NameListTab } from '@/components/prospecting/NameListTab';
@@ -12,7 +13,9 @@ import { TrackerTab } from '@/components/prospecting/TrackerTab';
 import { ProspectingReportTab } from '@/components/prospecting/ProspectingReportTab';
 
 const TABS = [
-  // First, because it is the tab that says what the others are for.
+  // First, because it is the one that turns a target into today's work.
+  'plan',
+  // Then the path, which says what the rest of these tabs are for.
   'path',
   'goals',
   'checklist',
@@ -33,7 +36,7 @@ type Tab = (typeof TABS)[number];
  */
 export default function ProspectingPage() {
   const t = useTranslations('prospecting');
-  const [tab, setTab] = useState<Tab>('path');
+  const [tab, setTab] = useState<Tab>('plan');
   const [version, setVersion] = useState(0);
 
   return (
@@ -53,6 +56,7 @@ export default function ProspectingPage() {
           </button>
         ))}
       </div>
+      {tab === 'plan' ? <PlanTab /> : null}
       {tab === 'path' ? <LearningPathTab /> : null}
       {tab === 'goals' ? <GoalsTab /> : null}
       {tab === 'checklist' ? <ChecklistTab /> : null}

@@ -1809,7 +1809,8 @@
       "tracker": "Follow up",
       "checklist": "Daily",
       "weekly": "Weekly",
-      "path": "Path"
+      "path": "Path",
+      "plan": "Plan"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1922,5 +1923,35 @@
     "reading": "reading",
     "lessons": "{count} lessons",
     "noEnd": "This stage has no finish line — the percentage levels take over from here."
+  },
+  "plan": {
+    "backwards": "What the target actually asks for",
+    "rates": "The numbers in between",
+    "today": "Today",
+    "step": {
+      "names": "Names on your lists",
+      "contacted": "People spoken to",
+      "customers": "Customers"
+    },
+    "short": "{n} short",
+    "sheetNote": "The sheet's {target} rows are the exercise. This is what the target needs.",
+    "avgOrder": "Average order",
+    "contactRate": "Reach rate",
+    "conversionRate": "Close rate",
+    "source": {
+      "measured": "measured",
+      "assumed": "your estimate",
+      "unknown": "not enough history"
+    },
+    "notEnoughHistory": "Not enough of your own history to work these out yet. Put in your own estimate and the plan will use it — and keep saying it was an estimate.",
+    "useMyEstimate": "Use my estimate",
+    "needTarget": "Set this month's target first — there is nothing to work backwards from.",
+    "goSetTarget": "Set the target",
+    "unratedTitle": "Score these first",
+    "unratedWhy": "A name with no score cannot be planned around.",
+    "dueTitle": "{n} follow-ups due",
+    "openFollowUps": "Open follow-ups",
+    "neverStarted": "{n} people on a sheet have never been started.",
+    "nothingToday": "Nothing waiting. Add names or set a target."
   }
 }

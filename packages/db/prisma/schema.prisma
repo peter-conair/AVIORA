@@ -2179,6 +2179,17 @@ model BusinessGoal {
   developCustomersActual Int  @default(0) @map("develop_customers_actual")
   developPartnersActual  Int  @default(0) @map("develop_partners_actual")
 
+  /* ── planning assumptions (docs/69) ────────────────────────────────────
+     Used ONLY where a member's own history is too thin to measure a rate.
+     Kept on the month's goal rather than in a table of their own, because an
+     assumption belongs to the plan that was made with it — last March's guess
+     should not quietly steer this month's plan. */
+  assumedOrderValueMinor Int? @map("assumed_order_value_minor")
+  /// Percent, 1–100: of the names written down, how many get spoken to.
+  assumedContactRate     Int? @map("assumed_contact_rate")
+  /// Percent, 1–100: of the people spoken to, how many buy.
+  assumedConversionRate  Int? @map("assumed_conversion_rate")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
