@@ -38,6 +38,8 @@ import { TeamScopeService } from './modules/team/team-scope.service';
 import { GoalsController } from './modules/goal/goals.controller';
 import { LearningController } from './modules/learning/learning.controller';
 import { LearningMediaController } from './modules/learning/learning-media.controller';
+import { LearningAuthoringController } from './modules/learning/learning-authoring.controller';
+import { LearningAuthoringService } from './modules/learning/learning-authoring.service';
 import { LearningMediaService } from './modules/learning/learning-media.service';
 import { LearningReleaseService } from './modules/learning/learning-release.service';
 import { LearningAssignmentController } from './modules/learning/learning-assignment.controller';
@@ -174,6 +176,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     GoalsController,
     LearningController,
     LearningMediaController,
+    LearningAuthoringController,
     LearningAssignmentController,
     DashboardController,
     NotificationsController,
@@ -234,6 +237,7 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     LearningPathService,
     LearningReleaseService,
     LearningMediaService,
+    LearningAuthoringService,
     LearningAssignmentService,
     PlanService,
     PhotosService,

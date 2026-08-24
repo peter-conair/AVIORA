@@ -1,4 +1,4 @@
-# 69 · Stairstep–breakaway plans — a domain primer
+# 70 · Stairstep–breakaway plans — a domain primer
 
 > **This document seeds nothing.** It is a reference for the people building
 > the compensation engine, written because docs/26 forbids hard-coding a plan
