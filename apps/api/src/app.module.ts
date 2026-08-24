@@ -37,6 +37,11 @@ import { TeamsService } from './modules/team/teams.service';
 import { TeamScopeService } from './modules/team/team-scope.service';
 import { GoalsController } from './modules/goal/goals.controller';
 import { LearningController } from './modules/learning/learning.controller';
+import { LearningMediaController } from './modules/learning/learning-media.controller';
+import { LearningMediaService } from './modules/learning/learning-media.service';
+import { LearningReleaseService } from './modules/learning/learning-release.service';
+import { LearningAssignmentController } from './modules/learning/learning-assignment.controller';
+import { LearningAssignmentService } from './modules/learning/learning-assignment.service';
 import { DashboardController } from './modules/analytics/dashboard.controller';
 import { AnalyticsController } from './modules/analytics/analytics.controller';
 import { AnalyticsService } from './modules/analytics/analytics.service';
@@ -55,6 +60,10 @@ import { CustomerIndexService } from './modules/customer-index/customer-index.se
 import { CustomerIndexController } from './modules/customer-index/customer-index.controller';
 import { PhotosService } from './modules/photos/photos.service';
 import { PhotosController } from './modules/photos/photos.controller';
+import { PlanService } from './modules/plan/plan.service';
+import { PlanController } from './modules/plan/plan.controller';
+import { LearningPathService } from './modules/learning-path/learning-path.service';
+import { LearningPathController } from './modules/learning-path/learning-path.controller';
 import { StartService } from './modules/start/start.service';
 import { StartController } from './modules/start/start.controller';
 import { WeeklyUpdateService } from './modules/weekly-update/weekly-update.service';
@@ -164,6 +173,8 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     TeamsController,
     GoalsController,
     LearningController,
+    LearningMediaController,
+    LearningAssignmentController,
     DashboardController,
     NotificationsController,
     CrmController,
@@ -172,6 +183,8 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ChecklistController,
     WeeklyUpdateController,
     StartController,
+    LearningPathController,
+    PlanController,
     PhotosController,
     CustomerIndexController,
     AuditController,
@@ -218,6 +231,11 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     ChecklistService,
     WeeklyUpdateService,
     StartService,
+    LearningPathService,
+    LearningReleaseService,
+    LearningMediaService,
+    LearningAssignmentService,
+    PlanService,
     PhotosService,
     CustomerIndexService,
     KnowledgeService,

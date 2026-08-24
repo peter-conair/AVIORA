@@ -18,19 +18,31 @@ import {
 } from '../../common/auth/decorators';
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { TenantDb } from '../../common/db/tenant-db.service';
+import { LearningReleaseService } from './learning-release.service';
 
 @Controller()
 export class LearningController {
   constructor(
     private readonly db: TenantDb,
     private readonly cls: ClsService,
+    private readonly release: LearningReleaseService,
   ) {}
 
+  /**
+   * The library, with what the caller may see YET marked on it (docs/73 §5).
+   *
+   * A course they cannot open is still LISTED, with the reason. docs/37 §4
+   * answers 404 for another team's article because confirming it exists leaks
+   * something about that team; this is the caller's own curriculum, and
+   * pretending a lesson does not exist is how a leader hides the path from the
+   * person walking it.
+   */
   @Get('courses')
   @RequirePermissions(PERMISSIONS.LEARNING_VIEW)
   async listCourses() {
-    const courses = await this.db.tx((tx) =>
-      tx.course.findMany({
+    const memberId = (this.cls.get(CLS_MEMBER_ID) as string | undefined) ?? null;
+    return this.db.tx(async (tx) => {
+      const courses = await tx.course.findMany({
         where: { status: 'published' },
         orderBy: { createdAt: 'asc' },
         select: {
@@ -38,11 +50,50 @@ export class LearningController {
           code: true,
           title: true,
           description: true,
-          lessons: { select: { id: true, order: true, title: true }, orderBy: { order: 'asc' } },
+          releasePolicy: true,
+          releaseRule: true,
+          // `content` is null for most lessons — the seed lays out headings and
+          // leaves the words to the tenant (docs/67 §2). It travels with the
+          // list rather than behind a detail route because a lesson nobody can
+          // read is a lesson that may as well not have been written.
+          lessons: {
+            select: {
+              id: true,
+              order: true,
+              title: true,
+              content: true,
+              // Metadata only. The bytes are a separate, range-aware route and
+              // the storage key never leaves the API (docs/71).
+              assets: { select: { kind: true, locale: true, durationSeconds: true } },
+            },
+            orderBy: { order: 'asc' },
+          },
         },
-      }),
-    );
-    return { courses };
+      });
+
+      const releases = memberId
+        ? await this.release.forMember(tx, memberId, courses)
+        : new Map<string, { visible: boolean; lock: unknown; dueAt: Date | null }>();
+
+      return {
+        courses: courses.map((course) => {
+          const release = releases.get(course.id);
+          return {
+            ...course,
+            // No member (a platform reader) sees the library as it is authored,
+            // not as anybody's release state — there is no member to resolve.
+            visible: release?.visible ?? true,
+            lock: release?.lock ?? { state: 'open' },
+            dueAt: release?.dueAt ?? null,
+            // The lesson list itself is withheld when the course is not
+            // released. Titles alone can give away a programme's whole shape,
+            // and the course row already tells the member it exists and why it
+            // is shut.
+            lessons: release && !release.visible ? [] : course.lessons,
+          };
+        }),
+      };
+    });
   }
 
   /** Start a course — entitlement-gated (course.access via the member's plan). */

@@ -301,18 +301,79 @@ export interface GoalResponse {
 
 // ---- Learning ----
 
+/** Metadata only — the bytes come from a separate, range-aware route. */
+export interface LessonAssetRef {
+  kind: 'video' | 'captions' | 'thumbnail';
+  /** `*` serves every locale. */
+  locale: string;
+  durationSeconds: number | null;
+}
+
 export interface Lesson {
   id: string;
   order: number;
   title: string;
+  /** Null for most lessons — the seed writes headings, the tenant writes the words. */
+  content: string | null;
+  assets: LessonAssetRef[];
 }
+
+/**
+ * Why a course is shut (docs/73 §5).
+ *
+ * Carried to the MEMBER, not only to the leader. A locked course is listed with
+ * its reason rather than hidden, because this is the member's own curriculum
+ * and pretending it does not exist is how a leader hides the path from the
+ * person walking it.
+ */
+export type CourseLock =
+  | { state: 'open' }
+  | { state: 'awaiting_rule'; after: string }
+  | { state: 'awaiting_leader' }
+  | { state: 'held'; reason: string };
 
 export interface Course {
   id: string;
   code: string;
   title: string;
   description: string | null;
+  releasePolicy: 'open' | 'on_assignment';
+  visible: boolean;
+  lock: CourseLock;
+  dueAt: string | null;
+  /** Empty while the course is locked — a programme's shape reads off its headings. */
   lessons: Lesson[];
+}
+
+// ---- The leader's release board (docs/73 §9) ----
+
+export interface BoardMember {
+  id: string;
+  displayName: string;
+}
+
+export interface BoardCourse {
+  id: string;
+  code: string;
+  title: string;
+  releasePolicy: 'open' | 'on_assignment';
+}
+
+export interface BoardCell {
+  memberId: string;
+  courseId: string;
+  visible: boolean;
+  lock: CourseLock;
+  dueAt: string | null;
+  status: 'not_started' | 'in_progress' | 'completed';
+  completedLessons: number;
+  totalLessons: number;
+}
+
+export interface BoardResponse {
+  members: BoardMember[];
+  courses: BoardCourse[];
+  cells: BoardCell[];
 }
 
 export interface CoursesResponse {
@@ -3083,4 +3144,59 @@ export interface ProgressPhoto {
   takenAt: string;
   contentType: string;
   byteSize: number;
+}
+
+/* ── learning path (docs/67) ─────────────────────────────────────────────── */
+
+export interface LearningPathResponse {
+  stages: {
+    key: string;
+    label: string;
+    cleared: boolean;
+    know: {
+      courseId: string | null;
+      code: string;
+      title: string;
+      lessonCount: number;
+      status: 'not_started' | 'in_progress' | 'completed' | string;
+    }[];
+    do: { key: string; label: string; href: string; done: boolean; source: string }[];
+  }[];
+  currentStageKey: string | null;
+  clearedCount: number;
+  total: number;
+}
+
+/* ── the plan (docs/69) ──────────────────────────────────────────────────── */
+
+export interface PlanRate {
+  value: number | null;
+  source: 'measured' | 'assumed' | 'unknown';
+  sample: number;
+}
+
+export interface PlanResponse {
+  month: string;
+  target: { volumeMinor: number | null; newPartners: number | null };
+  rates: { averageOrder: PlanRate; contactRate: PlanRate; conversionRate: PlanRate };
+  /** Which single missing number breaks the chain, if any. */
+  blockedBy: 'no_target' | 'order_value' | 'conversion_rate' | 'contact_rate' | null;
+  funnel: {
+    step: 'names' | 'contacted' | 'customers';
+    need: number | null;
+    have: number;
+    short: number | null;
+  }[];
+  nameList: { target: number; have: number };
+  today: {
+    unrated: { id: string; name: string }[];
+    dueFollowUps: {
+      id: string;
+      dueAt: string;
+      leadId: string | null;
+      customerId: string | null;
+      notes: string | null;
+    }[];
+    neverStarted: { id: string; subjectId: string; subjectType: string }[];
+  };
 }

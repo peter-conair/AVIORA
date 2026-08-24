@@ -7,7 +7,9 @@
   "common": {
     "loading": "Loading…",
     "saving": "Saving…",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "errorTitle": "Could not load this",
+    "retry": "Try again"
   },
   "shell": {
     "loading": "Loading…",
@@ -278,10 +280,32 @@
     "starting": "Starting…",
     "completeLesson": "Complete",
     "completedLesson": "Done",
+    "readLesson": "Read",
     "lessons": "{count} lessons",
     "progress": "{completed}/{total} lessons completed",
     "courseCompleted": "Course completed",
-    "notEntitled": "Your current plan doesn't include courses. Please contact your workspace admin to upgrade."
+    "notEntitled": "Your current plan doesn't include courses. Please contact your workspace admin to upgrade.",
+    "lockedUntil": "Opens after {requirement}",
+    "lockedHeld": "Your upline has not opened this yet: {reason}",
+    "lockedByLeader": "Your upline has not opened this yet",
+    "boardLink": "Release to my team",
+    "boardTitle": "Release training",
+    "boardIntro": "Choose a course, then choose who it opens for.",
+    "boardForbidden": "You do not lead a team, so there is nobody to release training to.",
+    "boardNoMembers": "Nobody is in a team you lead yet.",
+    "boardCourse": "Course",
+    "boardOpenCourseNote": "This course is open to everyone, so it cannot be held back from one person.",
+    "policyOpen": "open to everyone",
+    "boardSelected": "{count} selected",
+    "boardSelectAll": "Select all",
+    "boardClear": "Clear",
+    "boardOpen": "Open",
+    "boardLocked": "Locked",
+    "boardRelease": "Open for selected",
+    "boardWithdraw": "Undo release",
+    "boardHold": "Hold back",
+    "boardHoldReason": "Reason (the member sees this)",
+    "boardHoldPlaceholder": "e.g. finish week 2 first"
   },
   "knowledge": {
     "title": "Healthy Living Knowledge",
@@ -1799,6 +1823,30 @@
   },
   "prospecting": {
     "title": "Prospecting",
+    "hubIntro": "Your prospecting workbook. Work through it in order, or open the sheet you need.",
+    "nextUp": "Do this next",
+    "startThis": "Start",
+    "backToContents": "Contents",
+    "upNext": "Up next",
+    "position": "{n} of {total}",
+    "groups": {
+      "prepare": "1 · Set up",
+      "find": "2 · Find names",
+      "work": "3 · Daily work",
+      "review": "4 · Review"
+    },
+    "blurbs": {
+      "path": "Where you are, what to learn, what to do",
+      "goals": "This month's volume and partner targets",
+      "plan": "How many names the target needs, and what to do today",
+      "jogger": "Prompts for the names you have forgotten",
+      "sponsor": "People to invite into the business, scored",
+      "customer": "People to sell to, scored",
+      "checklist": "The daily work that keeps it moving",
+      "tracker": "Who is at which step, and who has stopped",
+      "weekly": "This week, before you talk to your upline",
+      "report": "Every list in one place"
+    },
     "forbidden": "You do not have access to this.",
     "tabs": {
       "jogger": "Memory Jogger",
@@ -1808,7 +1856,9 @@
       "goals": "Goals",
       "tracker": "Follow up",
       "checklist": "Daily",
-      "weekly": "Weekly"
+      "weekly": "Weekly",
+      "path": "Path",
+      "plan": "Plan"
     },
     "lists": {
       "sponsor": "Sponsor name list",
@@ -1898,7 +1948,20 @@
     "questionTitle": "Q & A",
     "questionHint": "Anything to ask.",
     "saveWeekly": "Save this week",
-    "savedWeekly": "Saved"
+    "savedWeekly": "Saved",
+    "sheetLabel": "Sheet",
+    "sourceComputedShort": "Measured",
+    "sourceManualShort": "You type it",
+    "achieved": "{value} so far",
+    "achievedOf": "{value} of {target}",
+    "saveBarHint": "Not saved yet",
+    "today": "Today",
+    "weekGrid": "The whole week",
+    "todayHint": "Tap to mark it done",
+    "allDoneToday": "All done for today",
+    "joggerCategoryMeta": "{prompts} prompts · {named} names so far",
+    "scoreThisPerson": "Score",
+    "hideScoring": "Hide scoring"
   },
   "start": {
     "title": "Start your business",
@@ -1908,5 +1971,48 @@
     "markDone": "I did it",
     "askedShort": "you tick",
     "readShort": "auto"
+  },
+  "path": {
+    "intro": "What to know, and what to do — at each stage.",
+    "progress": "{done} of {total} stages behind you",
+    "toKnow": "What to know",
+    "toDo": "What to do",
+    "youAreHere": "you are here",
+    "later": "later",
+    "notYet": "not yet",
+    "done": "done",
+    "reading": "reading",
+    "lessons": "{count} lessons",
+    "noEnd": "This stage has no finish line — the percentage levels take over from here."
+  },
+  "plan": {
+    "backwards": "What the target actually asks for",
+    "rates": "The numbers in between",
+    "today": "Today",
+    "step": {
+      "names": "Names on your lists",
+      "contacted": "People spoken to",
+      "customers": "Customers"
+    },
+    "short": "{n} short",
+    "sheetNote": "The sheet's {target} rows are the exercise. This is what the target needs.",
+    "avgOrder": "Average order",
+    "contactRate": "Reach rate",
+    "conversionRate": "Close rate",
+    "source": {
+      "measured": "measured",
+      "assumed": "your estimate",
+      "unknown": "not enough history"
+    },
+    "notEnoughHistory": "Not enough of your own history to work these out yet. Put in your own estimate and the plan will use it — and keep saying it was an estimate.",
+    "useMyEstimate": "Use my estimate",
+    "needTarget": "Set this month's target first — there is nothing to work backwards from.",
+    "goSetTarget": "Set the target",
+    "unratedTitle": "Score these first",
+    "unratedWhy": "A name with no score cannot be planned around.",
+    "dueTitle": "{n} follow-ups due",
+    "openFollowUps": "Open follow-ups",
+    "neverStarted": "{n} people on a sheet have never been started.",
+    "nothingToday": "Nothing waiting. Add names or set a target."
   }
 }

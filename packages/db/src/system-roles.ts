@@ -49,6 +49,16 @@ export const SYSTEM_ROLES: SystemRoleDef[] = [
       // (docs/37 §5). Reading team knowledge needs no grant at all — that is
       // membership, not leadership.
       { key: 'knowledge.team.manage', scope: SCOPES.DESCENDANT_TEAMS },
+      // Releasing training to the people they lead (docs/73 §9). The same
+      // scope, and the same sentence, as team knowledge above: writing goes
+      // DOWN the tree. As originally specced this was TENANT_ALL only, which
+      // made the whole feature — a leader deciding what their own line sees
+      // next — impossible for the only person who would ever use it.
+      { key: 'learning.assign', scope: SCOPES.DESCENDANT_TEAMS },
+      // A leader is a member too and normally holds MEMBER as well, but the
+      // library screen is where assignment is done from, so leadership carries
+      // its own read rather than depending on a second role being present.
+      { key: 'learning.view', scope: SCOPES.SELF },
       { key: 'team.member.manage', scope: SCOPES.DIRECT_TEAM },
       { key: 'member.view', scope: SCOPES.DESCENDANT_TEAMS },
       // leaders coach their org's pipeline but do not own the records
