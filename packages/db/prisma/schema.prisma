@@ -141,12 +141,12 @@ model Member {
   commissionEntries CommissionEntry[]
   rewardGrants      RewardGrant[]
   legalAcceptances  LegalAcceptance[]
+  businessGoals     BusinessGoal[]
+  weeklyUpdates     WeeklyUpdate[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, status])
   @@map("members")
-  businessGoals BusinessGoal[]
-  weeklyUpdates WeeklyUpdate[]
 }
 
 model Role {
@@ -441,12 +441,12 @@ model PartnerUser {
 /// they did not bring, because these numbers are the basis of what they get
 /// paid (docs/46 §2).
 model PartnerReferral {
-  id           String   @id @default(uuid(7)) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  partnerId    String   @map("partner_id") @db.Uuid
+  id           String    @id @default(uuid(7)) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  partnerId    String    @map("partner_id") @db.Uuid
   /// Null while the invitation is outstanding.
-  memberId     String?  @map("member_id") @db.Uuid
-  invitationId String?  @map("invitation_id") @db.Uuid
+  memberId     String?   @map("member_id") @db.Uuid
+  invitationId String?   @map("invitation_id") @db.Uuid
   joinedAt     DateTime? @map("joined_at") @db.Timestamptz(6)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -553,15 +553,24 @@ model Goal {
 }
 
 model Course {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  code        String
-  title       String
-  description String?
-  status      String   @default("published")
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String   @id @default(uuid(7)) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  code          String
+  title         String
+  description   String?
+  status        String   @default("published")
+  metadata      Json?
+  /// Who may see this YET (docs/73 §3). `open` — anyone already entitled, any
+  /// time. `on_assignment` — only once released to that member. The default is
+  /// open on purpose: a tenant that never touches this feature has an open
+  /// library and no per-member rows at all.
+  releasePolicy String   @default("open") @map("release_policy")
+  /// `{ after: 'course:<code>' | 'stage:<key>' | 'days:<n>' }` — evaluated
+  /// against the evidence docs/67 §5 already computes. Null means a leader
+  /// releases it by hand or it is open to everyone.
+  releaseRule   Json?    @map("release_rule")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   lessons Lesson[]
 
@@ -579,10 +588,101 @@ model Lesson {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  course Course @relation(fields: [courseId], references: [id])
+  course Course        @relation(fields: [courseId], references: [id])
+  assets LessonAsset[]
 
   @@unique([courseId, order])
   @@map("lessons")
+}
+
+/// A lesson's media (docs/73 §6): the video, its captions, a thumbnail — and
+/// one of each per locale, because a Thai video with no Thai captions is
+/// unusable on a phone in a noisy room, which is where this is watched.
+model LessonAsset {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  lessonId        String   @map("lesson_id") @db.Uuid
+  /// video · captions · thumbnail
+  kind            String
+  /// `*` means "serves every locale" — a thumbnail, usually. Not null, because
+  /// Postgres treats NULLs as distinct and the unique key below would then let
+  /// a lesson hold two of the same thing.
+  locale          String   @default("*")
+  /// Where the bytes live (docs/74 §1).
+  ///
+  /// `storage` — ours, served through this API, access controlled.
+  /// `youtube` — somebody else's, embedded, and **the release rules become
+  /// advice rather than enforcement**, because an unlisted link works for
+  /// anyone who has it. The column exists so nothing downstream has to guess
+  /// which of those two promises it is making.
+  provider        String   @default("storage")
+  /// Set for `storage`. Opaque, returned by `StoragePort.put`, never
+  /// constructed by a caller and never handed to a browser (docs/71).
+  storageKey      String?  @map("storage_key")
+  contentType     String?  @map("content_type")
+  byteSize        Int?     @map("byte_size")
+  /// Set for `youtube` — the eleven-character video id, not a URL. A URL would
+  /// invite somebody to store a `watch?v=…&list=…` and leak the playlist.
+  externalId      String?  @map("external_id")
+  durationSeconds Int?     @map("duration_seconds")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  lesson Lesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([lessonId, kind, locale])
+  @@index([tenantId, lessonId])
+  @@map("lesson_assets")
+}
+
+/// Sequencing, NOT permission (docs/73 §1).
+///
+/// Deleting every row in this table must leave no member able to see anything
+/// they could not see before — that is the test of whether it is a grant table,
+/// and docs/37 §6 refused a grant table for good reasons that still hold.
+model LearningAssignment {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  memberId String @map("member_id") @db.Uuid
+  courseId String @map("course_id") @db.Uuid
+  /// assigned — released to this member · held — kept shut, `reason` required
+  state    String @default("assigned")
+  /// manual — a leader decided · rule — the course's own releaseRule fired
+  source   String @default("manual")
+
+  assignedByMemberId String    @map("assigned_by_member_id") @db.Uuid
+  assignedAt         DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  dueAt              DateTime? @map("due_at") @db.Timestamptz(6)
+  /// Shown to the MEMBER, not only to the leader (docs/73 §5). A hold nobody
+  /// can see is how this feature becomes a way of keeping somebody dependent.
+  reason             String?
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([memberId, courseId])
+  @@index([tenantId, courseId, state])
+  @@map("learning_assignments")
+}
+
+/// Watching, finer than `learning_progress` (docs/73 §6).
+///
+/// `positionSeconds` and `watchedSeconds` look redundant and are not. Position
+/// alone means dragging the scrubber to the end marks a lesson finished, and
+/// the moment a leader reads completion as a compliance number that is exactly
+/// what happens. Watched seconds accumulate from playback heartbeats instead.
+model LessonView {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  memberId        String    @map("member_id") @db.Uuid
+  lessonId        String    @map("lesson_id") @db.Uuid
+  positionSeconds Int       @default(0) @map("position_seconds")
+  watchedSeconds  Int       @default(0) @map("watched_seconds")
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([memberId, lessonId])
+  @@index([tenantId, memberId])
+  @@map("lesson_views")
 }
 
 model LearningProgress {
@@ -676,18 +776,20 @@ model Lead {
 }
 
 model Customer {
-  id                  String   @id @default(uuid(7)) @db.Uuid
-  tenantId            String   @map("tenant_id") @db.Uuid
-  ownerMemberId       String   @map("owner_member_id") @db.Uuid
-  memberId            String?  @map("member_id") @db.Uuid
-  name                String
-  email               String?
-  phone               String?
-  emailBidx           String?  @map("email_bidx")
-  phoneBidx           String?  @map("phone_bidx")
-  status              String   @default("active")
+  id            String  @id @default(uuid(7)) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  ownerMemberId String  @map("owner_member_id") @db.Uuid
+  memberId      String? @map("member_id") @db.Uuid
+  name          String
+  email         String?
+  phone         String?
+  emailBidx     String? @map("email_bidx")
+  phoneBidx     String? @map("phone_bidx")
+  status        String  @default("active")
 
-  /* ── the customer index card (docs/66) ─────────────────────────────────── */
+  /**
+   * ── the customer index card (docs/66) ───────────────────────────────────
+   */
   /// ABO#, membership number — the business's own account number for them.
   externalCode        String?   @map("external_code")
   /// When that membership runs out, so a renewal can be seen coming.
@@ -709,14 +811,14 @@ model Customer {
 
   followUps    FollowUp[]
   interactions Interaction[]
+  consents     CustomerConsent[]
+  photos       ProgressPhoto[]
+  monthOrders  CustomerMonthOrder[]
 
   @@index([tenantId, ownerMemberId, status])
   @@index([tenantId, emailBidx])
   @@index([tenantId, phoneBidx])
   @@map("customers")
-  consents CustomerConsent[]
-  photos   ProgressPhoto[]
-  monthOrders CustomerMonthOrder[]
 }
 
 model FollowUp {
@@ -2118,15 +2220,15 @@ model TenantDatabase {
 /// every five minutes — the fastest way to teach somebody to filter alerts
 /// into a folder they never open.
 model AlertState {
-  check         String    @id
-  firing        Boolean   @default(false)
+  check          String    @id
+  firing         Boolean   @default(false)
   /// The measured value that decided it, kept so an email can say what changed.
-  value         String?
+  value          String?
   /// When this check first went from quiet to firing in the current episode.
-  firingSince   DateTime? @map("firing_since") @db.Timestamptz(6)
+  firingSince    DateTime? @map("firing_since") @db.Timestamptz(6)
   /// When somebody was last told about it — starting, reminding, or clearing.
   lastNotifiedAt DateTime? @map("last_notified_at") @db.Timestamptz(6)
-  checkedAt     DateTime  @default(now()) @map("checked_at") @db.Timestamptz(6)
+  checkedAt      DateTime  @default(now()) @map("checked_at") @db.Timestamptz(6)
 
   @@map("alert_states")
 }
@@ -2157,21 +2259,21 @@ model ScheduledJobRun {
 
 /// The monthly goal sheet (docs/58). One per member per month.
 model BusinessGoal {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  memberId  String   @map("member_id") @db.Uuid
+  id       String   @id @default(uuid(7)) @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  memberId String   @map("member_id") @db.Uuid
   /// First day of the month this sheet is for, in the tenant's zone.
-  month     DateTime @map("month") @db.Date
+  month    DateTime @map("month") @db.Date
 
   /// The narrative half of the sheet. Stored, never scored.
-  shortTerm String?  @map("short_term")
-  midTerm   String?  @map("mid_term")
-  longTerm  String?  @map("long_term")
-  lifeGoal  String?  @map("life_goal")
+  shortTerm String? @map("short_term")
+  midTerm   String? @map("mid_term")
+  longTerm  String? @map("long_term")
+  lifeGoal  String? @map("life_goal")
 
   /// The numeric half. Volume is in minor units like every other money column.
-  volumeTargetMinor  Int? @map("volume_target_minor")
-  newPartnersTarget  Int? @map("new_partners_target")
+  volumeTargetMinor      Int? @map("volume_target_minor")
+  newPartnersTarget      Int? @map("new_partners_target")
   /// "พัฒนา 5+3" — a coaching convention whose definition belongs to the
   /// business, so its progress is typed rather than computed (docs/58 §3).
   developCustomersTarget Int? @map("develop_customers_target")
@@ -2228,13 +2330,13 @@ model TrackerTemplate {
 /// One column. `stageLabel` groups columns the way 6WNY groups them into
 /// "before the course / day 4 / day 7"; a sheet with no stages leaves it null.
 model TrackerStep {
-  id         String  @id @default(uuid(7)) @db.Uuid
-  tenantId   String  @map("tenant_id") @db.Uuid
-  templateId String  @map("template_id") @db.Uuid
-  key        String
-  label      String
-  stageLabel String? @map("stage_label")
-  order      Int     @default(0)
+  id          String  @id @default(uuid(7)) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  templateId  String  @map("template_id") @db.Uuid
+  key         String
+  label       String
+  stageLabel  String? @map("stage_label")
+  order       Int     @default(0)
   /// When set, this column asks for a NUMBER in this unit rather than a tick —
   /// "ชั่งน้ำหนัก (kg.)" is a measurement, and a tick throws the measurement
   /// away (docs/64 §2).
@@ -2250,19 +2352,19 @@ model TrackerStep {
 
 /// One row: this sheet, applied to this person.
 model TrackerEntry {
-  id          String  @id @default(uuid(7)) @db.Uuid
-  tenantId    String  @map("tenant_id") @db.Uuid
-  templateId  String  @map("template_id") @db.Uuid
+  id            String  @id @default(uuid(7)) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  templateId    String  @map("template_id") @db.Uuid
   /// 'lead' | 'member' | 'customer' — matches the template's subjectType.
-  subjectType String  @map("subject_type")
-  subjectId   String  @map("subject_id") @db.Uuid
+  subjectType   String  @map("subject_type")
+  subjectId     String  @map("subject_id") @db.Uuid
   /// Who is working this row; a sheet belongs to the person doing the work.
-  ownerMemberId String @map("owner_member_id") @db.Uuid
+  ownerMemberId String  @map("owner_member_id") @db.Uuid
   /// "LINE 1".."LINE 6" on the Diamond sheet; null everywhere else.
-  groupLabel  String? @map("group_label")
+  groupLabel    String? @map("group_label")
 
-  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
-  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
   /// Denormalised from the marks so "who has stalled" is one indexed query
   /// rather than a scan of every tick (docs/59 §5).
   lastMarkedAt DateTime? @map("last_marked_at") @db.Timestamptz(6)
@@ -2282,16 +2384,16 @@ model TrackerEntry {
 /// A tick, with the date it happened and who put it there. The date is the
 /// whole reason this is not a boolean column.
 model TrackerMark {
-  id       String   @id @default(uuid(7)) @db.Uuid
-  tenantId String   @map("tenant_id") @db.Uuid
-  entryId  String   @map("entry_id") @db.Uuid
-  stepId   String   @map("step_id") @db.Uuid
-  markedAt DateTime @default(now()) @map("marked_at") @db.Timestamptz(6)
-  markedByMemberId String? @map("marked_by_member_id") @db.Uuid
+  id               String   @id @default(uuid(7)) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  entryId          String   @map("entry_id") @db.Uuid
+  stepId           String   @map("step_id") @db.Uuid
+  markedAt         DateTime @default(now()) @map("marked_at") @db.Timestamptz(6)
+  markedByMemberId String?  @map("marked_by_member_id") @db.Uuid
   /// The number, for a step that asks for one. Kept beside the date, which is
   /// what makes before-and-after derivable rather than remembered.
-  value    Decimal? @db.Decimal(10, 2)
-  note     String?
+  value            Decimal? @db.Decimal(10, 2)
+  note             String?
 
   entry TrackerEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   step  TrackerStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
@@ -2388,15 +2490,15 @@ model ProgressPhoto {
 /// hand-ticked month that disagrees with the orders table is a month nobody can
 /// resolve.
 model CustomerMonthOrder {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  tenantId   String   @map("tenant_id") @db.Uuid
-  customerId String   @map("customer_id") @db.Uuid
-  year       Int
+  id               String   @id @default(uuid(7)) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  customerId       String   @map("customer_id") @db.Uuid
+  year             Int
   /// 1–12.
-  month      Int
-  note       String?
-  markedByMemberId String @map("marked_by_member_id") @db.Uuid
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  month            Int
+  note             String?
+  markedByMemberId String   @map("marked_by_member_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 

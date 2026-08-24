@@ -63,9 +63,9 @@ is why those rows are dashes all the way across (docs/07 §1)._
 | `health.profile.view`          | tenant   | `TENANT_ALL` | —                  | `SELF`        |
 | `integration.manage`           | tenant   | `TENANT_ALL` | —                  | —             |
 | `knowledge.team.manage`        | tenant   | `TENANT_ALL` | `DESCENDANT_TEAMS` | —             |
-| `learning.assign`              | tenant   | `TENANT_ALL` | —                  | —             |
+| `learning.assign`              | tenant   | `TENANT_ALL` | `DESCENDANT_TEAMS` | —             |
 | `learning.manage`              | tenant   | `TENANT_ALL` | —                  | —             |
-| `learning.view`                | tenant   | `TENANT_ALL` | —                  | `SELF`        |
+| `learning.view`                | tenant   | `TENANT_ALL` | `SELF`             | `SELF`        |
 | `member.invite`                | tenant   | `TENANT_ALL` | —                  | —             |
 | `member.manage`                | tenant   | `TENANT_ALL` | —                  | —             |
 | `member.view`                  | tenant   | `TENANT_ALL` | `DESCENDANT_TEAMS` | —             |

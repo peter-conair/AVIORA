@@ -5,9 +5,9 @@
 Two questions run through this whole product, and the answers were lying in
 separate places:
 
-| | Where it was | What was wrong with it |
-|---|---|---|
-| **what to DO** | the start path (docs/63) | covered the first stage and stopped |
+|                  | Where it was                                 | What was wrong with it                                   |
+| ---------------- | -------------------------------------------- | -------------------------------------------------------- |
+| **what to DO**   | the start path (docs/63)                     | covered the first stage and stopped                      |
 | **what to KNOW** | `recommendedCourseIds` per rank (docs/62 §4) | empty until an admin fills it — so, in practice, nothing |
 
 Between "you have your first customer" and "you are 6%" there was no answer to
@@ -62,3 +62,29 @@ being wrong on its own, because it teaches them to trust neither.
 Stage 5 has `clearedBy: 'never'` and the screen says so. Building lines has no
 completion; the percentage ladder (docs/62) takes over from there, and a tick
 against it would be a lie with a certificate on it.
+
+## 7. One course carries its own words — and why that is not a reversal
+
+§2 says empty lessons are honest about being empty, and that stands for every
+course here but one. `path-plan` ships with its body text.
+
+The line is not "platform content versus tenant content"; it is **fact about the
+plan family versus opinion about a plan**. How a differential is computed —
+your rate minus the rate already paid to the line the volume came through — is
+the same sentence at every company that runs a stairstep plan. What each rung
+requires is not, and that stays where docs/62 §2 put it: a form the tenant
+fills in, seeded at zero, refused activation while it is still zero.
+
+The reason to write those particular words rather than leave a heading is that
+a member who cannot read their own payout has no way to tell a mistake from the
+plan working as designed. The most common support question in this business —
+_"why did my percentage on that line go down?"_ — has an answer that is
+reassuring once heard and corrosive while unheard. A heading called
+"Differential" answers nobody.
+
+`PathLessonSeed.body` is optional and used once. If a second course ever wants
+it, the test is the same one: could this paragraph be wrong for a tenant who
+runs a different plan? If yes, it is a heading.
+
+docs/70 is the primer the course is drawn from, and the place where the
+mechanics — and the two gaps they open in the rule engine — are argued out.

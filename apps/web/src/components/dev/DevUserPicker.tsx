@@ -14,6 +14,8 @@ interface DevUser {
 
 interface DevUsersResponse {
   users: DevUser[];
+  /** Throwaway e2e accounts the API left out — 0 when they are already shown. */
+  hiddenTestAccounts: number;
 }
 
 interface DevUserPickerProps {
@@ -34,7 +36,9 @@ interface DevUserPickerProps {
 export function DevUserPicker({ onSignedIn }: DevUserPickerProps) {
   const [available, setAvailable] = useState(true);
   const [users, setUsers] = useState<DevUser[] | null>(null);
+  const [hidden, setHidden] = useState(0);
   const [query, setQuery] = useState('');
+  const [includeTest, setIncludeTest] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,11 +48,16 @@ export function DevUserPicker({ onSignedIn }: DevUserPickerProps) {
     // per keystroke makes the results race each other back.
     const timer = setTimeout(
       () => {
-        const suffix = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+        const params = new URLSearchParams();
+        if (query.trim()) params.set('q', query.trim());
+        if (includeTest) params.set('all', '1');
+        const suffix = params.toString() ? `?${params}` : '';
         api
           .get<DevUsersResponse>(`/dev/users${suffix}`)
           .then((res) => {
-            if (!cancelled) setUsers(res.users);
+            if (cancelled) return;
+            setUsers(res.users);
+            setHidden(res.hiddenTestAccounts);
           })
           .catch(() => {
             if (!cancelled) setAvailable(false);
@@ -60,7 +69,7 @@ export function DevUserPicker({ onSignedIn }: DevUserPickerProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, includeTest]);
 
   if (!available) return null;
 
@@ -92,6 +101,20 @@ export function DevUserPicker({ onSignedIn }: DevUserPickerProps) {
         aria-label="Filter dev users"
         className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
       />
+
+      {hidden > 0 || includeTest ? (
+        <label className="mt-2 flex items-center gap-2 text-xs text-amber-800">
+          <input
+            type="checkbox"
+            checked={includeTest}
+            onChange={(e) => setIncludeTest(e.target.checked)}
+            className="rounded border-amber-400"
+          />
+          {includeTest
+            ? 'Including e2e test accounts'
+            : `Include ${hidden} e2e test account${hidden === 1 ? '' : 's'}`}
+        </label>
+      ) : null}
 
       {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
 

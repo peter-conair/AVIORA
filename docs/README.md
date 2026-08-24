@@ -78,10 +78,12 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 64  | [6WNY — from a checklist to a programme](./64-six-wny-programme.md)                               | Sprint 45                                                 |
 | 65  | [Before/after photographs, and consent](./65-progress-photos.md)                                  | Sprint 46                                                 |
 | 66  | [The customer index card](./66-customer-index.md)                                                 | Sprint 47                                                 |
-| 67  | [The learning path — what to know, what to do](./67-learning-path.md) | Sprint 49 |
-| 68  | [White-label that reaches the product](./68-brand-theming.md) | Sprint 50 |
-| 69  | [The plan — backwards from the target, forwards to today](./69-the-plan.md) | Sprint 51 |
-| 68  | [Stairstep–breakaway plans — a domain primer](./68-network-plan-primer.md) | Reference |
+| 67  | [The learning path — what to know, what to do](./67-learning-path.md)                             | Sprint 49                                                 |
+| 68  | [White-label that reaches the product](./68-brand-theming.md)                                     | Sprint 50                                                 |
+| 69  | [The plan — backwards from the target, forwards to today](./69-the-plan.md)                       | Sprint 51                                                 |
+| 70  | [Stairstep–breakaway plans — a domain primer](./70-network-plan-primer.md)                        | Reference                                                 |
+| 73  | [Video, and who is allowed to see it yet](./73-video-and-who-may-see-it.md)                       | Sprint 51                                                 |
+| 74  | [Media somebody else hosts](./74-media-somebody-else-hosts.md)                                    | Sprint 51                                                 |
 
 ## Canonical stack (see ADRs)
 

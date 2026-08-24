@@ -175,6 +175,18 @@ async function computeMetric(scope: MetricScope, requirement: MetricRequirement)
 
     case 'downline_volume':
     case 'referral_downline_volume': {
+      // Breakaway (docs/70 §4): a leg that reached the threshold stops counting
+      // toward the volume that qualifies its upline. Absent the param this is
+      // the plain subtree sum it has always been — a plan without breakaway
+      // never sets it and never pays for the extra walk.
+      const breakawayAt = numeric(params?.excludeLegsAtOrAboveMinor);
+      if (breakawayAt > 0) {
+        const legs = await legVolumes(scope, requirement);
+        return legs.reduce(
+          (sum, leg) => (leg.volumeMinor >= breakawayAt ? sum : sum + leg.volumeMinor),
+          0,
+        );
+      }
       const ids = await resolveGraph(scope, requirement).downline(scope, scope.memberId, params);
       return paidVolume(scope, ids, requirement.window);
     }
@@ -190,19 +202,9 @@ async function computeMetric(scope: MetricScope, requirement: MetricRequirement)
     }
 
     case 'qualified_legs': {
-      const graph = resolveGraph(scope, requirement);
       const legVolumeMinor = numeric(params?.legVolumeMinor);
-      const directs = await graph.directs(scope, scope.memberId, params);
-      let qualified = 0;
-      for (const direct of directs) {
-        const ids = await graph.downline(scope, direct, params);
-        // A leg is the line INCLUDING the person at its head: the member who
-        // was referred is part of the line they lead. Excluding them would score
-        // an active direct referral with no downline as a dead leg.
-        const volume = await paidVolume(scope, [direct, ...ids], requirement.window);
-        if (volume >= legVolumeMinor) qualified += 1;
-      }
-      return qualified;
+      const legs = await legVolumes(scope, requirement);
+      return legs.filter((leg) => leg.volumeMinor >= legVolumeMinor).length;
     }
 
     case 'courses_completed':
@@ -217,6 +219,47 @@ async function computeMetric(scope: MetricScope, requirement: MetricRequirement)
     default:
       return 0;
   }
+}
+
+export interface LegVolume {
+  /** The member at the head of the leg — a direct, on the requirement's graph. */
+  memberId: string;
+  /** The whole line's volume, over the requirement's window. */
+  volumeMinor: number;
+}
+
+/**
+ * Each direct leg below `scope.memberId`, with the volume of the entire line.
+ *
+ * A leg is the line INCLUDING the person at its head: the member who was
+ * sponsored is part of the line they lead, and excluding them would score an
+ * active direct with no downline of their own as a dead leg. Three callers now
+ * depend on that sentence being true — `qualified_legs`, breakaway exclusion,
+ * and the differential payout — so it is written once here rather than three
+ * times slightly differently.
+ *
+ * Note the depth cap counts from the leg's head, not from `scope.memberId`, so
+ * a very deep line is measured one level further down here than a plain
+ * `downline_volume` over the same member would reach. That has been true of
+ * `qualified_legs` since Sprint 9; it is called out because breakaway now makes
+ * the two numbers appear side by side in the same rule.
+ */
+export async function legVolumes(
+  scope: MetricScope,
+  requirement: MetricRequirement,
+): Promise<LegVolume[]> {
+  const graph = resolveGraph(scope, requirement);
+  const params = requirement.params ?? null;
+  const directs = await graph.directs(scope, scope.memberId, params);
+  const legs: LegVolume[] = [];
+  for (const direct of directs) {
+    const ids = await graph.downline(scope, direct, params);
+    legs.push({
+      memberId: direct,
+      volumeMinor: await paidVolume(scope, [direct, ...ids], requirement.window),
+    });
+  }
+  return legs;
 }
 
 /** Volume is integer minor units, summed from PAID orders only. */

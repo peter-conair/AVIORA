@@ -1,7 +1,8 @@
+import { createReadStream } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
-import type { StoragePort, StoredObject } from './storage.port';
+import type { StoragePort, StoredObject, StoredRange } from './storage.port';
 
 /**
  * Files on the API container's own disk (docs/65 §4.1).
@@ -46,6 +47,40 @@ export class LocalDiskAdapter implements StoragePort {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * A bounded read stream (docs/73 §7). `end` is inclusive here and in
+   * `createReadStream`, which is the one place the two conventions agree, so no
+   * arithmetic is needed and none is done.
+   */
+  async getRange(
+    key: string,
+    range?: { start: number; end?: number },
+  ): Promise<StoredRange | null> {
+    const file = this.pathFor(key);
+    let totalLength: number;
+    try {
+      totalLength = (await fs.stat(file)).size;
+    } catch {
+      return null;
+    }
+    const contentType = await fs
+      .readFile(`${file}.type`, 'utf8')
+      .catch(() => 'application/octet-stream');
+
+    const start = range?.start ?? 0;
+    // An open-ended range runs to the last byte; `end` is inclusive, so the
+    // final index is one below the length.
+    const end = Math.min(range?.end ?? totalLength - 1, totalLength - 1);
+    if (start > end || start >= totalLength) return null;
+
+    return {
+      stream: createReadStream(file, { start, end }),
+      contentType,
+      contentLength: end - start + 1,
+      totalLength,
+    };
   }
 
   async delete(key: string): Promise<void> {

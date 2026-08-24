@@ -301,18 +301,92 @@ export interface GoalResponse {
 
 // ---- Learning ----
 
+/** Metadata only — the bytes come from a separate, range-aware route. */
+export interface LessonAssetRef {
+  kind: 'video' | 'captions' | 'thumbnail';
+  /** `*` serves every locale. */
+  locale: string;
+  /**
+   * `storage` — ours, streamed through the API behind the release check.
+   * `youtube` — embedded, and the release rules are advice (docs/74 §2).
+   */
+  provider: 'storage' | 'youtube';
+  /** The YouTube video id, present only for a course this member may see. */
+  externalId: string | null;
+  durationSeconds: number | null;
+}
+
 export interface Lesson {
   id: string;
   order: number;
   title: string;
+  /** Null for most lessons — the seed writes headings, the tenant writes the words. */
+  content: string | null;
+  assets: LessonAssetRef[];
 }
+
+/**
+ * Why a course is shut (docs/73 §5).
+ *
+ * Carried to the MEMBER, not only to the leader. A locked course is listed with
+ * its reason rather than hidden, because this is the member's own curriculum
+ * and pretending it does not exist is how a leader hides the path from the
+ * person walking it.
+ */
+export type CourseLock =
+  | { state: 'open' }
+  | { state: 'awaiting_rule'; after: string }
+  | { state: 'awaiting_leader' }
+  | { state: 'held'; reason: string };
 
 export interface Course {
   id: string;
   code: string;
   title: string;
   description: string | null;
+  releasePolicy: 'open' | 'on_assignment';
+  visible: boolean;
+  lock: CourseLock;
+  dueAt: string | null;
+  /** Empty while the course is locked — a programme's shape reads off its headings. */
   lessons: Lesson[];
+}
+
+// ---- The leader's release board (docs/73 §9) ----
+
+export interface BoardMember {
+  id: string;
+  displayName: string;
+}
+
+export interface BoardCourse {
+  id: string;
+  code: string;
+  title: string;
+  releasePolicy: 'open' | 'on_assignment';
+  /**
+   * What releasing this course actually promises (docs/74 §2).
+   * `enforced` — the bytes come through the API; a locked course serves none.
+   * `advisory` — embedded from elsewhere, so a forwarded link still works.
+   */
+  mediaAccessControl: 'enforced' | 'advisory';
+}
+
+export interface BoardCell {
+  memberId: string;
+  courseId: string;
+  visible: boolean;
+  lock: CourseLock;
+  dueAt: string | null;
+  status: 'not_started' | 'in_progress' | 'completed';
+  completedLessons: number;
+  totalLessons: number;
+}
+
+export interface BoardResponse {
+  members: BoardMember[];
+  courses: BoardCourse[];
+  cells: BoardCell[];
 }
 
 export interface CoursesResponse {

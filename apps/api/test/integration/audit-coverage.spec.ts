@@ -34,6 +34,10 @@ let app: INestApplication;
  */
 const UNAUDITED: Array<{ pattern: RegExp; why: string }> = [
   {
+    pattern: /^\/api\/v1\/learning\/lessons\/[^/]+\/progress$/,
+    why: 'A playback heartbeat — one every ten seconds from every member who is watching anything. lesson_views already holds the position and the watched total, which is everything an audit row could say, and auditing it would bury the sensitive rows this log exists for under the most frequent write in the product (docs/73 §6). Uploading the video IS audited.',
+  },
+  {
     pattern: /^\/api\/v1\/crm\/customers\/[^/]+\/months$/,
     why: 'Ticking a month on the twelve-box grid, and only for months the system cannot see an order in — a paid month is refused. customer_month_orders already records who ticked it and when, and a busy book produces these by the dozen (docs/66 §4).',
   },

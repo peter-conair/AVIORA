@@ -176,26 +176,26 @@ what is missing is the layout and the seed.
 
 ### 8.3 Revised phase order
 
-| Phase | Sheet                                | Status                                                    |
-| ----- | ------------------------------------ | --------------------------------------------------------- |
-| 0     | Memory Jogger, name lists, report    | **done** (docs/56)                                          |
-| 1     | Setting Goals                        | **done** (docs/58)                                          |
-| 2     | Tracker engine + Follow Up Sheet     | **done** (docs/59)                                          |
-| 3     | Diamond Check List                   | **done** — a seeded template on the same engine             |
-| 4     | 6WNY follow-up                       | **done** (docs/59, docs/64) — staged template + measurements |
-| 5     | Daily checklist                      | **done** (docs/60)                                          |
-| 6     | Weekly Update                        | **done** (docs/61)                                          |
-| 7     | Customer Index + SOP grid            | **done** (docs/66), screen in Sprint 48                      |
-| 8     | Organisation chart print             | **not built** — `/teams` renders the tree; the print view does not exist |
+| Phase | Sheet                             | Status                                                                   |
+| ----- | --------------------------------- | ------------------------------------------------------------------------ |
+| 0     | Memory Jogger, name lists, report | **done** (docs/56)                                                       |
+| 1     | Setting Goals                     | **done** (docs/58)                                                       |
+| 2     | Tracker engine + Follow Up Sheet  | **done** (docs/59)                                                       |
+| 3     | Diamond Check List                | **done** — a seeded template on the same engine                          |
+| 4     | 6WNY follow-up                    | **done** (docs/59, docs/64) — staged template + measurements             |
+| 5     | Daily checklist                   | **done** (docs/60)                                                       |
+| 6     | Weekly Update                     | **done** (docs/61)                                                       |
+| 7     | Customer Index + SOP grid         | **done** (docs/66), screen in Sprint 48                                  |
+| 8     | Organisation chart print          | **not built** — `/teams` renders the tree; the print view does not exist |
 
 Added along the way, outside the original eight:
 
-| | | |
-|---|---|---|
-| Starting the business | **done** (docs/63) | the path a new member actually lands on |
-| The 6/9/12/15/18/21% ladder | **done** (docs/62) | seeded as drafts; thresholds are the tenant's |
+|                               |                    |                                                |
+| ----------------------------- | ------------------ | ---------------------------------------------- |
+| Starting the business         | **done** (docs/63) | the path a new member actually lands on        |
+| The 6/9/12/15/18/21% ladder   | **done** (docs/62) | seeded as drafts; thresholds are the tenant's  |
 | Before/after photos + consent | **done** (docs/65) | needs a durable storage adapter for production |
-| The learning path | **done** (docs/67) | what to know and what to do, at each stage |
+| The learning path             | **done** (docs/67) | what to know and what to do, at each stage     |
 
 ## 9. What is actually left
 

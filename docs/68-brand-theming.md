@@ -56,7 +56,7 @@ The check sets the tenant's primary to an unmistakable terracotta, reads
 two differ **and** that neither is the fallback.
 
 Asserting one colour would have passed against a hardcoded value. The assertion
-that matters is that the product's colour *follows* the tenant's — which only a
+that matters is that the product's colour _follows_ the tenant's — which only a
 change can demonstrate.
 
 ## 5. What is still not themeable

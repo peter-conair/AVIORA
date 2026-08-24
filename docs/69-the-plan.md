@@ -25,7 +25,7 @@ a motivation problem.
 
 Every rate is measured from that member's own history. Where there is not enough
 history it is **not invented**: an industry figure written here would look
-authoritative *because it is in the code*, and it would be wrong for everyone
+authoritative _because it is in the code_, and it would be wrong for everyone
 except whoever it was copied from — the same rule as the ladder's thresholds
 (docs/62 §2) and "5+3" (docs/58 §3.2).
 
@@ -44,8 +44,8 @@ should not quietly steer this month.
 ## 4. `null` is not `0`
 
 A funnel step reports `short: null` when the chain broke further up, and
-`short: 0` when you genuinely have enough. A screen showing both as *"0 more
-needed"* would be lying about half of them.
+`short: 0` when you genuinely have enough. A screen showing both as _"0 more
+needed"_ would be lying about half of them.
 
 For the same reason the response carries `blockedBy` — the single missing number
 that would repair the chain — so the screen can ask for that one thing instead

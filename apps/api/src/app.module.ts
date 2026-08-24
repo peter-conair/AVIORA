@@ -37,6 +37,13 @@ import { TeamsService } from './modules/team/teams.service';
 import { TeamScopeService } from './modules/team/team-scope.service';
 import { GoalsController } from './modules/goal/goals.controller';
 import { LearningController } from './modules/learning/learning.controller';
+import { LearningMediaController } from './modules/learning/learning-media.controller';
+import { LearningAuthoringController } from './modules/learning/learning-authoring.controller';
+import { LearningAuthoringService } from './modules/learning/learning-authoring.service';
+import { LearningMediaService } from './modules/learning/learning-media.service';
+import { LearningReleaseService } from './modules/learning/learning-release.service';
+import { LearningAssignmentController } from './modules/learning/learning-assignment.controller';
+import { LearningAssignmentService } from './modules/learning/learning-assignment.service';
 import { DashboardController } from './modules/analytics/dashboard.controller';
 import { AnalyticsController } from './modules/analytics/analytics.controller';
 import { AnalyticsService } from './modules/analytics/analytics.service';
@@ -168,6 +175,9 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     TeamsController,
     GoalsController,
     LearningController,
+    LearningMediaController,
+    LearningAuthoringController,
+    LearningAssignmentController,
     DashboardController,
     NotificationsController,
     CrmController,
@@ -225,6 +235,10 @@ import { WebhookHandlers } from './modules/integration/webhook.handlers';
     WeeklyUpdateService,
     StartService,
     LearningPathService,
+    LearningReleaseService,
+    LearningMediaService,
+    LearningAuthoringService,
+    LearningAssignmentService,
     PlanService,
     PhotosService,
     CustomerIndexService,

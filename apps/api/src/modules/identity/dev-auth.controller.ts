@@ -24,6 +24,15 @@ import { setSessionCookies } from './session-cookies';
 /** Enough to choose from; not so many that the picker becomes its own search problem. */
 const LIST_LIMIT = 25;
 
+/**
+ * The address shapes the e2e suite manufactures — and the reason this list
+ * needs an opinion at all. A working database here carries ten thousand of
+ * these against seven accounts a person actually signs in as, so showing
+ * everything by default shows nothing useful. They are hidden, never dropped:
+ * the response says how many, and `all=1` brings them straight back.
+ */
+const TEST_ACCOUNT_SUFFIXES = ['@test.local', '.example'];
+
 const loginSchema = z.object({ userId: z.string().uuid() });
 
 /**
@@ -77,29 +86,56 @@ export class DevAuthController {
    */
   @Public()
   @Get('users')
-  async users(@Query('q') q?: string) {
+  async users(@Query('q') q?: string, @Query('all') all?: string) {
     this.assertEnabled();
     const search = (q ?? '').trim().slice(0, 120);
-    const users = await this.prisma.app.user.findMany({
-      where: {
-        status: 'active',
-        ...(search
-          ? {
-              OR: [
-                { email: { contains: search, mode: 'insensitive' as const } },
-                { displayName: { contains: search, mode: 'insensitive' as const } },
-              ],
-            }
-          : {}),
-      },
-      select: { id: true, email: true, displayName: true, platformRole: true },
-      orderBy: [
-        { platformRole: { sort: 'asc', nulls: 'last' } },
-        { lastLoginAt: { sort: 'desc', nulls: 'last' } },
-        { createdAt: 'desc' },
-      ],
-      take: LIST_LIMIT,
-    });
+    const includeTestAccounts = all === '1' || all === 'true';
+    const notATestAccount = {
+      AND: TEST_ACCOUNT_SUFFIXES.map((suffix) => ({ email: { not: { endsWith: suffix } } })),
+    };
+    const where = {
+      status: 'active',
+      ...(includeTestAccounts ? {} : notATestAccount),
+      ...(search
+        ? {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' as const } },
+              { displayName: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+
+    const [users, hidden] = await Promise.all([
+      this.prisma.app.user.findMany({
+        where,
+        select: { id: true, email: true, displayName: true, platformRole: true },
+        orderBy: [
+          { platformRole: { sort: 'asc', nulls: 'last' } },
+          { lastLoginAt: { sort: 'desc', nulls: 'last' } },
+          { createdAt: 'desc' },
+        ],
+        take: LIST_LIMIT,
+      }),
+      // What the filter is keeping back, so the picker can offer it rather than
+      // leaving somebody to wonder why the account they just created is missing.
+      includeTestAccounts
+        ? Promise.resolve(0)
+        : this.prisma.app.user.count({
+            where: {
+              status: 'active',
+              NOT: notATestAccount,
+              ...(search
+                ? {
+                    OR: [
+                      { email: { contains: search, mode: 'insensitive' as const } },
+                      { displayName: { contains: search, mode: 'insensitive' as const } },
+                    ],
+                  }
+                : {}),
+            },
+          }),
+    ]);
 
     // Which tenants each one lands in, so the picker can say "beta admin —
     // Beta Wellness" instead of making you sign in to find out. Read as owner
@@ -118,6 +154,7 @@ export class DevAuthController {
 
     return {
       users: users.map((u) => ({ ...u, tenants: byUser.get(u.id) ?? [] })),
+      hiddenTestAccounts: hidden,
     };
   }
 

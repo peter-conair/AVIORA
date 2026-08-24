@@ -37,9 +37,15 @@ export class LearningPathService {
   /**
    * The path's courses, created on first read.
    *
-   * Titles and lesson headings only — a spine for the business to hang its own
-   * material on. An empty lesson is honest about being empty; inventing the
-   * words would put this codebase's opinions in a tenant's training.
+   * Titles and lesson headings, mostly — a spine for the business to hang its
+   * own material on. An empty lesson is honest about being empty; inventing
+   * the words would put this codebase's opinions in a tenant's training.
+   *
+   * `path-plan` is the exception and carries its body text, because how a
+   * differential is computed is a fact about the plan FAMILY rather than an
+   * opinion about any one plan, and a member who cannot read their own payout
+   * is not equipped by a heading (docs/70). It still sets no threshold: the
+   * numbers on each rung stay the tenant's to enter (docs/62 §2).
    */
   private async ensureCourses(tx: Tx, locale: Locale) {
     const codes = pathCourses().map((c) => c.code);
@@ -63,13 +69,23 @@ export class LearningPathService {
           courseId: course.id,
           order: index + 1,
           title: lesson[locale],
+          // Almost always null, and only written on creation: a tenant who has
+          // rewritten a lesson keeps their words on the next read.
+          content: lesson.body?.[locale] ?? null,
         })),
       });
     }
   }
 
-  /** Everything the system can prove about this member, in one pass. */
-  private async evidence(tx: Tx, memberId: string): Promise<Record<string, boolean>> {
+  /**
+   * Everything the system can prove about this member, in one pass.
+   *
+   * Public because the release rules in docs/73 §4 gate on the same facts, and
+   * a second computation of "has this member had a first customer" is a second
+   * answer waiting to disagree with this one. docs/67 §5 is the whole argument;
+   * it applies to a locked video exactly as it applies to a stage tick.
+   */
+  async evidence(tx: Tx, memberId: string): Promise<Record<string, boolean>> {
     const month = BusinessGoalService.monthOf();
     const [goal, thisMonth, names, courses, customers, directs] = await Promise.all([
       tx.businessGoal.findFirst({ where: { memberId } }),
