@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   NotFoundException,
@@ -16,7 +17,12 @@ import { ENTITLEMENTS, ERROR_CODES, PERMISSIONS } from '@aviora/shared';
 import { RequireEntitlements, RequirePermissions } from '../../common/auth/decorators';
 import { CLS_MEMBER_ID } from '../../common/auth/permissions.guard';
 import { ZodPipe } from '../../common/validation/zod.pipe';
-import { ASSET_KINDS, ANY_LOCALE, LearningMediaService } from './learning-media.service';
+import {
+  ANY_LOCALE,
+  ASSET_KINDS,
+  LearningMediaService,
+  YOUTUBE_ID,
+} from './learning-media.service';
 
 const assetQuerySchema = z.object({
   lessonId: z.string().uuid(),
@@ -26,6 +32,19 @@ const assetQuerySchema = z.object({
     .regex(/^(th|en|\*)$/)
     .default(ANY_LOCALE),
   durationSeconds: z.coerce.number().int().min(0).max(86_400).optional(),
+});
+
+const externalSchema = z.object({
+  lessonId: z.string().uuid(),
+  kind: z.enum(ASSET_KINDS).default('video'),
+  locale: z
+    .string()
+    .regex(/^(th|en|\*)$/)
+    .default(ANY_LOCALE),
+  provider: z.literal('youtube'),
+  /** The id, never a URL — a URL carries the playlist id with it (docs/74 §3). */
+  externalId: z.string().regex(YOUTUBE_ID),
+  durationSeconds: z.number().int().min(0).max(86_400).nullish(),
 });
 
 const playQuerySchema = z.object({
@@ -86,6 +105,34 @@ export class LearningMediaController {
       durationSeconds: query.durationSeconds ?? null,
     });
     return { asset: { ...asset, storageKey: undefined } };
+  }
+
+  /**
+   * Point a lesson at media that lives somewhere else (docs/74).
+   *
+   * JSON rather than raw bytes, because there are no bytes — this records a
+   * reference. The response says plainly that the release rules become advice
+   * for this asset, so the screen that called it has the sentence to show and
+   * does not have to invent one.
+   */
+  @Post('learning/assets/external')
+  @RequirePermissions(PERMISSIONS.LEARNING_MANAGE)
+  async link(@Body(new ZodPipe(externalSchema)) body: z.infer<typeof externalSchema>) {
+    const asset = await this.media.registerExternal({
+      lessonId: body.lessonId,
+      kind: body.kind,
+      locale: body.locale,
+      provider: body.provider,
+      externalId: body.externalId,
+      durationSeconds: body.durationSeconds ?? null,
+    });
+    return {
+      asset,
+      accessControl: 'advisory',
+      warning:
+        'Anyone who has the link can watch this, whether or not it has been released to them. ' +
+        'Releasing controls what this product shows, not what YouTube serves.',
+    };
   }
 
   /**

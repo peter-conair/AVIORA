@@ -600,6 +600,136 @@ describe('Watching is recorded, and cannot be faked by seeking (docs/73 §6)', (
   });
 });
 
+describe('Media that lives somewhere else (docs/74)', () => {
+  let ggCourse: string;
+  let ggLesson: string;
+
+  it('authors a course and its lessons through the API, not through a seed', async () => {
+    // docs/10 rows 84–89, unbuilt until now. Without them the only way to get
+    // a real curriculum into a tenant was to write it into this codebase,
+    // which docs/67 §2 forbids for exactly the reason it forbids writing
+    // lesson text: it is the business's material, not the platform's.
+    const res = await api('/api/v1/courses', {
+      method: 'POST',
+      token: admin,
+      tenant,
+      body: JSON.stringify({
+        code: `gg-pack-${RUN}`,
+        title: 'GG PACK 01',
+        releasePolicy: 'on_assignment',
+        lessons: [{ title: 'Rally 1' }, { title: 'Rally 2' }],
+      }),
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    ggCourse = res.body.course.id;
+    expect(res.body.course.lessons).toHaveLength(2);
+    ggLesson = res.body.course.lessons[0].id;
+  });
+
+  it('refuses a second course with the same code', async () => {
+    const res = await api('/api/v1/courses', {
+      method: 'POST',
+      token: admin,
+      tenant,
+      body: JSON.stringify({ code: `gg-pack-${RUN}`, title: 'Again' }),
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it('links a YouTube video, and says out loud what that costs', async () => {
+    const res = await api('/api/v1/learning/assets/external', {
+      method: 'POST',
+      token: admin,
+      tenant,
+      body: JSON.stringify({
+        lessonId: ggLesson,
+        kind: 'video',
+        locale: '*',
+        provider: 'youtube',
+        externalId: 'dQw4w9WgXcQ',
+      }),
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.asset.provider).toBe('youtube');
+    expect(res.body.asset.storageKey).toBeNull();
+    // The API states the limitation rather than leaving each screen to infer
+    // it. A caller that shows a padlock over this is now doing so knowingly.
+    expect(res.body.accessControl).toBe('advisory');
+    expect(res.body.warning).toMatch(/anyone who has the link/i);
+  });
+
+  it('refuses a URL where an id belongs', async () => {
+    // A pasted `watch?v=…&list=PL…` would put the whole playlist in a column
+    // that a template reads out (docs/74 §3).
+    const res = await api('/api/v1/learning/assets/external', {
+      method: 'POST',
+      token: admin,
+      tenant,
+      body: JSON.stringify({
+        lessonId: ggLesson,
+        provider: 'youtube',
+        externalId: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLabc',
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('will not stream what it does not host', async () => {
+    const dara = await login(`dara-${RUN}@test.local`);
+    await api('/api/v1/learning/assignments', {
+      method: 'POST',
+      token: dara,
+      tenant,
+      body: JSON.stringify({ memberIds: [m.ploy], courseId: ggCourse }),
+    });
+    const ploy = await login(`ploy-${RUN}@test.local`);
+    const res = await api(`/api/v1/learning/lessons/${ggLesson}/media?kind=video`, {
+      token: ploy,
+      tenant,
+    });
+    // 409, not 404: the video is not missing, it is somewhere else and the
+    // client is meant to embed it.
+    expect(res.status).toBe(409);
+    expect(JSON.stringify(res.body)).toMatch(/embedded, not streamed/i);
+  });
+
+  it('hands the video id to a member the course is open to', async () => {
+    const ploy = await login(`ploy-${RUN}@test.local`);
+    const course = courseOf(
+      (await api('/api/v1/courses', { token: ploy, tenant })).body,
+      `gg-pack-${RUN}`,
+    );
+    expect(course.visible).toBe(true);
+    const asset = course.lessons[0].assets.find((a: any) => a.kind === 'video');
+    expect(asset.provider).toBe('youtube');
+    expect(asset.externalId).toBe('dQw4w9WgXcQ');
+  });
+
+  it('hands NO video id to a member the course is shut to — the one protection left', async () => {
+    // An unlisted link is the whole of the access control, so the only thing
+    // this product can still guarantee is that it does not hand the link to
+    // somebody who has not been released the course. That is worth a test of
+    // its own (docs/74 §2).
+    const kan = await login(`kan-${RUN}@test.local`);
+    const course = courseOf(
+      (await api('/api/v1/courses', { token: kan, tenant })).body,
+      `gg-pack-${RUN}`,
+    );
+    expect(course.visible).toBe(false);
+    expect(course.lessons).toEqual([]);
+    expect(JSON.stringify(course)).not.toContain('dQw4w9WgXcQ');
+  });
+
+  it('tells the leader which promise a release actually makes', async () => {
+    const dara = await login(`dara-${RUN}@test.local`);
+    const board = await api('/api/v1/learning/assignments/board', { token: dara, tenant });
+    const gg = (board.body.courses as any[]).find((c) => c.code === `gg-pack-${RUN}`);
+    const ours = (board.body.courses as any[]).find((c) => c.code === `basics-${RUN}`);
+    expect(gg.mediaAccessControl).toBe('advisory');
+    expect(ours.mediaAccessControl).toBe('enforced');
+  });
+});
+
 describe('the invariant — this is a sequencing table, not a grant table (docs/73 §1)', () => {
   it('leaves nobody able to see anything new when every assignment is deleted', async () => {
     // The single most important test in this file. If a row in

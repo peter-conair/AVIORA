@@ -1,5 +1,6 @@
 import cookieParser from 'cookie-parser';
 import { raw } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { NestFactory } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -28,7 +29,16 @@ export async function createApp(options?: { logger?: boolean }): Promise<INestAp
    * survivable; multipart streaming is the follow-up, and the trigger for
    * building it is the first tenant who cannot upload the file they have.
    */
-  app.use('/api/v1/learning/assets', raw({ type: () => true, limit: MAX_LESSON_ASSET_BYTES }));
+  const rawUpload = raw({ type: () => true, limit: MAX_LESSON_ASSET_BYTES });
+  app.use('/api/v1/learning/assets', (req: Request, res: Response, next: NextFunction) => {
+    // A mounted path matches its SUBPATHS too, and `…/assets/external` sends
+    // JSON — it registers a video that lives on somebody else's server and has
+    // no bytes at all. Without this guard the raw parser swallowed that body
+    // and the route answered "lessonId Required" about a field that was right
+    // there in the request. Only the exact path takes bytes.
+    if (req.path !== '/') return next();
+    return rawUpload(req, res, next);
+  });
   // The PWA manifest is a document of the SITE, not a call to the API: a
   // browser asks for /manifest.webmanifest at the web root and will not look
   // for it under a version prefix (docs/30 §5).

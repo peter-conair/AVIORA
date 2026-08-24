@@ -305,7 +305,8 @@
     "boardWithdraw": "Undo release",
     "boardHold": "Hold back",
     "boardHoldReason": "Reason (the member sees this)",
-    "boardHoldPlaceholder": "e.g. finish week 2 first"
+    "boardHoldPlaceholder": "e.g. finish week 2 first",
+    "boardAdvisoryMedia": "This course plays from YouTube. Releasing it controls what this app shows — anyone who is sent the link can still watch it."
   },
   "knowledge": {
     "title": "Healthy Living Knowledge",

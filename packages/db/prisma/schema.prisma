@@ -608,11 +608,22 @@ model LessonAsset {
   /// Postgres treats NULLs as distinct and the unique key below would then let
   /// a lesson hold two of the same thing.
   locale          String   @default("*")
-  /// Opaque, returned by `StoragePort.put`. Never constructed by a caller and
-  /// never handed to a browser (docs/71).
-  storageKey      String   @map("storage_key")
-  contentType     String   @map("content_type")
-  byteSize        Int      @map("byte_size")
+  /// Where the bytes live (docs/74 §1).
+  ///
+  /// `storage` — ours, served through this API, access controlled.
+  /// `youtube` — somebody else's, embedded, and **the release rules become
+  /// advice rather than enforcement**, because an unlisted link works for
+  /// anyone who has it. The column exists so nothing downstream has to guess
+  /// which of those two promises it is making.
+  provider        String   @default("storage")
+  /// Set for `storage`. Opaque, returned by `StoragePort.put`, never
+  /// constructed by a caller and never handed to a browser (docs/71).
+  storageKey      String?  @map("storage_key")
+  contentType     String?  @map("content_type")
+  byteSize        Int?     @map("byte_size")
+  /// Set for `youtube` — the eleven-character video id, not a URL. A URL would
+  /// invite somebody to store a `watch?v=…&list=…` and leak the playlist.
+  externalId      String?  @map("external_id")
   durationSeconds Int?     @map("duration_seconds")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

@@ -28,6 +28,10 @@ export const AUDITED_ROUTES = new Map<string, string>([
   ['POST /api/v1/learning/assignments/hold', 'learning.assignment.hold'],
   ['DELETE /api/v1/learning/assignments/:id', 'learning.assignment.withdraw'],
   ['POST /api/v1/learning/assets', 'learning.asset.upload'],
+  ['POST /api/v1/learning/assets/external', 'learning.asset.link'],
+  ['POST /api/v1/courses', 'learning.course.create'],
+  ['PATCH /api/v1/courses/:id', 'learning.course.update'],
+  ['POST /api/v1/courses/:id/lessons', 'learning.lesson.create'],
 
   // teams
   ['POST /api/v1/teams', 'team.create'],

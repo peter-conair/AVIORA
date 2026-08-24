@@ -64,7 +64,19 @@ export class LearningController {
               content: true,
               // Metadata only. The bytes are a separate, range-aware route and
               // the storage key never leaves the API (docs/71).
-              assets: { select: { kind: true, locale: true, durationSeconds: true } },
+              // `externalId` IS the link (docs/74 §3). It only ships for a
+              // course this member may see, which the blanking below is what
+              // guarantees — a locked course hands out no ids at all, and that
+              // is the one protection an unlisted link leaves us.
+              assets: {
+                select: {
+                  kind: true,
+                  locale: true,
+                  provider: true,
+                  externalId: true,
+                  durationSeconds: true,
+                },
+              },
             },
             orderBy: { order: 'asc' },
           },

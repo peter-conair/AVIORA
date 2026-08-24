@@ -82,6 +82,7 @@ begins only after the first vertical slice plan is approved (spec FINAL INSTRUCT
 | 68  | [White-label that reaches the product](./68-brand-theming.md)                                     | Sprint 50                                                 |
 | 69  | [Stairstep–breakaway plans — a domain primer](./69-network-plan-primer.md)                        | Reference                                                 |
 | 73  | [Video, and who is allowed to see it yet](./73-video-and-who-may-see-it.md)                       | Sprint 51                                                 |
+| 74  | [Media somebody else hosts](./74-media-somebody-else-hosts.md)                                    | Sprint 51                                                 |
 
 ## Canonical stack (see ADRs)
 

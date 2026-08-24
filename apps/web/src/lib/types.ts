@@ -306,6 +306,13 @@ export interface LessonAssetRef {
   kind: 'video' | 'captions' | 'thumbnail';
   /** `*` serves every locale. */
   locale: string;
+  /**
+   * `storage` — ours, streamed through the API behind the release check.
+   * `youtube` — embedded, and the release rules are advice (docs/74 §2).
+   */
+  provider: 'storage' | 'youtube';
+  /** The YouTube video id, present only for a course this member may see. */
+  externalId: string | null;
   durationSeconds: number | null;
 }
 
@@ -357,6 +364,12 @@ export interface BoardCourse {
   code: string;
   title: string;
   releasePolicy: 'open' | 'on_assignment';
+  /**
+   * What releasing this course actually promises (docs/74 §2).
+   * `enforced` — the bytes come through the API; a locked course serves none.
+   * `advisory` — embedded from elsewhere, so a forwarded link still works.
+   */
+  mediaAccessControl: 'enforced' | 'advisory';
 }
 
 export interface BoardCell {

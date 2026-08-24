@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -33,6 +35,21 @@ export type AssetKind = (typeof ASSET_KINDS)[number];
 /** `*` serves every locale — a thumbnail, usually. */
 export const ANY_LOCALE = '*';
 
+export const ASSET_PROVIDERS = ['storage', 'youtube'] as const;
+export type AssetProvider = (typeof ASSET_PROVIDERS)[number];
+
+/** YouTube's own id alphabet, eleven characters. Never a URL — see docs/74 §3. */
+export const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+
+export interface ExternalAssetInput {
+  lessonId: string;
+  kind: AssetKind;
+  locale: string;
+  provider: 'youtube';
+  externalId: string;
+  durationSeconds?: number | null;
+}
+
 export interface UploadAssetInput {
   lessonId: string;
   kind: AssetKind;
@@ -57,6 +74,71 @@ export class LearningMediaService {
     private readonly audit: AuditService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
+
+  /**
+   * Register media that lives somewhere else (docs/74).
+   *
+   * No bytes pass through this API, which is the whole point and the whole
+   * cost: the release rules in front of `assetFor` still decide what the
+   * PRODUCT shows, and they decide nothing at all about what an unlisted link
+   * does once somebody has it. That is stated in the response so no screen has
+   * to infer it, and in docs/74 §2 so no reader has to guess why.
+   */
+  async registerExternal(input: ExternalAssetInput) {
+    if (!YOUTUBE_ID.test(input.externalId)) {
+      throw new BadRequestException({
+        code: ERROR_CODES.VALIDATION_FAILED,
+        message:
+          'Give the eleven-character video id, not a URL. A URL would carry the ' +
+          'playlist id with it, and that is the link to everything.',
+      });
+    }
+    const asset = await this.db.tx(async (tx) => {
+      const lesson = await tx.lesson.findFirst({
+        where: { id: input.lessonId },
+        select: { id: true },
+      });
+      if (!lesson) {
+        throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: 'Lesson not found' });
+      }
+      const existing = await tx.lessonAsset.findFirst({
+        where: { lessonId: input.lessonId, kind: input.kind, locale: input.locale },
+      });
+      const data = {
+        provider: input.provider,
+        externalId: input.externalId,
+        durationSeconds: input.durationSeconds ?? null,
+        // A row that used to be ours and is now somebody else's must stop
+        // claiming bytes; the database CHECK refuses the half-updated shape.
+        storageKey: null,
+        contentType: null,
+        byteSize: null,
+      };
+      if (existing) {
+        if (existing.storageKey) {
+          await this.storage.delete(existing.storageKey).catch(() => undefined);
+        }
+        return tx.lessonAsset.update({ where: { id: existing.id }, data });
+      }
+      return tx.lessonAsset.create({
+        data: {
+          tenantId: this.db.tenantId,
+          lessonId: input.lessonId,
+          kind: input.kind,
+          locale: input.locale,
+          ...data,
+        },
+      });
+    });
+
+    await this.audit.record({
+      action: 'learning.asset.link',
+      entityType: 'lesson',
+      entityId: input.lessonId,
+      after: { provider: input.provider, kind: input.kind, locale: input.locale },
+    });
+    return asset;
+  }
 
   /** Author-side. Replaces the asset of the same (lesson, kind, locale). */
   async upload(input: UploadAssetInput) {
@@ -93,10 +175,12 @@ export class LearningMediaService {
         ? await tx.lessonAsset.update({
             where: { id: existing.id },
             data: {
+              provider: 'storage',
               storageKey,
               contentType: input.contentType,
               byteSize: input.body.byteLength,
               durationSeconds: input.durationSeconds ?? null,
+              externalId: null,
             },
           })
         : await tx.lessonAsset.create({
@@ -105,6 +189,7 @@ export class LearningMediaService {
               lessonId: input.lessonId,
               kind: input.kind,
               locale: input.locale,
+              provider: 'storage',
               storageKey,
               contentType: input.contentType,
               byteSize: input.body.byteLength,
@@ -115,7 +200,7 @@ export class LearningMediaService {
       // The replaced object is dropped only after the row points at the new
       // one. Best-effort: an orphan in the bucket costs storage, a missing
       // object costs a lesson.
-      if (existing && existing.storageKey !== storageKey) {
+      if (existing?.storageKey && existing.storageKey !== storageKey) {
         await this.storage.delete(existing.storageKey).catch(() => undefined);
       }
       return saved;
@@ -209,9 +294,23 @@ export class LearningMediaService {
    * store itself, which is the number the player must be told.
    */
   async open(
-    asset: { storageKey: string; byteSize: number; contentType: string },
+    asset: {
+      provider: string;
+      storageKey: string | null;
+      byteSize: number | null;
+      contentType: string | null;
+    },
     rangeHeader: string | undefined,
   ): Promise<{ request: RangeRequest; body: StoredRange | null }> {
+    if (asset.provider !== 'storage' || !asset.storageKey || asset.byteSize === null) {
+      // There are no bytes here to serve. Answering 404 would read as "the
+      // video is missing"; the truth is that it is somewhere else and the
+      // client is meant to embed it (docs/74 §3).
+      throw new ConflictException({
+        code: ERROR_CODES.VALIDATION_FAILED,
+        message: `This lesson is hosted on ${asset.provider} and is embedded, not streamed`,
+      });
+    }
     const request = parseRangeHeader(rangeHeader, asset.byteSize);
     if (request.kind === 'unsatisfiable') return { request, body: null };
 

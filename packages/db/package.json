@@ -15,6 +15,7 @@
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:setup-app-role": "dotenv -e ../../.env -- tsx prisma/setup-app-role.ts",
     "tenant:migrate": "dotenv -e ../../.env -- tsx scripts/tenant-migrate.ts",
+    "courses:import": "dotenv -e ../../.env -- tsx scripts/import-courses.ts",
     "docs:permissions": "tsx scripts/render-permission-matrix.ts"
   },
   "prisma": {

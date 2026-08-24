@@ -149,6 +149,16 @@ export default function LearningBoardPage() {
               // people (docs/73 §2 — the tenant owns the library's openness).
               <p className="mt-2 text-xs text-slate-500">{t('boardOpenCourseNote')}</p>
             ) : null}
+            {course?.mediaAccessControl === 'advisory' ? (
+              // The leader is about to make a decision about who sees what. If
+              // the honest answer is "this decides what the app shows, not what
+              // a forwarded link does", they have to read it HERE — not
+              // discover it when a video turns up somewhere they did not send
+              // it (docs/74 §2).
+              <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {t('boardAdvisoryMedia')}
+              </p>
+            ) : null}
           </Card>
 
           <Card>

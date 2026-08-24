@@ -271,8 +271,21 @@ export class LearningAssignmentService {
         },
       });
       if (members.length === 0 || courses.length === 0) {
-        return { members, courses, cells: [] };
+        return { members, courses: courses.map(withAccessControl(new Set())), cells: [] };
       }
+
+      // Which courses hold media this product does not serve (docs/74 §2).
+      // Carried to the leader's screen so it can say plainly that releasing
+      // one of these controls what the app shows and not what YouTube does —
+      // a promise the board would otherwise appear to make.
+      const external = await tx.lessonAsset.findMany({
+        where: {
+          provider: { not: 'storage' },
+          lesson: { courseId: { in: courses.map((c) => c.id) } },
+        },
+        select: { lesson: { select: { courseId: true } } },
+      });
+      const advisory = new Set(external.map((a) => a.lesson.courseId));
 
       const progress = await tx.learningProgress.findMany({
         where: {
@@ -306,7 +319,7 @@ export class LearningAssignmentService {
           });
         }
       }
-      return { members, courses, cells };
+      return { members, courses: courses.map(withAccessControl(advisory)), cells };
     });
   }
 
@@ -321,4 +334,20 @@ export class LearningAssignmentService {
       });
     });
   }
+}
+
+/**
+ * Says which promise a course's release actually makes.
+ *
+ * `enforced` — the bytes come through this API and a locked course serves
+ * nothing. `advisory` — the media is embedded from somewhere else, so releasing
+ * decides what this product shows and nothing about what a forwarded link does.
+ * Naming it on the row means no screen has to work it out, and none can quietly
+ * get it wrong.
+ */
+function withAccessControl(advisory: Set<string>) {
+  return <T extends { id: string }>(course: T) => ({
+    ...course,
+    mediaAccessControl: advisory.has(course.id) ? ('advisory' as const) : ('enforced' as const),
+  });
 }

@@ -40,6 +40,7 @@ export function LessonVideo({ lessonId, assets, onProgress }: LessonVideoProps) 
 
   useEffect(() => {
     const el = ref.current;
+    // Null for an embedded video — there is nothing on this page to listen to.
     if (!el) return;
 
     const bank = () => {
@@ -82,6 +83,35 @@ export function LessonVideo({ lessonId, assets, onProgress }: LessonVideoProps) 
   }, [lessonId, onProgress]);
 
   if (!video) return null;
+
+  /**
+   * Somebody else's video, embedded (docs/74).
+   *
+   * `youtube-nocookie.com` is the privacy-preserving host — it does not set
+   * tracking cookies until playback starts. It changes nothing about access:
+   * the id in this URL is the link, and anybody who has it can watch. That is
+   * the trade docs/74 §2 records, and the leader's screen says so rather than
+   * leaving them to assume otherwise.
+   *
+   * No watch heartbeat here. The iframe is another origin and this page cannot
+   * see what happens inside it, so reporting progress would mean inventing
+   * numbers — worse than having none, because a leader would act on them.
+   */
+  if (video.provider === 'youtube') {
+    if (!video.externalId) return null;
+    return (
+      <div className="mt-2 aspect-video w-full overflow-hidden rounded-lg bg-black">
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${video.externalId}?rel=0`}
+          title={`lesson-${lessonId}`}
+          className="h-full w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      </div>
+    );
+  }
 
   const src = `${API_URL}/learning/lessons/${lessonId}/media?kind=video&locale=${locale}`;
 
