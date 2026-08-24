@@ -81,7 +81,9 @@ export class PlanService {
         tx.lead.count({
           where: { ownerMemberId: memberId, ...onAList, interactions: { some: {} } },
         }),
-        tx.customer.count({ where: { ownerMemberId: memberId, convertedFromLeadId: { not: null } } }),
+        tx.customer.count({
+          where: { ownerMemberId: memberId, convertedFromLeadId: { not: null } },
+        }),
         tx.customer.findMany({
           where: { ownerMemberId: memberId, memberId: { not: null } },
           select: { memberId: true },
