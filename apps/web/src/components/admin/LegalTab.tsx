@@ -188,7 +188,7 @@ export function LegalTab() {
                             type="button"
                             aria-expanded={open}
                             onClick={() => setOpenId(open ? null : doc.id)}
-                            className="rounded-lg px-2 py-1 text-xs font-medium text-teal-800 hover:bg-teal-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+                            className="rounded-lg px-2 py-1 text-xs font-medium text-brand-800 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                           >
                             {open ? t('hideBody') : t('readBody')}
                           </button>
@@ -284,7 +284,7 @@ export function LegalTab() {
                 {publishing ? tc('saving') : t('submit')}
               </Button>
               {published ? (
-                <span className="text-sm text-teal-700">
+                <span className="text-sm text-brand-700">
                   {t('publishedNote', {
                     kind: kindLabel(published.kind),
                     version: published.version,

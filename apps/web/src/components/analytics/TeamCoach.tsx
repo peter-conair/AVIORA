@@ -82,7 +82,7 @@ export function TeamCoach({ windowKey }: TeamCoachProps) {
                 onClick={() => void ask(question)}
                 className={`w-full rounded-lg border px-3 py-2 text-start text-sm transition-colors disabled:opacity-60 ${
                   result?.question === question
-                    ? 'border-teal-700 bg-teal-50 text-teal-900'
+                    ? 'border-brand-700 bg-brand-50 text-brand-900'
                     : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                 }`}
               >

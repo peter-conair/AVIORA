@@ -8,7 +8,7 @@ interface BadgeProps {
 }
 
 const toneClasses: Record<BadgeTone, string> = {
-  teal: 'bg-teal-50 text-teal-800 ring-teal-600/20',
+  teal: 'bg-brand-50 text-brand-800 ring-brand-600/20',
   green: 'bg-green-50 text-green-800 ring-green-600/20',
   amber: 'bg-amber-50 text-amber-800 ring-amber-600/20',
   red: 'bg-red-50 text-red-800 ring-red-600/20',

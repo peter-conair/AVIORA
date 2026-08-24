@@ -82,7 +82,7 @@ export default function FollowUpsPage() {
                 type="checkbox"
                 checked={showCompleted}
                 onChange={(e) => setShowCompleted(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
               />
               {t('showCompleted')}
             </label>

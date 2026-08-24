@@ -124,7 +124,7 @@ export function NotificationBell() {
           <path d="M13.7 21a2 2 0 0 1-3.4 0" />
         </svg>
         {unreadCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-teal-700 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white">
+          <span className="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-brand-700 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         ) : null}
@@ -152,7 +152,7 @@ export function NotificationBell() {
                 type="button"
                 onClick={() => void handleMarkAllRead()}
                 disabled={unreadCount === 0}
-                className="text-xs font-medium text-teal-700 hover:underline disabled:text-slate-400 disabled:no-underline"
+                className="text-xs font-medium text-brand-700 hover:underline disabled:text-slate-400 disabled:no-underline"
               >
                 {t('markAllRead')}
               </button>
@@ -173,12 +173,12 @@ export function NotificationBell() {
                         type="button"
                         onClick={() => void handleOpenNotification(notification)}
                         className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-slate-50 ${
-                          notification.readAt ? '' : 'bg-teal-50/60'
+                          notification.readAt ? '' : 'bg-brand-50/60'
                         }`}
                       >
                         <span className="flex items-center gap-2">
                           {notification.readAt ? null : (
-                            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-teal-700" />
+                            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brand-700" />
                           )}
                           <span className="text-sm font-medium text-slate-800">
                             {notification.title}
@@ -201,7 +201,7 @@ export function NotificationBell() {
               <Link
                 href="/settings/notifications"
                 onClick={() => setOpen(false)}
-                className="text-xs font-medium text-teal-700 hover:underline"
+                className="text-xs font-medium text-brand-700 hover:underline"
               >
                 {t('preferences')}
               </Link>

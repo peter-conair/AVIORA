@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { PlanTab } from '@/components/prospecting/PlanTab';
+import { LearningPathTab } from '@/components/prospecting/LearningPathTab';
 import { GoalsTab } from '@/components/prospecting/GoalsTab';
 import { NameListTab } from '@/components/prospecting/NameListTab';
 import { MemoryJoggerTab } from '@/components/prospecting/MemoryJoggerTab';
@@ -11,6 +13,10 @@ import { TrackerTab } from '@/components/prospecting/TrackerTab';
 import { ProspectingReportTab } from '@/components/prospecting/ProspectingReportTab';
 
 const TABS = [
+  // First, because it is the one that turns a target into today's work.
+  'plan',
+  // Then the path, which says what the rest of these tabs are for.
+  'path',
   'goals',
   'checklist',
   'weekly',
@@ -30,7 +36,7 @@ type Tab = (typeof TABS)[number];
  */
 export default function ProspectingPage() {
   const t = useTranslations('prospecting');
-  const [tab, setTab] = useState<Tab>('goals');
+  const [tab, setTab] = useState<Tab>('plan');
   const [version, setVersion] = useState(0);
 
   return (
@@ -43,13 +49,15 @@ export default function ProspectingPage() {
             type="button"
             onClick={() => setTab(key)}
             className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === key ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+              tab === key ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             {t(`tabs.${key}`)}
           </button>
         ))}
       </div>
+      {tab === 'plan' ? <PlanTab /> : null}
+      {tab === 'path' ? <LearningPathTab /> : null}
       {tab === 'goals' ? <GoalsTab /> : null}
       {tab === 'checklist' ? <ChecklistTab /> : null}
       {tab === 'weekly' ? <WeeklyUpdateTab /> : null}

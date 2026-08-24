@@ -154,7 +154,7 @@ export default function EarningsPage() {
         <>
           {totalCurrency ? (
             <Card title={t('total')}>
-              <span className="break-words text-2xl font-bold text-teal-700">
+              <span className="break-words text-2xl font-bold text-brand-700">
                 {formatMoney(earnings?.totalMinor ?? 0, totalCurrency, locale)}
               </span>
             </Card>

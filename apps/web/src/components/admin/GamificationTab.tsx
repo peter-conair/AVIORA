@@ -302,7 +302,7 @@ export function GamificationTab() {
               {creating ? tc('saving') : tch('submit')}
             </Button>
             {challengeCreated ? (
-              <span className="text-sm text-teal-700">
+              <span className="text-sm text-brand-700">
                 {tch('created', { name: challengeCreated })}
               </span>
             ) : null}

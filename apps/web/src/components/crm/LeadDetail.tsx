@@ -167,7 +167,7 @@ export function LeadDetail({ leadId, stages, onChanged, onClose }: LeadDetailPro
         <button
           type="button"
           onClick={onClose}
-          className="text-sm font-medium text-teal-700 hover:underline"
+          className="text-sm font-medium text-brand-700 hover:underline"
         >
           {t('leads.close')}
         </button>

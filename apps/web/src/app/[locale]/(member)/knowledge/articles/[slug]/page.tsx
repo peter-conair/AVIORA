@@ -46,7 +46,7 @@ export default function ArticlePage() {
   }, [slug]);
 
   const backLink = (
-    <Link href="/knowledge" className="text-sm font-medium text-teal-700 hover:underline">
+    <Link href="/knowledge" className="text-sm font-medium text-brand-700 hover:underline">
       {t('backToKnowledge')}
     </Link>
   );
@@ -123,9 +123,9 @@ export default function ArticlePage() {
                 <li key={ingredient.id}>
                   <Link
                     href={`/knowledge/ingredients/${encodeURIComponent(ingredient.code)}`}
-                    className="block rounded-lg border border-slate-200 p-3 hover:border-teal-600 hover:bg-teal-50/40"
+                    className="block rounded-lg border border-slate-200 p-3 hover:border-brand-600 hover:bg-brand-50/40"
                   >
-                    <span className="text-sm font-medium text-teal-700">{ingredient.name}</span>
+                    <span className="text-sm font-medium text-brand-700">{ingredient.name}</span>
                     {ingredient.summary ? (
                       <p className="mt-0.5 text-sm text-slate-600">{ingredient.summary}</p>
                     ) : null}

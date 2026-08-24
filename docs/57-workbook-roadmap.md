@@ -176,17 +176,42 @@ what is missing is the layout and the seed.
 
 ### 8.3 Revised phase order
 
-| Phase | Sheet                                | Status                                              |
-| ----- | ------------------------------------ | --------------------------------------------------- |
-| 0     | Memory Jogger, name lists, report    | done (docs/56)                                      |
-| 1     | Setting Goals                        | **done** (docs/58)                                  |
-| **2** | **Tracker engine + Follow Up Sheet** | next — the primitive everything else reuses         |
-| 3     | Diamond Check List                   | a template + a grouping by line, on the same engine |
-| 4     | 6WNY follow-up                       | a staged template, same engine                      |
-| 5     | Daily checklist                      | seed habits + the week grid view                    |
-| 6     | Weekly Update                        | needs phases 1–3 to report against                  |
-| 7     | Customer Index + SOP grid            |                                                     |
-| 8     | Organisation chart print             | `/teams` exists                                     |
+| Phase | Sheet                             | Status                                                                   |
+| ----- | --------------------------------- | ------------------------------------------------------------------------ |
+| 0     | Memory Jogger, name lists, report | **done** (docs/56)                                                       |
+| 1     | Setting Goals                     | **done** (docs/58)                                                       |
+| 2     | Tracker engine + Follow Up Sheet  | **done** (docs/59)                                                       |
+| 3     | Diamond Check List                | **done** — a seeded template on the same engine                          |
+| 4     | 6WNY follow-up                    | **done** (docs/59, docs/64) — staged template + measurements             |
+| 5     | Daily checklist                   | **done** (docs/60)                                                       |
+| 6     | Weekly Update                     | **done** (docs/61)                                                       |
+| 7     | Customer Index + SOP grid         | **done** (docs/66), screen in Sprint 48                                  |
+| 8     | Organisation chart print          | **not built** — `/teams` renders the tree; the print view does not exist |
+
+Added along the way, outside the original eight:
+
+|                               |                    |                                                |
+| ----------------------------- | ------------------ | ---------------------------------------------- |
+| Starting the business         | **done** (docs/63) | the path a new member actually lands on        |
+| The 6/9/12/15/18/21% ladder   | **done** (docs/62) | seeded as drafts; thresholds are the tenant's  |
+| Before/after photos + consent | **done** (docs/65) | needs a durable storage adapter for production |
+| The learning path             | **done** (docs/67) | what to know and what to do, at each stage     |
+
+## 9. What is actually left
+
+1. **The product-interest grid.** The second CUSTOMER NAME LIST sheet — customers
+   down the side, product columns across (`Breakfast set`, `eSpring`,
+   `Atmosphere`, `Spa`, `6WNY/Detox`). Never built. It is a tracker template
+   whose steps are the tenant's own offerings rather than fixed text, which is
+   the one thing the engine cannot seed today.
+2. **The organisation chart print view.** `/teams` renders the tree; what the
+   sheet adds is a printable snapshot for the weekly meeting.
+3. **A durable storage adapter** (R2 or S3). Until one exists the API refuses to
+   start in production with photos enabled, which is the intended state rather
+   than an oversight (docs/65 §4.1).
+4. **Two decisions that are the business's, not mine** (docs/65 §5): how long a
+   progress photograph should live after a programme ends, and how a customer
+   asks for a copy of their own. The two answers travel together.
 
 Phase 2 moved ahead of the weekly update deliberately: the weekly update reports
 on _things being tracked_, and until the tracker exists it has little to say.

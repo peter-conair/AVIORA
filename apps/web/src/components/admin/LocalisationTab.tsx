@@ -209,7 +209,7 @@ export function LocalisationTab() {
                         type="button"
                         onClick={() => removeLocale(entry)}
                         aria-label={t('removeLocale', { locale: entry })}
-                        className="rounded-full px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+                        className="rounded-full px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                       >
                         ✕
                       </button>
@@ -280,7 +280,7 @@ export function LocalisationTab() {
             <Button type="submit" disabled={saving}>
               {saving ? tc('saving') : t('submit')}
             </Button>
-            {saved ? <span className="text-sm text-teal-700">{t('savedNote')}</span> : null}
+            {saved ? <span className="text-sm text-brand-700">{t('savedNote')}</span> : null}
           </div>
         </form>
       </Card>

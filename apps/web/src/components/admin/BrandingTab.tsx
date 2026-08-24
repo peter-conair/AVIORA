@@ -423,7 +423,7 @@ export function BrandingTab() {
                     type="checkbox"
                     checked={hidden.includes(key)}
                     onChange={() => toggleHidden(key)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                   />
                   <span className="min-w-0 break-words text-sm text-slate-700">
                     {featureLabel(key)}
@@ -438,7 +438,7 @@ export function BrandingTab() {
                     type="checkbox"
                     checked
                     onChange={() => toggleHidden(key)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                   />
                   <span className="min-w-0 break-all text-sm text-slate-700">
                     {key} <span className="text-xs text-slate-500">({t('unknownFeature')})</span>
@@ -467,7 +467,7 @@ export function BrandingTab() {
           <Button type="submit" disabled={saving}>
             {saving ? tc('saving') : t('submit')}
           </Button>
-          {saved ? <span className="text-sm text-teal-700">{t('savedNote')}</span> : null}
+          {saved ? <span className="text-sm text-brand-700">{t('savedNote')}</span> : null}
         </div>
       </form>
     </div>

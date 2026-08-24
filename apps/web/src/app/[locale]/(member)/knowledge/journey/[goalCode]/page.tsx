@@ -26,7 +26,7 @@ function JourneyStep({ step, title, hint, last = false, children }: StepProps) {
       <div className="flex flex-col items-center">
         <span
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-            last ? 'bg-slate-200 text-slate-700' : 'bg-teal-700 text-white'
+            last ? 'bg-slate-200 text-slate-700' : 'bg-brand-700 text-white'
           }`}
           aria-hidden="true"
         >
@@ -78,7 +78,7 @@ export default function JourneyPage() {
   }, [goalCode]);
 
   const backLink = (
-    <Link href="/knowledge" className="text-sm font-medium text-teal-700 hover:underline">
+    <Link href="/knowledge" className="text-sm font-medium text-brand-700 hover:underline">
       {t('backToKnowledge')}
     </Link>
   );
@@ -168,7 +168,7 @@ export default function JourneyPage() {
                 <li key={article.id}>
                   <Link
                     href={`/knowledge/articles/${encodeURIComponent(article.slug)}`}
-                    className="block rounded-lg border border-slate-200 bg-white p-3 hover:border-teal-600 hover:bg-teal-50/40"
+                    className="block rounded-lg border border-slate-200 bg-white p-3 hover:border-brand-600 hover:bg-brand-50/40"
                   >
                     <span className="text-sm font-medium text-slate-900">{article.title}</span>
                     {article.summary ? (
@@ -194,7 +194,7 @@ export default function JourneyPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <Link
                       href={`/knowledge/ingredients/${encodeURIComponent(ingredient.code)}`}
-                      className="text-sm font-medium text-teal-700 hover:underline"
+                      className="text-sm font-medium text-brand-700 hover:underline"
                     >
                       {ingredient.name}
                     </Link>

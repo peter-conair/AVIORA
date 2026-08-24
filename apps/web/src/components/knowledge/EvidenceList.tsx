@@ -33,7 +33,7 @@ export function EvidenceList({ evidence }: EvidenceListProps) {
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-teal-700 hover:underline"
+                className="font-medium text-brand-700 hover:underline"
               >
                 {t('openEvidence')}
               </a>

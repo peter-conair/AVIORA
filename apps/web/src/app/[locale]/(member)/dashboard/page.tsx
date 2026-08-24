@@ -101,7 +101,7 @@ export default function DashboardPage() {
             </div>
           ) : null}
           <div className="mt-3">
-            <Link href="/goals" className="text-sm font-medium text-teal-700 hover:underline">
+            <Link href="/goals" className="text-sm font-medium text-brand-700 hover:underline">
               {t('goals.viewAll')}
             </Link>
           </div>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-teal-600"
+                        className="h-full rounded-full bg-brand-600"
                         style={{ width: `${pct}%` }}
                       />
                     </div>

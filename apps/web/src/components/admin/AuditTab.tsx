@@ -166,7 +166,7 @@ export function AuditTab() {
                           type="button"
                           onClick={() => setExpandedId(expanded ? null : entry.id)}
                           aria-expanded={expanded}
-                          className="text-xs font-medium text-teal-700 hover:underline"
+                          className="text-xs font-medium text-brand-700 hover:underline"
                         >
                           {expanded ? t('hide') : t('show')}
                         </button>

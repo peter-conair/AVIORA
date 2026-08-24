@@ -232,7 +232,7 @@ export function TeamsTab() {
                     <span className="font-medium text-slate-800">{team.name}</span>
                     <span className="ml-2 font-mono text-xs text-slate-400">{team.code}</span>
                   </span>
-                  <span className="text-xs text-teal-700">
+                  <span className="text-xs text-brand-700">
                     {selectedTeamId === team.id ? t('close') : t('detail')}
                   </span>
                 </button>
@@ -260,7 +260,7 @@ export function TeamsTab() {
                                   {detail.teamLeaderships.map((l, idx) => (
                                     <li
                                       key={l.member?.id ?? l.memberId ?? idx}
-                                      className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 ring-1 ring-inset ring-teal-600/20"
+                                      className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800 ring-1 ring-inset ring-brand-600/20"
                                     >
                                       {l.member?.displayName ?? l.memberId}
                                     </li>

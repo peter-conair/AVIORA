@@ -110,7 +110,7 @@ export default function NotificationSettingsPage() {
                             checked={pref[channel]}
                             disabled={savingType === type}
                             onChange={(e) => void handleToggle(type, channel, e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                            className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                           />
                           {t(channel)}
                         </label>

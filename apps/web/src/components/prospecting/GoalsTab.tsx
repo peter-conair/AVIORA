@@ -122,7 +122,7 @@ export function GoalsTab() {
     return (
       <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
         <div
-          className={`h-full rounded-full ${pct >= 100 ? 'bg-teal-600' : 'bg-amber-500'}`}
+          className={`h-full rounded-full ${pct >= 100 ? 'bg-brand-600' : 'bg-amber-500'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -174,7 +174,7 @@ export function GoalsTab() {
               </span>
             </div>
             {bar(p.volume.actualMinor, p.volume.targetMinor)}
-            <p className="mt-1 text-xs text-teal-700">{t('sourceComputed')}</p>
+            <p className="mt-1 text-xs text-brand-700">{t('sourceComputed')}</p>
             {numberField('volume', t('targetVolumeInput'))}
           </div>
 
@@ -187,7 +187,7 @@ export function GoalsTab() {
               </span>
             </div>
             {bar(p.newPartners.actual, p.newPartners.target)}
-            <p className="mt-1 text-xs text-teal-700">{t('sourceComputed')}</p>
+            <p className="mt-1 text-xs text-brand-700">{t('sourceComputed')}</p>
             {numberField('newPartners', t('targetPartnersInput'))}
           </div>
 
@@ -227,7 +227,7 @@ export function GoalsTab() {
         type="button"
         onClick={() => void save()}
         disabled={saving}
-        className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         {t('saveGoals')}
       </button>

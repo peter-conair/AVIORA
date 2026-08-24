@@ -81,7 +81,7 @@ export function PipelineTab({ onSelectLead }: PipelineTabProps) {
         {summary.map(([key, value]) => (
           <div key={key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase text-slate-500">{t(`summary.${key}`)}</p>
-            <p className="mt-1 text-2xl font-bold text-teal-700">{value}</p>
+            <p className="mt-1 text-2xl font-bold text-brand-700">{value}</p>
           </div>
         ))}
       </div>
@@ -101,7 +101,7 @@ export function PipelineTab({ onSelectLead }: PipelineTabProps) {
               >
                 <header className="mb-2 flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
                   <h3 className="text-sm font-semibold text-slate-900">{stage.name}</h3>
-                  <span className="whitespace-nowrap rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 ring-1 ring-inset ring-teal-600/20">
+                  <span className="whitespace-nowrap rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800 ring-1 ring-inset ring-brand-600/20">
                     {t('pipeline.openLeads', { count: stage.openLeads })}
                   </span>
                 </header>

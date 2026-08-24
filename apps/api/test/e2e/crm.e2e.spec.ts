@@ -1506,6 +1506,214 @@ describe('Sprint 47 — the customer index card', () => {
   });
 });
 
+/**
+ * Sprint 49 — the learning path (docs/67).
+ *
+ * Two questions at every stage: what to know, what to do. Both halves existed
+ * and neither was joined to the other — the start path covered the first stage
+ * of "do" and stopped, and "know" was an empty array on a rank nobody had
+ * filled in.
+ */
+describe('Sprint 49 — what to know and what to do', () => {
+  it('seeds a curriculum nobody had to write', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    expect(res.status).toBe(200);
+    expect(res.body.stages).toHaveLength(5);
+    // Real courses, with real lessons, that a member can actually start.
+    const first = res.body.stages[0];
+    expect(first.know.length).toBeGreaterThan(0);
+    expect(first.know[0].courseId).toBeTruthy();
+    expect(first.know[0].lessonCount).toBeGreaterThan(0);
+  });
+
+  it('says what to do as well as what to read', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    const first = res.body.stages.find((s: { key: string }) => s.key === 'know_the_business');
+    // A curriculum with no actions is a reading list, and reading a list is not
+    // what moves a business.
+    expect(first.do.map((d: { key: string }) => d.key)).toEqual(['dream', 'goal', 'names']);
+    expect(first.do.every((d: { source: string }) => d.source === 'computed')).toBe(true);
+  });
+
+  it('points at the earliest gap, not the furthest thing achieved', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+
+    // Real life does not go in order: this seller has closed customers while
+    // their name list is still short, so stage 2 is cleared and stage 1 is not.
+    const cleared = new Set(
+      res.body.stages
+        .filter((s: { cleared: boolean }) => s.cleared)
+        .map((s: { key: string }) => s.key),
+    );
+    expect(cleared.has('first_customer')).toBe(true);
+    expect(cleared.has('know_the_business')).toBe(false);
+
+    // And `current` is the EARLIEST gap rather than the next unreached stage.
+    // Somebody selling on four names is not ahead of the path — they are one
+    // short conversation away from running out of people, and the path should
+    // say so rather than congratulate them (docs/67 §4).
+    expect(res.body.currentStageKey).toBe('know_the_business');
+  });
+
+  it('agrees with the start path about where they are', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const [path, start] = await Promise.all([
+      api('/api/v1/learning-path', { token: seller, tenant: tenantId }),
+      api('/api/v1/start', { token: seller, tenant: tenantId }),
+    ]);
+    const pathCustomer = path.body.stages
+      .flatMap((s: { do: { key: string; done: boolean }[] }) => s.do)
+      .find((d: { key: string }) => d.key === 'customer');
+    const startCustomer = start.body.steps.find((s: { key: string }) => s.key === 'customer');
+    // Both read the same evidence on purpose. Two screens telling a member they
+    // are at different places is worse than either being wrong alone.
+    expect(pathCustomer.done).toBe(startCustomer.done);
+  });
+
+  it('does not pretend the last stage ever finishes', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    const last = res.body.stages[res.body.stages.length - 1];
+    expect(last.key).toBe('build');
+    // Building lines has no completion. The percentage ladder takes over from
+    // here, and a tick against it would be a lie with a certificate.
+    expect(last.cleared).toBe(false);
+  });
+
+  it('names duplication as its own stage, reached only through somebody else', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/learning-path', { token: seller, tenant: tenantId });
+    const stage = res.body.stages.find((s: { key: string }) => s.key === 'duplicate');
+    expect(stage).toBeTruthy();
+    // The only stage that cannot be reached by working harder alone: it needs
+    // somebody you sponsored to sponsor somebody.
+    expect(stage.do[0].key).toBe('duplicated');
+    expect(stage.cleared).toBe(false);
+  });
+});
+
+/**
+ * Sprint 51 — the plan (docs/69).
+ *
+ * Works backwards from the month's target to the number of names it needs, and
+ * forwards from the names to what to do today. The tests that matter are about
+ * the numbers in between: they come from the member's own history, and where
+ * there is not enough of it the plan says so rather than inventing a rate.
+ */
+describe('Sprint 51 — from the target back to the names', () => {
+  it('says what is missing rather than showing an empty plan', async () => {
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const res = await api('/api/v1/plan', { token: outsider, tenant: tenantId });
+    expect(res.status).toBe(200);
+    // No target set, so there is nothing to work backwards from — and the
+    // screen is told which one number would unblock it.
+    expect(res.body.blockedBy).toBe('no_target');
+    expect(res.body.funnel.every((f: { need: number | null }) => f.need === null)).toBe(true);
+  });
+
+  it('refuses to invent a rate it cannot measure', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    await api('/api/v1/goals/business', {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({ volumeTargetMinor: 3_000_000 }),
+    });
+    const res = await api('/api/v1/plan', { token: seller, tenant: tenantId });
+
+    // This seller has a handful of leads — nowhere near enough for a
+    // conversion rate to mean anything. A percentage off two leads is noise
+    // wearing a percentage sign, and a month's plan built on it sends somebody
+    // after the wrong number of people.
+    expect(res.body.rates.conversionRate.source).toBe('unknown');
+    expect(res.body.rates.conversionRate.value).toBeNull();
+    expect(res.body.blockedBy).toBeTruthy();
+  });
+
+  it('distinguishes "needs none" from "cannot say"', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/plan', { token: seller, tenant: tenantId });
+    const names = res.body.funnel.find((f: { step: string }) => f.step === 'names');
+    // `short: null` is not `short: 0`. One means the chain broke further up;
+    // the other means you already have enough, and a screen that showed both
+    // as "0 more needed" would be lying about half of them.
+    expect(names.short).toBeNull();
+    expect(names.have).toBeGreaterThanOrEqual(0);
+  });
+
+  it('takes the member’s own assumption when history is thin, and labels it', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const saved = await api('/api/v1/plan/assumptions', {
+      method: 'PUT',
+      token: seller,
+      tenant: tenantId,
+      body: JSON.stringify({
+        assumedOrderValueMinor: 150_000,
+        assumedContactRate: 50,
+        assumedConversionRate: 20,
+      }),
+    });
+    expect(saved.status).toBe(200);
+
+    const res = await api('/api/v1/plan', { token: seller, tenant: tenantId });
+    expect(res.body.rates.averageOrder.source).toBe('assumed');
+    expect(res.body.rates.conversionRate.source).toBe('assumed');
+    // Nothing is blocked any more, because the member supplied what the system
+    // could not measure — and the screen can still see it was a guess.
+    expect(res.body.blockedBy).toBeNull();
+  });
+
+  it('works the arithmetic backwards from the target', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/plan', { token: seller, tenant: tenantId });
+    const need = Object.fromEntries(
+      res.body.funnel.map((f: { step: string; need: number }) => [f.step, f.need]),
+    );
+    // 3,000,000 ÷ 150,000 = 20 customers · ÷ 20% = 100 conversations · ÷ 50%
+    // = 200 names. That last number is the point of the whole screen: it is
+    // ten times the twenty-row sheet, and nobody works that out in their head.
+    expect(need.customers).toBe(20);
+    expect(need.contacted).toBe(100);
+    expect(need.names).toBe(200);
+  });
+
+  it('says how far the name list is from what the plan needs', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/plan', { token: seller, tenant: tenantId });
+    const names = res.body.funnel.find((f: { step: string }) => f.step === 'names');
+    expect(names.short).toBe(Math.max(0, names.need - names.have));
+    // And the sheet's own twenty is reported beside it, because they answer
+    // different questions: twenty is the exercise, the funnel is the target.
+    expect(res.body.nameList.target).toBe(20);
+  });
+
+  it('names who to work on today', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const res = await api('/api/v1/plan', { token: seller, tenant: tenantId });
+    // Names on a list with no score cannot be planned around — they are the
+    // first thing to fix, so they lead the day rather than sitting unnoticed
+    // at the bottom of a list sorted by score.
+    expect(Array.isArray(res.body.today.unrated)).toBe(true);
+    expect(Array.isArray(res.body.today.dueFollowUps)).toBe(true);
+    expect(Array.isArray(res.body.today.neverStarted)).toBe(true);
+  });
+
+  it('plans from the member’s own history and nobody else’s', async () => {
+    const seller = await login(`seller-${RUN}@test.local`);
+    const outsider = await login(`outsider-${RUN}@test.local`);
+    const [mine, theirs] = await Promise.all([
+      api('/api/v1/plan', { token: seller, tenant: tenantId }),
+      api('/api/v1/plan', { token: outsider, tenant: tenantId }),
+    ]);
+    // A shared denominator would let a busy colleague's numbers set somebody
+    // else's month.
+    expect(mine.body.funnel[0].have).not.toBe(theirs.body.funnel[0].have);
+  });
+});
+
 describe('Sprint 3 — notification center', () => {
   it('delivers in-app notifications from relayed domain events', async () => {
     await drainOutbox(); // push this tenant's events through the handlers

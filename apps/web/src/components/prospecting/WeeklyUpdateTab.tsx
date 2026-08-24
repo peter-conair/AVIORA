@@ -198,7 +198,7 @@ export function WeeklyUpdateTab() {
         {p.onPace === null ? (
           <p className="mt-3 text-sm text-slate-500">{t('noTargetSet')}</p>
         ) : (
-          <p className={`mt-3 text-sm ${p.onPace ? 'text-teal-700' : 'text-amber-700'}`}>
+          <p className={`mt-3 text-sm ${p.onPace ? 'text-brand-700' : 'text-amber-700'}`}>
             {p.onPace
               ? t('onPace', { done: Math.round((p.achievedShare ?? 0) * 100) })
               : t('behindPace', {
@@ -247,7 +247,7 @@ export function WeeklyUpdateTab() {
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {saved ? t('savedWeekly') : t('saveWeekly')}
         </button>

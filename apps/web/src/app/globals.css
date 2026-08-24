@@ -1,1 +1,52 @@
 @import 'tailwindcss';
+
+/**
+ * The brand scale (docs/68).
+ *
+ * White-label has existed since Sprint 14: a tenant sets five colours, the
+ * shell publishes them as `--brand-*`, and an admin screen previews them. What
+ * it did NOT do was reach the product — three elements consumed the tokens and
+ * the other two hundred usages were a hardcoded Tailwind teal, so a tenant
+ * could set their colours and watch the header change while every button,
+ * chip, tab and progress bar stayed AVIORA's.
+ *
+ * Rather than ask every component to remember a CSS variable, the brand becomes
+ * a Tailwind colour: `bg-brand-700` resolves through `--brand-primary` when a
+ * tenant has set one, and to the teal this product has always used when they
+ * have not. Nothing changes for a tenant who never opens the branding screen.
+ *
+ * The shades are mixed from the one colour a tenant actually chose. Asking an
+ * administrator for nine of them would be asking them to be a designer; asking
+ * for one and deriving the rest is the trade this makes, and `color-mix` in
+ * oklab keeps the derived steps perceptually even rather than muddy.
+ */
+/*
+ * `inline` matters and is not decoration.
+ *
+ * Without it Tailwind emits `--color-brand-700: var(--brand-primary, …)` on
+ * `:root`, and a var() inside a custom-property declaration is substituted AT
+ * the declaring element — `:root`, where `--brand-primary` does not exist,
+ * because the shell sets it on a descendant. Every utility then resolved to
+ * the fallback teal and the whole mechanism looked wired while doing nothing.
+ *
+ * `inline` puts the expression into each utility instead, so it resolves on the
+ * element using it, where the tenant's colour has been inherited.
+ */
+@theme inline {
+  --color-brand-50: color-mix(in oklab, var(--brand-primary, #0f766e) 8%, white);
+  --color-brand-100: color-mix(in oklab, var(--brand-primary, #0f766e) 14%, white);
+  --color-brand-200: color-mix(in oklab, var(--brand-primary, #0f766e) 26%, white);
+  --color-brand-300: color-mix(in oklab, var(--brand-primary, #0f766e) 42%, white);
+  --color-brand-400: color-mix(in oklab, var(--brand-primary, #0f766e) 62%, white);
+  --color-brand-500: color-mix(in oklab, var(--brand-primary, #0f766e) 82%, white);
+  --color-brand-600: color-mix(in oklab, var(--brand-primary, #0f766e) 92%, white);
+  --color-brand-700: var(--brand-primary, #0f766e);
+  --color-brand-800: color-mix(in oklab, var(--brand-primary, #0f766e) 86%, black);
+  --color-brand-900: color-mix(in oklab, var(--brand-primary, #0f766e) 72%, black);
+
+  /* The second colour, for the places that need to differ from the first —
+     a highlight, a warning that is not an error. */
+  --color-accent-50: color-mix(in oklab, var(--brand-accent, #b45309) 10%, white);
+  --color-accent-600: color-mix(in oklab, var(--brand-accent, #b45309) 92%, white);
+  --color-accent-700: var(--brand-accent, #b45309);
+}

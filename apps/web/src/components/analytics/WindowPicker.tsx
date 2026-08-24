@@ -38,7 +38,7 @@ export function WindowPicker({ value, onChange, echo, disabled = false }: Window
             aria-pressed={value === key}
             onClick={() => onChange(key)}
             className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-60 ${
-              value === key ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+              value === key ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             {t(`window.${key}`)}

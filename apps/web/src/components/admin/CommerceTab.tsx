@@ -358,7 +358,7 @@ export function CommerceTab() {
                   {savingOffering ? tc('saving') : t('submitOffering')}
                 </Button>
                 {offeringCreated ? (
-                  <span className="text-sm text-teal-700">
+                  <span className="text-sm text-brand-700">
                     {t('offeringCreated', { name: offeringCreated })}
                   </span>
                 ) : null}
@@ -419,7 +419,7 @@ export function CommerceTab() {
                     {savingPlanPrice ? tc('saving') : t('submitPlanPrice')}
                   </Button>
                   {planPriceSaved ? (
-                    <span className="text-sm text-teal-700">{t('planPriceSaved')}</span>
+                    <span className="text-sm text-brand-700">{t('planPriceSaved')}</span>
                   ) : null}
                 </div>
               </form>
@@ -553,7 +553,7 @@ export function CommerceTab() {
                 {savingCoupon ? tc('saving') : t('submitCoupon')}
               </Button>
               {couponCreated ? (
-                <span className="text-sm text-teal-700">
+                <span className="text-sm text-brand-700">
                   {t('couponCreated', { code: couponCreated })}
                 </span>
               ) : null}

@@ -27,7 +27,7 @@ export default function HealthPage() {
             type="button"
             onClick={() => setTab(key)}
             className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === key ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+              tab === key ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             {t(`tabs.${key}`)}

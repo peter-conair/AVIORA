@@ -79,7 +79,7 @@ export default function InvitePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4 py-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-teal-700">AVIORA</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-brand-700">AVIORA</h1>
       </div>
 
       {loading ? (

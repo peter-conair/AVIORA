@@ -516,7 +516,7 @@ export function RanksTab() {
                   {savingRank ? tc('saving') : t('submitRank')}
                 </Button>
                 {rankCreated ? (
-                  <span className="text-sm text-teal-700">
+                  <span className="text-sm text-brand-700">
                     {t('rankCreated', { name: rankCreated })}
                   </span>
                 ) : null}
@@ -532,7 +532,7 @@ export function RanksTab() {
                   {evaluating ? tc('saving') : t('evaluate')}
                 </Button>
                 {evaluated ? (
-                  <span className="text-sm text-teal-700">
+                  <span className="text-sm text-brand-700">
                     {t('evaluateDone', {
                       evaluated: evaluated.evaluated,
                       changed: evaluated.changed,
@@ -607,7 +607,7 @@ export function RanksTab() {
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                   checked={includeEnded}
                   onChange={(e) => void handleToggleEnded(e.target.checked)}
                 />
@@ -729,7 +729,7 @@ function DraftLadderRow({
           type="button"
           disabled={saving || !value.trim()}
           onClick={() => void activate()}
-          className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {t('draftActivate')}
         </button>

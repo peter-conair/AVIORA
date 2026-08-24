@@ -485,7 +485,7 @@ export function IntegrationsTab() {
                 >
                   <input
                     type="checkbox"
-                    className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                    className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                     checked={chosenEvents.includes(eventName)}
                     onChange={() => toggleEvent(eventName)}
                   />
@@ -737,7 +737,7 @@ export function IntegrationsTab() {
                   >
                     <input
                       type="checkbox"
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
                       checked={chosenScopes.includes(scope)}
                       disabled={unavailable}
                       onChange={() => toggleScope(scope)}

@@ -155,7 +155,7 @@ export default function OrdersPage() {
 
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                   {order.discountMinor > 0 ? (
-                    <span className="text-xs text-teal-700">
+                    <span className="text-xs text-brand-700">
                       {ts('discount')} −{formatMoney(order.discountMinor, order.currency, locale)}
                     </span>
                   ) : (

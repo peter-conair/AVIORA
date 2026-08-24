@@ -242,7 +242,9 @@ export function LeadsTab({ selectedLeadId, onSelectLead }: LeadsTabProps) {
                     onClick={() => onSelectLead(active ? null : lead.id)}
                     aria-current={active ? 'true' : undefined}
                     className={`flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg px-2 py-2 text-left text-sm ${
-                      active ? 'bg-teal-50 ring-1 ring-inset ring-teal-600/20' : 'hover:bg-slate-50'
+                      active
+                        ? 'bg-brand-50 ring-1 ring-inset ring-brand-600/20'
+                        : 'hover:bg-slate-50'
                     }`}
                   >
                     <span className="flex min-w-0 flex-wrap items-center gap-2">

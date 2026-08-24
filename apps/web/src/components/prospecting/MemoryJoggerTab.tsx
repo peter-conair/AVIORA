@@ -113,7 +113,7 @@ export function MemoryJoggerTab({ onAdded }: { onAdded?: () => void }) {
                     <span
                       className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
                         prompt.named > 0
-                          ? 'bg-teal-50 text-teal-700'
+                          ? 'bg-brand-50 text-brand-700'
                           : 'bg-slate-100 text-slate-400'
                       }`}
                     >
@@ -134,7 +134,7 @@ export function MemoryJoggerTab({ onAdded }: { onAdded?: () => void }) {
                         type="button"
                         disabled={saving || !name.trim()}
                         onClick={() => void addName(prompt.key)}
-                        className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                       >
                         {t('add')}
                       </button>

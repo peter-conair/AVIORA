@@ -152,7 +152,7 @@ export function TrackerTab() {
             type="button"
             onClick={() => setCode(s.code)}
             className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ${
-              code === s.code ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+              code === s.code ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             {s.name}
@@ -186,7 +186,7 @@ export function TrackerTab() {
           <button
             type="button"
             onClick={() => void loadCandidates()}
-            className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
           >
             {t('addToSheet')}
           </button>
@@ -239,7 +239,7 @@ export function TrackerTab() {
                       ) : null}
                       {entry.subjectName ?? '—'}
                     </span>
-                    <span className="shrink-0 text-sm font-semibold text-teal-700">
+                    <span className="shrink-0 text-sm font-semibold text-brand-700">
                       {entry.doneCount} / {entry.stepCount}
                     </span>
                   </button>
@@ -252,7 +252,7 @@ export function TrackerTab() {
                           key={unit}
                           className={`rounded-full px-2 py-0.5 text-xs ${
                             c.delta < 0
-                              ? 'bg-teal-50 text-teal-800'
+                              ? 'bg-brand-50 text-brand-800'
                               : c.delta > 0
                                 ? 'bg-amber-50 text-amber-800'
                                 : 'bg-slate-100 text-slate-600'
@@ -266,7 +266,7 @@ export function TrackerTab() {
                   ) : null}
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-teal-600"
+                      className="h-full rounded-full bg-brand-600"
                       style={{
                         width: `${Math.round((entry.doneCount / Math.max(entry.stepCount, 1)) * 100)}%`,
                       }}
@@ -309,7 +309,7 @@ export function TrackerTab() {
                                     onClick={() => void toggle(entry.id, step.id, !ticked)}
                                     className={`rounded-full px-2.5 py-1 text-xs disabled:opacity-50 ${
                                       ticked
-                                        ? 'bg-teal-600 text-white'
+                                        ? 'bg-brand-600 text-white'
                                         : 'border border-slate-300 text-slate-600'
                                     }`}
                                   >

@@ -141,7 +141,7 @@ export function ProfileCard() {
               setNotes(e.target.value);
               setSaved(false);
             }}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
           />
           <p className="text-xs text-slate-500">{t('profile.notesHint')}</p>
         </div>
@@ -165,7 +165,7 @@ export function ProfileCard() {
                         checked={checked}
                         disabled={!checked && atLimit}
                         onChange={() => toggleGoal(goal.id)}
-                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-700 focus:ring-teal-600 disabled:opacity-40"
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600 disabled:opacity-40"
                       />
                       <span className="min-w-0">{goal.name}</span>
                     </label>
@@ -182,7 +182,7 @@ export function ProfileCard() {
           <Button type="submit" disabled={saving}>
             {saving ? tc('saving') : t('profile.save')}
           </Button>
-          {saved ? <span className="text-sm text-teal-700">{t('profile.saved')}</span> : null}
+          {saved ? <span className="text-sm text-brand-700">{t('profile.saved')}</span> : null}
           {profile ? (
             <span className="text-xs text-slate-500">
               {t('profile.updatedAt', { date: formatDate(profile.updatedAt, locale) })}
