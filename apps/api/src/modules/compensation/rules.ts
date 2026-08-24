@@ -18,7 +18,7 @@ import {
  * that both say "personal volume ≥ 50,000" must compute the same number, or the
  * plan is lying to somebody.
  *
- * There is now a THIRD payout kind, `differential`, and docs/69 §5 is the
+ * There is now a THIRD payout kind, `differential`, and docs/70 §5 is the
  * argument for it. The short version: `fixed` and `percent` both resolve from
  * the payee alone, and a stairstep plan does not — what it owes depends on the
  * rate the LEG achieved in the same period. That could not be said in the
@@ -241,7 +241,7 @@ export interface DifferentialAmount extends PayoutAmount {
 
 /**
  * The stairstep payout: for each leg, the payee's rate minus the rate that leg
- * already earned, applied to that leg's volume (docs/69 §3).
+ * already earned, applied to that leg's volume (docs/70 §3).
  *
  * Two decisions worth naming.
  *

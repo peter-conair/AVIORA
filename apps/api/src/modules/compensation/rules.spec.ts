@@ -8,7 +8,7 @@ import {
 } from './rules';
 
 /**
- * The differential payout (docs/69 §3, §5). Arithmetic only — no database, no
+ * The differential payout (docs/70 §3, §5). Arithmetic only — no database, no
  * graph — because this is where a stairstep plan is either right or quietly
  * wrong by a few satang per line, and that question deserves an instrument
  * faster than a commission run.

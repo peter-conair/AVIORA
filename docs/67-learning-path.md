@@ -86,5 +86,5 @@ reassuring once heard and corrosive while unheard. A heading called
 it, the test is the same one: could this paragraph be wrong for a tenant who
 runs a different plan? If yes, it is a heading.
 
-docs/69 is the primer the course is drawn from, and the place where the
+docs/70 is the primer the course is drawn from, and the place where the
 mechanics — and the two gaps they open in the rule engine — are argued out.

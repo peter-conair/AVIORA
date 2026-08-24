@@ -175,7 +175,7 @@ async function computeMetric(scope: MetricScope, requirement: MetricRequirement)
 
     case 'downline_volume':
     case 'referral_downline_volume': {
-      // Breakaway (docs/69 §4): a leg that reached the threshold stops counting
+      // Breakaway (docs/70 §4): a leg that reached the threshold stops counting
       // toward the volume that qualifies its upline. Absent the param this is
       // the plain subtree sum it has always been — a plan without breakaway
       // never sets it and never pays for the extra walk.

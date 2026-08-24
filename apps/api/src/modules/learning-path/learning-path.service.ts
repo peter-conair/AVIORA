@@ -44,7 +44,7 @@ export class LearningPathService {
    * `path-plan` is the exception and carries its body text, because how a
    * differential is computed is a fact about the plan FAMILY rather than an
    * opinion about any one plan, and a member who cannot read their own payout
-   * is not equipped by a heading (docs/69). It still sets no threshold: the
+   * is not equipped by a heading (docs/70). It still sets no threshold: the
    * numbers on each rung stay the tenant's to enter (docs/62 §2).
    */
   private async ensureCourses(tx: Tx, locale: Locale) {

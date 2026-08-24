@@ -166,7 +166,7 @@ on approval), `CompensationPlacementCreated`, `CompensationPlacementEnded`.
 
 §1 claimed all eleven bonus types are one sentence — conditions, then a fixed
 amount or a percentage. That claim was tested against the stairstep–breakaway
-family (docs/69) and **failed in two places**, both the same failure: `fixed`
+family (docs/70) and **failed in two places**, both the same failure: `fixed`
 and `percent` resolve a payout from the payee alone, and a stairstep plan
 cannot. What it owes on a line depends on the rate **that line** reached in the
 same period.

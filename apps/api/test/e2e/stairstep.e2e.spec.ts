@@ -1,8 +1,8 @@
 /**
- * A stairstep–breakaway plan, end to end (docs/69, docs/26 §1).
+ * A stairstep–breakaway plan, end to end (docs/70, docs/26 §1).
  *
  * docs/26 §1 promised that every bonus is one sentence — conditions, then a
- * fixed amount or a percentage — and docs/69 §5 found the two places that
+ * fixed amount or a percentage — and docs/70 §5 found the two places that
  * promise did not reach. Both failed the same way: the payout for one member is
  * not a function of that member alone. What a stairstep plan owes on a line
  * depends on the rate THAT LINE reached in the same period.
@@ -258,7 +258,7 @@ afterAll(async () => {
   await owner?.$disconnect();
 });
 
-describe('A stairstep plan is rows (docs/26 §1, docs/69 §5)', () => {
+describe('A stairstep plan is rows (docs/26 §1, docs/70 §5)', () => {
   it('the plan is accepted with two differential rules', async () => {
     const common = {
       basis: 'downline_volume',
@@ -357,7 +357,7 @@ describe('A stairstep plan is rows (docs/26 §1, docs/69 §5)', () => {
   });
 });
 
-describe('The differential pays the step, not the pile (docs/69 §3)', () => {
+describe('The differential pays the step, not the pile (docs/70 §3)', () => {
   let entries: any[];
 
   beforeAll(async () => {
@@ -454,7 +454,7 @@ describe('The differential pays the step, not the pile (docs/69 §3)', () => {
   });
 });
 
-describe('Breakaway is the same subtraction, one rung higher (docs/69 §4)', () => {
+describe('Breakaway is the same subtraction, one rung higher (docs/70 §4)', () => {
   let entries: any[];
 
   beforeAll(async () => {

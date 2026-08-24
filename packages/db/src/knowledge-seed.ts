@@ -8,7 +8,7 @@
  *
  * One article here is not part of that journey and carries no topics or
  * ingredients: `how-a-stairstep-plan-pays` explains how the compensation family
- * most tenants operate under actually works (docs/69). It is knowledge a member
+ * most tenants operate under actually works (docs/70). It is knowledge a member
  * asks for on day one and nowhere else answers, so it is seeded as an ARTICLE —
  * platform reference — rather than as training, which docs/67 §2 deliberately
  * leaves for the tenant to write. It names a plan as a worked example and sets

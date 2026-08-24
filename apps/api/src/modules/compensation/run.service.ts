@@ -304,7 +304,7 @@ export class RunService {
       //
       // A differential owes what the payee's rate exceeds the LEG's rate by, so
       // the payout for one member is not a function of that member alone
-      // (docs/69 §3). Computing and paying in a single loop would read a leg's
+      // (docs/70 §3). Computing and paying in a single loop would read a leg's
       // metrics before or after its own turn depending on id order, which is a
       // plan that pays differently on Tuesday. Two passes is the smallest
       // structure in which that cannot happen.

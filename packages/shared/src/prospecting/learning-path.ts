@@ -21,7 +21,7 @@
  * their behalf. The exception is material that is true of the plan FAMILY
  * rather than of any one plan — how a differential is computed does not vary
  * by company, and a member who does not know it cannot read their own payout.
- * docs/69 is where that line is argued.
+ * docs/70 is where that line is argued.
  */
 export interface PathLessonSeed {
   en: string;
@@ -94,7 +94,7 @@ export const LEARNING_PATH: readonly PathStageSeed[] = [
       ]),
       // The one seeded course that carries its own words. What a differential
       // is does not vary by company, and a member who cannot read their own
-      // payout is not equipped by a heading (docs/69 §3, §5).
+      // payout is not equipped by a heading (docs/70 §3, §5).
       c('path-plan', 'How the plan pays', 'แผนจ่ายเงินอย่างไร', [
         [
           'Retail margin — the part with no downline in it',
