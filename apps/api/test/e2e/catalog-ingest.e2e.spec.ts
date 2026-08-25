@@ -174,8 +174,10 @@ beforeAll(async () => {
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     return res.body.key;
   };
-  platformKey = await mkPlatformKey('ingest', [PERMISSIONS.PLATFORM_KNOWLEDGE_CATALOG_MANAGE]);
-  scopelessKey = await mkPlatformKey('reader', [PERMISSIONS.MEMBER_VIEW]);
+  platformKey = await mkPlatformKey(`ingest-${RUN}`, [
+    PERMISSIONS.PLATFORM_KNOWLEDGE_CATALOG_MANAGE,
+  ]);
+  scopelessKey = await mkPlatformKey(`reader-${RUN}`, [PERMISSIONS.MEMBER_VIEW]);
 
   const tenantKeyRes = await api('/api/v1/api-keys', {
     method: 'POST',
@@ -187,7 +189,42 @@ beforeAll(async () => {
   tenantKey = tenantKeyRes.body.key;
 }, 300_000);
 
+/**
+ * Everything this suite wrote, removed.
+ *
+ * These tests write GLOBAL knowledge — `tenant_id NULL`, the catalogue every
+ * tenant reads — because that is the surface under test and faking it would
+ * test nothing. The cost is that a run which does not clean up leaves products
+ * in the real catalogue, and a suite run a hundred times leaves a hundred
+ * copies: on this repo's own dev database the fixtures outnumbered the actual
+ * catalogue 756 to 434 before anybody noticed, and what somebody noticed was
+ * lab equipment appearing in a wellness catalogue.
+ *
+ * Keyed on the SOURCES and the run id this file declares, so it removes what it
+ * made and cannot reach a row written by anything else.
+ */
 afterAll(async () => {
+  if (owner) {
+    const ids = (
+      await owner.product.findMany({
+        where: { source: { in: [SOURCE, OTHER_SOURCE] } },
+        select: { id: true },
+      })
+    ).map((p) => p.id);
+    if (ids.length > 0) {
+      const productId = { in: ids };
+      await owner.productImage.deleteMany({ where: { productId } });
+      await owner.productIngredient.deleteMany({ where: { productId } });
+      await owner.productTopic.deleteMany({ where: { productId } });
+      await owner.product.deleteMany({ where: { id: productId } });
+    }
+    // Brands this suite invented, and only where nothing else hangs off them.
+    await owner.brand.deleteMany({
+      where: { tenantId: null, code: { endsWith: RUN }, products: { none: {} } },
+    });
+    await owner.idempotencyRecord.deleteMany({ where: { key: { contains: RUN } } });
+    await owner.platformApiKey.deleteMany({ where: { name: { contains: RUN } } });
+  }
   await app?.close();
   await owner?.$disconnect();
 });
@@ -206,7 +243,7 @@ describe('A key that belongs to no tenant (docs/74 §2)', () => {
       method: 'POST',
       token: adminToken,
       tenant,
-      body: JSON.stringify({ name: 'sneaky', scopes: [PERMISSIONS.MEMBER_VIEW] }),
+      body: JSON.stringify({ name: `sneaky-${RUN}`, scopes: [PERMISSIONS.MEMBER_VIEW] }),
     });
     expect(res.status).toBe(403);
   });
