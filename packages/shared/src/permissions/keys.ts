@@ -114,6 +114,17 @@ export const PERMISSIONS = {
   // platform scope (platform roles only)
   PLATFORM_TENANT_MANAGE: 'platform.tenant.manage',
   PLATFORM_METRICS_VIEW: 'platform.metrics.view',
+  /**
+   * Writing the GLOBAL knowledge catalogue — brands, products, and the
+   * ingredient links that make a product reachable (docs/74).
+   *
+   * Platform scope on purpose, and the prefix is what does it: there is ONE
+   * global catalogue, shared by every tenant, and `isTenantScopePermission`
+   * keeps `platform.*` out of the grant a tenant owner receives. Named without
+   * the prefix it would land in every tenant owner's role — a permission
+   * nobody should hold, waiting for the first route that checks it alone.
+   */
+  PLATFORM_KNOWLEDGE_CATALOG_MANAGE: 'platform.knowledge.catalog.manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

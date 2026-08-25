@@ -205,6 +205,95 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
         },
       },
     },
+    // Goals 11–17 cover what a wellness catalogue sells besides supplements:
+    // skin, hair, teeth, the body, and the water, air and surfaces of a home.
+    // They come from Amway's own `solutions` taxonomy and its shop categories,
+    // for the same reason the health goals did — a goal named from what the
+    // catalogue already says is one the catalogue can be mapped onto.
+    {
+      code: 'skin-care',
+      name: 'Skin Care',
+      description: 'Look after skin day to day, and know what a routine can and cannot do.',
+      order: 11,
+      translations: {
+        th: {
+          name: 'การดูแลผิว',
+          description: 'ดูแลผิวในแต่ละวัน และเข้าใจว่ากิจวัตรทำอะไรได้และทำอะไรไม่ได้',
+        },
+      },
+    },
+    {
+      code: 'hair-care',
+      name: 'Hair Care',
+      description: 'Hair and scalp, and what actually changes them.',
+      order: 12,
+      translations: {
+        th: {
+          name: 'การดูแลเส้นผม',
+          description: 'เส้นผมและหนังศีรษะ และสิ่งที่เปลี่ยนมันได้จริง',
+        },
+      },
+    },
+    {
+      code: 'oral-care',
+      name: 'Oral Care',
+      description: 'Teeth and gums, and the small daily habits that decide them.',
+      order: 13,
+      translations: {
+        th: {
+          name: 'การดูแลช่องปาก',
+          description: 'ฟันและเหงือก กับนิสัยเล็ก ๆ ประจำวันที่เป็นตัวตัดสิน',
+        },
+      },
+    },
+    {
+      code: 'body-care',
+      name: 'Body Care',
+      description: 'Skin below the neck — washing, moisture, and hands that work.',
+      order: 14,
+      translations: {
+        th: {
+          name: 'การดูแลร่างกาย',
+          description: 'ผิวตั้งแต่คอลงมา การทำความสะอาด ความชุ่มชื้น และมือที่ใช้งานหนัก',
+        },
+      },
+    },
+    {
+      code: 'clean-water',
+      name: 'Clean Water at Home',
+      description: 'What is in tap water, and what treating it does.',
+      order: 15,
+      translations: {
+        th: {
+          name: 'น้ำสะอาดในบ้าน',
+          description: 'ในน้ำประปามีอะไร และการกรองน้ำทำอะไรได้บ้าง',
+        },
+      },
+    },
+    {
+      code: 'clean-air',
+      name: 'Clean Air at Home',
+      description: 'Indoor air, the particles in it, and how it is filtered.',
+      order: 16,
+      translations: {
+        th: {
+          name: 'อากาศสะอาดในบ้าน',
+          description: 'อากาศในบ้าน อนุภาคที่อยู่ในนั้น และการกรองทำงานอย่างไร',
+        },
+      },
+    },
+    {
+      code: 'a-cleaner-home',
+      name: 'A Cleaner Home',
+      description: 'Cleaning, cookware and food handling in an ordinary kitchen.',
+      order: 17,
+      translations: {
+        th: {
+          name: 'บ้านที่สะอาดขึ้น',
+          description: 'การทำความสะอาด เครื่องครัว และการจัดการอาหารในครัวธรรมดา',
+        },
+      },
+    },
   ],
   topics: [
     {
@@ -329,6 +418,118 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
         th: {
           name: 'ผิวและผมจากภายใน',
           summary: 'อาหารทำอะไรได้และทำอะไรไม่ได้กับผิวและเส้นผม',
+        },
+      },
+    },
+    // Topics for those goals. These are where a product with NO ingredient
+    // attaches (docs/74 §6): a water filter belongs to `water-at-home`, not to
+    // any substance, and until product↔topic existed it belonged nowhere a
+    // member could find it.
+    {
+      code: 'skin-routine',
+      name: 'Everyday Skin Routine',
+      summary: 'Cleansing, moisture and sun — the three steps every routine is built on.',
+      goals: ['skin-care', 'beauty-from-within'],
+      translations: {
+        th: {
+          name: 'กิจวัตรดูแลผิวประจำวัน',
+          summary: 'ทำความสะอาด ให้ความชุ่มชื้น และกันแดด สามขั้นที่ทุกกิจวัตรตั้งอยู่บนนี้',
+        },
+      },
+    },
+    {
+      code: 'skin-concerns',
+      name: 'Common Skin Concerns',
+      summary: 'Dryness, oiliness, blemishes and uneven tone, and what each responds to.',
+      goals: ['skin-care'],
+      translations: {
+        th: {
+          name: 'ปัญหาผิวที่พบบ่อย',
+          summary: 'ผิวแห้ง ผิวมัน สิว และสีผิวไม่สม่ำเสมอ กับสิ่งที่แต่ละอย่างตอบสนอง',
+        },
+      },
+    },
+    {
+      code: 'hair-and-scalp',
+      name: 'Hair & Scalp',
+      summary: 'Washing, conditioning, and treating the scalp as skin.',
+      goals: ['hair-care'],
+      translations: {
+        th: {
+          name: 'เส้นผมและหนังศีรษะ',
+          summary: 'การสระ การบำรุง และการดูแลหนังศีรษะเหมือนผิวหนัง',
+        },
+      },
+    },
+    {
+      code: 'teeth-and-gums',
+      name: 'Teeth & Gums',
+      summary: 'Brushing, cleaning between teeth, and rinsing.',
+      goals: ['oral-care'],
+      translations: {
+        th: {
+          name: 'ฟันและเหงือก',
+          summary: 'การแปรงฟัน การทำความสะอาดซอกฟัน และการบ้วนปาก',
+        },
+      },
+    },
+    {
+      code: 'body-and-hands',
+      name: 'Body & Hands',
+      summary: 'Washing without stripping, and looking after hands that work.',
+      goals: ['body-care'],
+      translations: {
+        th: {
+          name: 'ร่างกายและมือ',
+          summary: 'ทำความสะอาดโดยไม่ทำให้ผิวแห้ง และดูแลมือที่ใช้งานหนัก',
+        },
+      },
+    },
+    {
+      code: 'water-at-home',
+      name: 'Water at Home',
+      summary: 'What tap water carries, and what a filter removes.',
+      goals: ['clean-water'],
+      translations: {
+        th: {
+          name: 'น้ำในบ้าน',
+          summary: 'น้ำประปาพาอะไรมาบ้าง และเครื่องกรองเอาอะไรออก',
+        },
+      },
+    },
+    {
+      code: 'air-at-home',
+      name: 'Air at Home',
+      summary: 'Dust, smoke and PM2.5 indoors, and how filtration works.',
+      goals: ['clean-air'],
+      translations: {
+        th: {
+          name: 'อากาศในบ้าน',
+          summary: 'ฝุ่น ควัน และ PM2.5 ในบ้าน กับหลักการกรองอากาศ',
+        },
+      },
+    },
+    {
+      code: 'household-cleaning',
+      name: 'Household Cleaning',
+      summary: 'Cleaning products, what they are for, and using less of them.',
+      goals: ['a-cleaner-home'],
+      translations: {
+        th: {
+          name: 'การทำความสะอาดบ้าน',
+          summary: 'ผลิตภัณฑ์ทำความสะอาด ใช้ทำอะไร และวิธีใช้ให้น้อยลง',
+        },
+      },
+    },
+    {
+      code: 'cookware-and-food',
+      name: 'Cookware & Food Handling',
+      summary: 'Pans, heat, and keeping food safe from kitchen to plate.',
+      goals: ['a-cleaner-home'],
+      translations: {
+        th: {
+          name: 'เครื่องครัวและการจัดการอาหาร',
+          summary: 'หม้อกระทะ ความร้อน และการรักษาความปลอดภัยของอาหารจากครัวถึงจาน',
         },
       },
     },
@@ -985,6 +1186,717 @@ export const KNOWLEDGE_SEED: KnowledgeSeed = {
           name: 'โสมไซบีเรีย',
           summary:
             'Eleutherococcus senticosus ซึ่งไม่ใช่โสมแท้ ใช้ในตำรับดั้งเดิมและถูกจัดอยู่ในกลุ่มอะแดปโตเจน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    // A second pass over the same catalogue (docs/74 §5). The first read the
+    // product NAMES; these came from `short_description`, where Amway lists what
+    // is actually in the bottle — which is how the one supplement that had
+    // resisted linking, Ostkeeper, turned out to be pomegranate and grape seed.
+    {
+      code: 'grape-seed',
+      name: 'Grape Seed Extract',
+      summary:
+        'An extract of grape seeds carrying proanthocyanidins, the same family of compounds that colours red wine.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-from-within', 'heart-and-circulation'],
+      translations: {
+        th: {
+          name: 'สารสกัดเมล็ดองุ่น',
+          summary: 'สารสกัดจากเมล็ดองุ่นซึ่งมีโปรแอนโทไซยานิดิน สารกลุ่มเดียวกับที่ให้สีแก่ไวน์แดง',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'pomegranate',
+      name: 'Pomegranate',
+      summary: 'The fruit of Punica granatum, carrying punicalagins and anthocyanins.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['bone-and-joint', 'heart-and-circulation'],
+      translations: {
+        th: {
+          name: 'ทับทิม',
+          summary: 'ผลของ Punica granatum มีสารพูนิคาลาจินและแอนโทไซยานิน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'cranberry',
+      name: 'Cranberry',
+      summary:
+        'A tart North American berry carrying proanthocyanidins, traditionally taken in the context of urinary health.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['immune-support'],
+      translations: {
+        th: {
+          name: 'แครนเบอร์รี',
+          summary:
+            'เบอร์รีรสเปรี้ยวจากอเมริกาเหนือ มีโปรแอนโทไซยานิดิน มักรับประทานในบริบทของสุขภาพทางเดินปัสสาวะ',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'green-coffee-bean',
+      name: 'Green Coffee Bean',
+      summary:
+        'Unroasted coffee beans, which retain chlorogenic acid that roasting largely destroys.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['energy-balance'],
+      translations: {
+        th: {
+          name: 'เมล็ดกาแฟเขียว',
+          summary:
+            'เมล็ดกาแฟที่ยังไม่ผ่านการคั่ว จึงยังคงกรดคลอโรจีนิกซึ่งการคั่วทำลายไปเป็นส่วนใหญ่',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'lycopene',
+      name: 'Lycopene',
+      summary:
+        'The red carotenoid of tomatoes, watermelon and pink guava. Cooking with a little oil makes it easier to absorb.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps', 'heart-and-circulation'],
+      translations: {
+        th: {
+          name: 'ไลโคปีน',
+          summary:
+            'แคโรทีนอยด์สีแดงในมะเขือเทศ แตงโม และฝรั่งสีชมพู การปรุงกับน้ำมันเล็กน้อยช่วยให้ดูดซึมง่ายขึ้น',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'broccoli',
+      name: 'Broccoli',
+      summary: 'A cruciferous vegetable carrying sulforaphane, vitamin C and vitamin K.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'บรอกโคลี',
+          summary: 'ผักตระกูลกะหล่ำที่มีซัลโฟราเฟน วิตามินซี และวิตามินเค',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'dong-quai',
+      name: 'Dong Quai',
+      summary: 'Angelica sinensis, a root long used in Chinese traditional preparations.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-from-within'],
+      translations: {
+        th: {
+          name: 'ตังกุย',
+          summary: 'Angelica sinensis รากที่ใช้ในตำรับจีนโบราณมายาวนาน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'blueberry',
+      name: 'Blueberry',
+      summary: 'A berry whose deep colour comes from anthocyanins.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'บลูเบอร์รี',
+          summary: 'เบอร์รีที่มีสีเข้มจากแอนโทไซยานิน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'alfalfa',
+      name: 'Alfalfa',
+      summary: 'A legume eaten as sprouts or leaf, carrying vitamin K and minerals.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'อัลฟัลฟา',
+          summary: 'พืชตระกูลถั่วที่กินเป็นต้นอ่อนหรือใบ มีวิตามินเคและแร่ธาตุ',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'white-kidney-bean',
+      name: 'White Kidney Bean',
+      summary: 'A bean whose extract contains a protein that interferes with starch digestion.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['energy-balance'],
+      translations: {
+        th: {
+          name: 'ถั่วขาว',
+          summary: 'ถั่วที่สารสกัดของมันมีโปรตีนซึ่งรบกวนการย่อยแป้ง',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'chrysanthemum',
+      name: 'Chrysanthemum',
+      summary: 'The dried flower of Chrysanthemum morifolium, drunk as a tea in East Asia.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'เก๊กฮวย',
+          summary: 'ดอกแห้งของ Chrysanthemum morifolium ดื่มเป็นชาในเอเชียตะวันออก',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'wheat-sprout',
+      name: 'Wheat Sprout Extract',
+      summary: 'An extract of sprouted wheat, used as a source of plant enzymes and minerals.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'สารสกัดข้าวสาลีงอก',
+          summary: 'สารสกัดจากข้าวสาลีที่งอกแล้ว ใช้เป็นแหล่งเอนไซม์จากพืชและแร่ธาตุ',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    // A third pass, over the product PAGE rather than its summary (docs/74 §5).
+    // The page carries the full ingredient list — which is where a fibre blend
+    // turns out to be nine plants and not one, and where a fruit-and-vegetable
+    // concentrate names the ten it concentrates. Depth is not decoration here:
+    // a member who arrives at lutein must find the product that contains it,
+    // and one link per product would have hidden nine of every ten.
+    {
+      code: 'chia-seed',
+      name: 'Chia Seed',
+      summary: 'Seeds of Salvia hispanica, carrying fibre, plant omega-3 (ALA) and protein.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps', 'digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'เมล็ดเจีย',
+          summary: 'เมล็ดของ Salvia hispanica มีใยอาหาร โอเมก้า-3 จากพืช (ALA) และโปรตีน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'lutein',
+      name: 'Lutein',
+      summary:
+        'A yellow carotenoid concentrated in the retina, obtained from marigold flowers and dark leafy greens.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'ลูทีน',
+          summary: 'แคโรทีนอยด์สีเหลืองที่สะสมอยู่ในจอตา ได้จากดอกดาวเรืองและผักใบเขียวเข้ม',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'carrot',
+      name: 'Carrot',
+      summary: 'A root vegetable and the most familiar source of beta-carotene.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'แครอท',
+          summary: 'ผักรากที่เป็นแหล่งเบตาแคโรทีนที่คุ้นเคยที่สุด',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'biotin',
+      name: 'Biotin',
+      summary:
+        'A B vitamin involved in normal hair, skin and nail structure. Eggs, nuts and liver carry it.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-from-within'],
+      translations: {
+        th: {
+          name: 'ไบโอติน',
+          summary:
+            'วิตามินบีชนิดหนึ่งที่เกี่ยวข้องกับโครงสร้างปกติของผม ผิว และเล็บ พบในไข่ ถั่ว และตับ',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'folate',
+      name: 'Folate',
+      summary:
+        'Vitamin B9, needed for normal cell division. Dark leafy greens, beans and liver are ordinary sources.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'โฟเลต',
+          summary:
+            'วิตามินบี 9 จำเป็นต่อการแบ่งเซลล์ตามปกติ แหล่งทั่วไปคือ ผักใบเขียวเข้ม ถั่ว และตับ',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'sea-buckthorn',
+      name: 'Sea Buckthorn',
+      summary: 'A shrub berry carrying vitamin C, carotenoids and omega-7 fatty acids.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-from-within', 'immune-support'],
+      translations: {
+        th: {
+          name: 'ซีบัคธอร์น',
+          summary: 'ผลของไม้พุ่มที่มีวิตามินซี แคโรทีนอยด์ และกรดไขมันโอเมก้า-7',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'copper',
+      name: 'Copper',
+      summary:
+        'A trace mineral working alongside iron in the formation of red blood cells and connective tissue.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'ทองแดง',
+          summary:
+            'แร่ธาตุปริมาณน้อยที่ทำงานร่วมกับธาตุเหล็กในการสร้างเม็ดเลือดแดงและเนื้อเยื่อเกี่ยวพัน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'manganese',
+      name: 'Manganese',
+      summary:
+        'A trace mineral involved in bone formation and the metabolism of carbohydrate and fat.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['bone-and-joint'],
+      translations: {
+        th: {
+          name: 'แมงกานีส',
+          summary:
+            'แร่ธาตุปริมาณน้อยที่เกี่ยวข้องกับการสร้างกระดูกและกระบวนการเผาผลาญคาร์โบไฮเดรตและไขมัน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'vitamin-a',
+      name: 'Vitamin A',
+      summary:
+        'A fat-soluble vitamin involved in normal vision and skin. Liver, egg yolk and orange vegetables carry it or its precursor.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['nutrient-gaps', 'skin-from-within'],
+      translations: {
+        th: {
+          name: 'วิตามินเอ',
+          summary:
+            'วิตามินที่ละลายในไขมัน เกี่ยวข้องกับการมองเห็นและผิวหนังตามปกติ พบในตับ ไข่แดง และผักสีส้มในรูปสารตั้งต้น',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'inulin',
+      name: 'Inulin',
+      summary:
+        'A soluble plant fibre from chicory root and other plants, which passes to the large intestine undigested.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'อินูลิน',
+          summary: 'ใยอาหารชนิดละลายน้ำจากรากชิโครีและพืชอื่น ผ่านไปถึงลำไส้ใหญ่โดยไม่ถูกย่อย',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'oat-fibre',
+      name: 'Oat Fibre',
+      summary: 'The fibre fraction of oats, carrying beta-glucan.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver', 'heart-and-circulation'],
+      translations: {
+        th: {
+          name: 'ใยอาหารข้าวโอ๊ต',
+          summary: 'ส่วนใยอาหารของข้าวโอ๊ต ซึ่งมีเบต้ากลูแคน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'barley',
+      name: 'Barley',
+      summary: 'A cereal grain carrying soluble fibre, eaten whole or as a fibre source.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'ข้าวบาร์เลย์',
+          summary: 'ธัญพืชที่มีใยอาหารชนิดละลายน้ำ กินทั้งเมล็ดหรือใช้เป็นแหล่งใยอาหาร',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'apple',
+      name: 'Apple',
+      summary: 'A fruit whose skin and flesh carry pectin, a soluble fibre.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'แอปเปิ้ล',
+          summary: 'ผลไม้ที่เปลือกและเนื้อมีเพกติน ซึ่งเป็นใยอาหารชนิดละลายน้ำ',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'pea-fibre',
+      name: 'Pea Fibre',
+      summary: 'The fibre fraction of the field pea, used as a bulking fibre.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'ใยอาหารถั่วลันเตา',
+          summary: 'ส่วนใยอาหารของถั่วลันเตา ใช้เป็นใยอาหารเพิ่มกาก',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'cactus-fibre',
+      name: 'Cactus Fibre',
+      summary: 'Fibre from the prickly pear cactus pad.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'ใยอาหารกระบองเพชร',
+          summary: 'ใยอาหารจากใบของกระบองเพชรสกุลออพันเทีย',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'sugarcane-fibre',
+      name: 'Sugarcane Fibre',
+      summary: 'The insoluble fibre left after sugar is pressed from the cane.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'ใยอาหารจากอ้อย',
+          summary: 'ใยอาหารชนิดไม่ละลายน้ำที่เหลือจากการหีบน้ำตาลออกจากอ้อย',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'borage-oil',
+      name: 'Borage Oil',
+      summary:
+        'An oil pressed from borage seeds, the richest common source of gamma-linolenic acid.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-from-within'],
+      translations: {
+        th: {
+          name: 'น้ำมันโบราจ',
+          summary:
+            'น้ำมันจากเมล็ดโบราจ เป็นแหล่งกรดแกมมา-ลิโนเลนิกที่เข้มข้นที่สุดในบรรดาแหล่งทั่วไป',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'ginger',
+      name: 'Ginger',
+      summary:
+        'The rhizome of Zingiber officinale, a kitchen spice used in traditional preparations for digestion.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'ขิง',
+          summary:
+            'เหง้าของ Zingiber officinale เครื่องเทศในครัวที่ใช้ในตำรับดั้งเดิมเกี่ยวกับการย่อยอาหาร',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'elderberry',
+      name: 'Elderberry',
+      summary:
+        'The dark berry of Sambucus, carrying anthocyanins and traditionally taken in winter.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['immune-support'],
+      translations: {
+        th: {
+          name: 'เอลเดอร์เบอร์รี',
+          summary: 'ผลสีเข้มของ Sambucus มีแอนโทไซยานิน ตามธรรมเนียมรับประทานในฤดูหนาว',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'gold-kiwi',
+      name: 'Gold Kiwi',
+      summary: 'A yellow-fleshed kiwifruit, carrying more vitamin C by weight than an orange.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['immune-support', 'digestion-and-liver'],
+      translations: {
+        th: {
+          name: 'กีวีสีทอง',
+          summary: 'กีวีเนื้อสีเหลือง มีวิตามินซีต่อน้ำหนักมากกว่าส้ม',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    // Cosmetic and personal-care ingredients, read from the same catalogue.
+    // Fewer than the supplement side, and that is honest: a shampoo's page
+    // names two or three things, where a multivitamin's names twenty.
+    {
+      code: 'ceramide',
+      name: 'Ceramides',
+      summary:
+        "Lipids that make up part of the skin's outer barrier, also used in leave-on products.",
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-routine', 'hair-and-scalp'],
+      translations: {
+        th: {
+          name: 'เซราไมด์',
+          summary:
+            'ไขมันที่เป็นส่วนหนึ่งของเกราะผิวชั้นนอก และใช้ในผลิตภัณฑ์บำรุงที่ไม่ต้องล้างออก',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'argan-oil',
+      name: 'Argan Oil',
+      summary: 'An oil pressed from the kernels of the Moroccan argan tree.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['hair-and-scalp', 'body-and-hands'],
+      translations: {
+        th: {
+          name: 'น้ำมันอาร์แกน',
+          summary: 'น้ำมันจากเมล็ดในของต้นอาร์แกนในโมร็อกโก',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'peptide',
+      name: 'Peptides',
+      summary: 'Short chains of amino acids used in leave-on skin products.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-routine', 'skin-concerns'],
+      translations: {
+        th: {
+          name: 'เปปไทด์',
+          summary: 'สายกรดอะมิโนสายสั้นที่ใช้ในผลิตภัณฑ์บำรุงผิวชนิดไม่ล้างออก',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'honey',
+      name: 'Honey',
+      summary: 'A humectant sugar syrup made by bees, used in food and in skin products.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['body-and-hands', 'nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'น้ำผึ้ง',
+          summary: 'น้ำเชื่อมจากผึ้งที่อุ้มความชื้น ใช้ทั้งในอาหารและผลิตภัณฑ์บำรุงผิว',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'shea-butter',
+      name: 'Shea Butter',
+      summary: 'A fat pressed from the nut of the shea tree, solid at room temperature.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['body-and-hands'],
+      translations: {
+        th: {
+          name: 'เชียบัตเตอร์',
+          summary: 'ไขมันจากเมล็ดต้นเชีย เป็นของแข็งที่อุณหภูมิห้อง',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'rice-extract',
+      name: 'Rice Extract',
+      summary: 'An extract of rice grain or bran, long used in East Asian preparations.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-routine'],
+      translations: {
+        th: {
+          name: 'สารสกัดข้าว',
+          summary: 'สารสกัดจากเมล็ดข้าวหรือรำข้าว ใช้ในตำรับเอเชียตะวันออกมายาวนาน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'ginseng',
+      name: 'Ginseng',
+      summary: 'Panax ginseng root, used in traditional preparations and in skin products.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-routine', 'nutrient-gaps'],
+      translations: {
+        th: {
+          name: 'โสม',
+          summary: 'รากโสม Panax ginseng ใช้ในตำรับดั้งเดิมและในผลิตภัณฑ์บำรุงผิว',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'aloe-vera',
+      name: 'Aloe Vera',
+      summary: 'The gel inside the leaf of Aloe barbadensis, mostly water and polysaccharides.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['body-and-hands', 'skin-routine'],
+      translations: {
+        th: {
+          name: 'ว่านหางจระเข้',
+          summary: 'วุ้นในใบของ Aloe barbadensis ส่วนใหญ่เป็นน้ำและพอลิแซ็กคาไรด์',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'fluoride',
+      name: 'Fluoride',
+      summary: 'A mineral added to toothpaste and water supplies, involved in enamel hardness.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['teeth-and-gums'],
+      translations: {
+        th: {
+          name: 'ฟลูออไรด์',
+          summary: 'แร่ธาตุที่เติมในยาสีฟันและน้ำประปา เกี่ยวข้องกับความแข็งของเคลือบฟัน',
+          safetyNotes:
+            'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
+        },
+      },
+    },
+    {
+      code: 'seaweed-extract',
+      name: 'Seaweed Extract',
+      summary: 'An extract of marine algae, carrying minerals and polysaccharides.',
+      safetyNotes:
+        'General wellness information only. Not a treatment for any condition. People who are pregnant, taking medication, or living with a health condition should speak with a qualified healthcare professional before changing supplementation.',
+      topics: ['skin-routine'],
+      translations: {
+        th: {
+          name: 'สารสกัดสาหร่ายทะเล',
+          summary: 'สารสกัดจากสาหร่ายทะเล มีแร่ธาตุและพอลิแซ็กคาไรด์',
           safetyNotes:
             'เป็นข้อมูลสุขภาพทั่วไปเท่านั้น ไม่ใช่การรักษาโรคใด ผู้ที่ตั้งครรภ์ ใช้ยาประจำ หรือมีโรคประจำตัว ควรปรึกษาบุคลากรทางการแพทย์ก่อนปรับการเสริมอาหาร',
         },

@@ -14,7 +14,7 @@ import { ClsService } from 'nestjs-cls';
 import { ERROR_CODES } from '@aviora/shared';
 import { PrismaService } from '../../common/db/prisma.service';
 import { CLS_TENANT_ID, CLS_TENANT_SOURCE } from '../../common/tenant/tenant-context.middleware';
-import { prefixOf, type ApiKeyPrincipal, type ApiKeyRequest } from './api-key';
+import { parseKey, type ApiKeyPrincipal, type ApiKeyRequest, type KeyKind } from './api-key';
 import { sha256Hex, timingSafeEquals } from './webhook';
 
 export const REQUIRED_SCOPES = 'requiredApiKeyScopes';
@@ -26,8 +26,33 @@ export const REQUIRED_SCOPES = 'requiredApiKeyScopes';
  */
 export const RequireScopes = (...scopes: string[]) => SetMetadata(REQUIRED_SCOPES, scopes);
 
+export const REQUIRED_KEY_KIND = 'requiredApiKeyKind';
+/**
+ * Marks a route as PLATFORM scope: it acts on data that belongs to no tenant,
+ * so it takes a platform key and refuses a tenant one (docs/74 §2).
+ *
+ * The check runs BOTH ways, which is the point. Without the decorator a
+ * platform key is refused, so a key that speaks for everybody cannot wander
+ * into a route written for one tenant and be handed whichever tenant the host
+ * happened to resolve. With it, a tenant key is refused, so no single tenant's
+ * key quietly rewrites the catalogue every tenant reads.
+ */
+export const RequirePlatformKey = () => SetMetadata(REQUIRED_KEY_KIND, 'platform');
+
 /** Stands in for a real hash when no key matched, so both paths do the same work. */
 const NO_SUCH_HASH = '0'.repeat(64);
+
+/** The columns both key tables answer with, once a platform row has been mapped. */
+interface KeyRow {
+  id: string;
+  name: string;
+  hash: string;
+  scopes: string[];
+  tenantId: string | null;
+  lastUsedAt: Date | null;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+}
 
 /** Only revisit `last_used_at` occasionally — an operator needs the day, not the millisecond. */
 const LAST_USED_THROTTLE_MS = 60_000;
@@ -52,7 +77,12 @@ export class ApiKeyGuard implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest<Request & ApiKeyRequest>();
-    const principal = await this.authenticate(req);
+    const wanted =
+      this.reflector.getAllAndOverride<KeyKind>(REQUIRED_KEY_KIND, [
+        ctx.getHandler(),
+        ctx.getClass(),
+      ]) ?? 'tenant';
+    const principal = await this.authenticate(req, wanted);
 
     const required =
       this.reflector.getAllAndOverride<string[]>(REQUIRED_SCOPES, [
@@ -73,15 +103,63 @@ export class ApiKeyGuard implements CanActivate {
     return true;
   }
 
-  private async authenticate(req: Request & ApiKeyRequest): Promise<ApiKeyPrincipal> {
+  private async authenticate(
+    req: Request & ApiKeyRequest,
+    wanted: KeyKind,
+  ): Promise<ApiKeyPrincipal> {
     const header = req.header('authorization');
     const raw = header?.startsWith('Bearer ') ? header.slice(7).trim() : null;
-    const prefix = raw ? prefixOf(raw) : null;
-    if (!raw || !prefix) throw this.unauthenticated();
+    const presented = raw ? parseKey(raw) : null;
+    if (!raw || !presented) throw this.unauthenticated();
 
+    // The label decides which table is read. A tenant key is never looked up
+    // against the platform table, so the two can never be confused for one
+    // another by a query that happens to match.
+    const match =
+      presented.kind === 'platform'
+        ? await this.findPlatformKey(presented.prefix, raw)
+        : await this.findTenantKey(presented.prefix, raw);
+
+    const now = new Date();
+    if (match.revokedAt) throw this.unauthenticated('This API key has been revoked');
+    if (match.expiresAt && match.expiresAt <= now) {
+      throw this.unauthenticated('This API key has expired');
+    }
+
+    // Kind is checked AFTER the key is proven valid, so a caller holding no
+    // valid key learns nothing about which of the two tables a prefix lives in.
+    if (presented.kind !== wanted) throw this.wrongKind(presented.kind, wanted);
+
+    if (match.tenantId) this.bindTenant(match.tenantId);
+    this.touch(presented.kind, match.id, match.lastUsedAt);
+
+    return {
+      keyId: match.id,
+      tenantId: match.tenantId,
+      kind: presented.kind,
+      name: match.name,
+      scopes: match.scopes,
+    };
+  }
+
+  private async findTenantKey(prefix: string, raw: string): Promise<KeyRow> {
     // The prefix is unique per tenant, so a lookup by prefix alone can in
     // principle return more than one row; the hash comparison is what decides.
     const candidates = await this.prisma.owner.apiKey.findMany({ where: { prefix } });
+    return this.verify(candidates, raw);
+  }
+
+  private async findPlatformKey(prefix: string, raw: string): Promise<KeyRow> {
+    const candidates = await this.prisma.owner.platformApiKey.findMany({ where: { prefix } });
+    // Mapped rather than spread: the platform row has no tenant column at all,
+    // and `tenantId: null` is the fact this returns rather than an omission.
+    return this.verify(
+      candidates.map((row) => ({ ...row, tenantId: null })),
+      raw,
+    );
+  }
+
+  private verify(candidates: KeyRow[], raw: string): KeyRow {
     const presented = sha256Hex(raw);
     const match = candidates.find((row) => timingSafeEquals(row.hash, presented));
     if (!match) {
@@ -90,22 +168,19 @@ export class ApiKeyGuard implements CanActivate {
       timingSafeEquals(NO_SUCH_HASH, presented);
       throw this.unauthenticated();
     }
+    return match;
+  }
 
-    const now = new Date();
-    if (match.revokedAt) throw this.unauthenticated('This API key has been revoked');
-    if (match.expiresAt && match.expiresAt <= now) {
-      throw this.unauthenticated('This API key has expired');
-    }
-
-    this.bindTenant(match.tenantId);
-    this.touch(match.id, match.lastUsedAt);
-
-    return {
-      keyId: match.id,
-      tenantId: match.tenantId,
-      name: match.name,
-      scopes: match.scopes,
-    };
+  /** Refused by NAME: "forbidden" sends an integrator guessing, this does not. */
+  private wrongKind(held: KeyKind, wanted: KeyKind): ForbiddenException {
+    return new ForbiddenException({
+      code: ERROR_CODES.FORBIDDEN,
+      message:
+        wanted === 'platform'
+          ? 'This endpoint writes data no tenant owns, and needs a platform key'
+          : 'This endpoint serves one tenant, and a platform key names none',
+      details: { keyKind: held, required: wanted },
+    });
   }
 
   /** A key is bound to one tenant; two sources that disagree are never widened. */
@@ -125,11 +200,19 @@ export class ApiKeyGuard implements CanActivate {
   }
 
   /** Best-effort: `last_used_at` tells an operator whether a key is still in traffic. */
-  private touch(id: string, lastUsedAt: Date | null): void {
+  private touch(kind: KeyKind, id: string, lastUsedAt: Date | null): void {
     if (lastUsedAt && Date.now() - lastUsedAt.getTime() < LAST_USED_THROTTLE_MS) return;
-    void this.prisma.owner.apiKey
-      .update({ where: { id }, data: { lastUsedAt: new Date() } })
-      .catch((e: unknown) => this.logger.warn(`could not record api key use: ${String(e)}`));
+    // Two statements rather than one delegate chosen by a ternary: the two
+    // Prisma delegates are different generated types, and a union of them is
+    // not callable however alike they look.
+    const data = { lastUsedAt: new Date() };
+    const write =
+      kind === 'platform'
+        ? this.prisma.owner.platformApiKey.update({ where: { id }, data })
+        : this.prisma.owner.apiKey.update({ where: { id }, data });
+    void Promise.resolve(write).catch((e: unknown) =>
+      this.logger.warn(`could not record api key use: ${String(e)}`),
+    );
   }
 
   private unauthenticated(message = 'A valid API key is required'): UnauthorizedException {

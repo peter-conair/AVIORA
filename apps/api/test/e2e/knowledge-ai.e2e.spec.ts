@@ -210,7 +210,14 @@ describe('Slice 3 — knowledge journey', () => {
     const brands = new Set(res.body.products.map((p: { brand: { code: string } }) => p.brand.code));
     expect(brands.size).toBeGreaterThanOrEqual(2); // a second brand needed no schema change
     const names = res.body.products.map((p: { name: string }) => p.name);
-    expect(names).toEqual([...names].sort((a: string, b: string) => a.localeCompare(b)));
+    // Sorted with the DEFAULT comparator, not `localeCompare`. The API orders in
+    // SQL (`ORDER BY name`), so the ordering this asserts is Postgres's — and
+    // ICU, which `localeCompare` uses, is not the same thing: it applies Thai's
+    // leading-vowel rule and sorts แคล before คอล, while Postgres does not. The
+    // two agreed for as long as every product name was ASCII, and stopped the
+    // day a Thai catalogue was ingested (docs/74). Asserting ICU's collation was
+    // never the point of this test; brand not being a ranking signal is.
+    expect(names).toEqual([...names].sort());
   });
 
   it('ranks knowledge above products in search (spec §33)', async () => {

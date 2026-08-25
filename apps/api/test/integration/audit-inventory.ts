@@ -107,6 +107,12 @@ export const AUDITED_ROUTES = new Map<string, string>([
   // integration — keys and webhooks are credentials and delivery targets
   ['POST /api/v1/api-keys', 'integration.api_key.create'],
   ['DELETE /api/v1/api-keys/:id', 'integration.api_key.revoke'],
+  // platform-scope keys and the catalogue they write (docs/74). The ingest
+  // writes ONE row per request carrying the counts, not one per product: a sync
+  // of a hundred would otherwise bury the entries this log exists for.
+  ['POST /api/v1/platform/api-keys', 'platform.api_key.create'],
+  ['DELETE /api/v1/platform/api-keys/:id', 'platform.api_key.revoke'],
+  ['POST /api/v1/public/knowledge/products', 'platform.catalog.ingest'],
   ['POST /api/v1/webhooks/endpoints', 'integration.webhook.create'],
   ['PATCH /api/v1/webhooks/endpoints/:id', 'integration.webhook.update'],
   ['DELETE /api/v1/webhooks/endpoints/:id', 'integration.webhook.delete'],

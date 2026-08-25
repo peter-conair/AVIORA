@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "vitest run --config vitest.integration.config.ts --coverage",
-    "backfill:crm-bidx": "tsx scripts/backfill-crm-blind-index.ts"
+    "backfill:crm-bidx": "tsx scripts/backfill-crm-blind-index.ts",
+    "mirror:product-images": "tsx --env-file=../../.env scripts/mirror-product-images.ts"
   },
   "dependencies": {
     "@aviora/db": "workspace:*",

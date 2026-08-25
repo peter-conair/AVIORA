@@ -23,7 +23,7 @@ async function upsertGlobal<T extends { id: string }>(
  * this one column so a Thai question matches Thai content without needing a
  * per-locale index or a language guess at query time.
  */
-function buildSearchText(base: Array<string | undefined>, translations?: object): string {
+export function buildSearchText(base: Array<string | undefined>, translations?: object): string {
   const fromTranslations = translations
     ? Object.values(translations as Record<string, Record<string, string>>).flatMap((t) =>
         Object.values(t ?? {}),

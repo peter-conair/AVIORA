@@ -941,6 +941,7 @@ model Topic {
   healthGoals HealthGoalTopic[]
   ingredients TopicIngredient[]
   articles    ArticleTopic[]
+  products    ProductTopic[]
 
   @@map("topics")
 }
@@ -1072,6 +1073,11 @@ model Product {
   name           String
   description    String?
   sourceUrl      String?   @map("source_url")
+  /// Which system OWNS this row. NULL means curated here — by the seed or by
+  /// hand. An ingest names itself, and refuses to overwrite a row whose source
+  /// is not its own: two writers on one code silently taking turns is how a
+  /// curated safety note disappears on the next sync (docs/74 §3).
+  source         String?
   lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(6)
   safetyNotes    String?   @map("safety_notes")
   status         String    @default("active")
@@ -1082,9 +1088,52 @@ model Product {
 
   brand       Brand               @relation(fields: [brandId], references: [id])
   ingredients ProductIngredient[]
+  topics      ProductTopic[]
+  images      ProductImage[]
 
   @@index([brandId])
   @@map("products")
+}
+
+/// A picture of the product (docs/74 §7).
+///
+/// `url` is where it lives at the SOURCE; `storedPath` is our own copy and is
+/// NULL until somebody mirrors it. Two columns rather than one because the
+/// difference is the whole risk: a URL on somebody else's CDN can go away
+/// without warning, and a row that cannot say which kind it holds cannot be
+/// audited for it.
+model ProductImage {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  productId  String   @map("product_id") @db.Uuid
+  url        String
+  storedPath String?  @map("stored_path")
+  alt        String?
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, url])
+  @@index([productId, position])
+  @@map("product_images")
+}
+
+/// A product reached from a TOPIC rather than through an ingredient (docs/74 §6).
+///
+/// Supplements reach a member through what is in them. A water filter, an air
+/// purifier and a pan reach nobody that way — they contain no ingredient — and
+/// were invisible from every goal until this existed. Products still come LAST
+/// in the journey; the last step simply no longer has to be an ingredient.
+model ProductTopic {
+  productId String @map("product_id") @db.Uuid
+  topicId   String @map("topic_id") @db.Uuid
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  topic   Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([productId, topicId])
+  @@index([topicId])
+  @@map("product_topics")
 }
 
 model ProductIngredient {
@@ -2137,6 +2186,58 @@ model ApiKey {
   @@map("api_keys")
 }
 
+/// A key that belongs to NO tenant, for the platform-scope public surface
+/// (docs/74 §2).
+///
+/// Deliberately a second table rather than a nullable `api_keys.tenant_id`:
+/// that column is NOT NULL because a tenant key belongs to exactly one tenant,
+/// RLS is written against it, and a schema meta-test asserts it. A key that
+/// belongs to no tenant is a different thing, so it gets a different table —
+/// the choice `tenant_databases` and `scheduled_job_runs` already made. The app
+/// role holds no grant on it at all.
+model PlatformApiKey {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  name       String
+  /// Includes the `avpk` label, so a key in an operator's hand starts with it.
+  prefix     String    @unique
+  hash       String
+  /// Permission keys, same vocabulary as a tenant key's scopes.
+  scopes     String[]
+  /// Which platform user minted it — a key nobody can name is a key nobody revokes.
+  createdBy  String?   @map("created_by") @db.Uuid
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([revokedAt])
+  @@map("platform_api_keys")
+}
+
+/// A write the caller may safely repeat (docs/74 §4).
+///
+/// The ingest is already idempotent by its natural key — the same SKU twice is
+/// one product. What this adds is the same ANSWER twice: a caller whose
+/// connection dropped mid-response retries and learns what the first attempt
+/// did, instead of reading `unchanged` for work it does not know it performed.
+model IdempotencyRecord {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  /// The API key that presented it. Two integrations may pick the same string.
+  callerId    String   @map("caller_id") @db.Uuid
+  route       String
+  key         String
+  /// Same key, different body, is a mistake worth naming rather than replaying.
+  requestHash String   @map("request_hash")
+  statusCode  Int      @map("status_code")
+  response    Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@unique([callerId, route, key])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
+
 // ── Enterprise SSO & tenant database routing (docs/31, spec §77) ──
 
 /// A federated login AUTHENTICATES; it never authorises. Claims are recorded
@@ -2281,11 +2382,13 @@ model BusinessGoal {
   developCustomersActual Int  @default(0) @map("develop_customers_actual")
   developPartnersActual  Int  @default(0) @map("develop_partners_actual")
 
-  /* ── planning assumptions (docs/69) ────────────────────────────────────
-     Used ONLY where a member's own history is too thin to measure a rate.
-     Kept on the month's goal rather than in a table of their own, because an
-     assumption belongs to the plan that was made with it — last March's guess
-     should not quietly steer this month's plan. */
+  /**
+   * ── planning assumptions (docs/69) ────────────────────────────────────
+   * Used ONLY where a member's own history is too thin to measure a rate.
+   * Kept on the month's goal rather than in a table of their own, because an
+   * assumption belongs to the plan that was made with it — last March's guess
+   * should not quietly steer this month's plan.
+   */
   assumedOrderValueMinor Int? @map("assumed_order_value_minor")
   /// Percent, 1–100: of the names written down, how many get spoken to.
   assumedContactRate     Int? @map("assumed_contact_rate")

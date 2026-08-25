@@ -2,11 +2,36 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { ClsService } from 'nestjs-cls';
 import { ERROR_CODES } from '@aviora/shared';
 import { AuditService } from '../../common/audit/audit.service';
+import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
-import { CLS_PLATFORM_ROLE } from '../../common/auth/jwt-auth.guard';
+import { CLS_PLATFORM_ROLE, CLS_USER_ID } from '../../common/auth/jwt-auth.guard';
 import { CLS_PERMISSIONS, PLATFORM_BYPASS } from '../../common/auth/permissions.guard';
 import { mintKey, type ApiKeyCreate } from './api-key';
 import { sha256Hex } from './webhook';
+
+export interface PlatformApiKeyView {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  createdBy: string | null;
+  lastUsedAt: Date | null;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+}
+
+const PLATFORM_KEY_VIEW = {
+  id: true,
+  name: true,
+  prefix: true,
+  scopes: true,
+  createdBy: true,
+  lastUsedAt: true,
+  expiresAt: true,
+  revokedAt: true,
+  createdAt: true,
+} as const;
 
 export interface ApiKeyView {
   id: string;
@@ -32,6 +57,7 @@ export interface ApiKeyView {
 export class ApiKeyService {
   constructor(
     private readonly db: TenantDb,
+    private readonly prisma: PrismaService,
     private readonly cls: ClsService,
     private readonly audit: AuditService,
   ) {}
@@ -124,6 +150,106 @@ export class ApiKeyService {
       revokedAt: row.revokedAt,
       createdAt: row.createdAt,
     };
+  }
+
+  /* ── platform-scope keys (docs/74 §2) ──────────────────────────────────── */
+
+  /**
+   * Keys that belong to no tenant. Read and written through the OWNER client,
+   * because `platform_api_keys` carries no policy and the app role holds no
+   * grant on it — a table a tenant cannot reach at all is a stronger statement
+   * than a policy that says the same thing and can be edited away.
+   *
+   * Every method here is reached only through `@RequirePlatformRoles`, and each
+   * re-checks the role rather than trusting the route: a service that is safe
+   * only because of the decorator above it is one refactor away from not being.
+   */
+  async listPlatform(): Promise<PlatformApiKeyView[]> {
+    this.assertPlatformCaller();
+    return this.prisma.owner.platformApiKey.findMany({
+      orderBy: { createdAt: 'desc' },
+      // `hash` is not selected here either. There is no route that returns it.
+      select: PLATFORM_KEY_VIEW,
+    });
+  }
+
+  /** Returns the key ONCE. */
+  async createPlatform(input: ApiKeyCreate): Promise<{ apiKey: PlatformApiKeyView; key: string }> {
+    this.assertPlatformCaller();
+
+    const minted = mintKey('platform');
+    const row = await this.prisma.owner.platformApiKey.create({
+      data: {
+        name: input.name,
+        prefix: minted.prefix,
+        hash: sha256Hex(minted.raw),
+        scopes: input.scopes,
+        createdBy: (this.cls.get(CLS_USER_ID) as string | undefined) ?? null,
+        expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+      },
+      select: PLATFORM_KEY_VIEW,
+    });
+
+    // tenantId null on purpose: the row records a platform act, and a tenant
+    // reading its own audit log must not find it (docs/53).
+    await this.audit.record({
+      tenantId: null,
+      action: 'platform.api_key.create',
+      entityType: 'platform_api_key',
+      entityId: row.id,
+      after: { name: row.name, prefix: row.prefix, scopes: row.scopes, expiresAt: row.expiresAt },
+    });
+
+    return { apiKey: row, key: minted.raw };
+  }
+
+  async revokePlatform(id: string): Promise<PlatformApiKeyView> {
+    this.assertPlatformCaller();
+
+    const existing = await this.prisma.owner.platformApiKey.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException({
+        code: ERROR_CODES.NOT_FOUND,
+        message: 'Platform API key not found',
+      });
+    }
+    const row = existing.revokedAt
+      ? existing
+      : await this.prisma.owner.platformApiKey.update({
+          where: { id },
+          data: { revokedAt: new Date() },
+        });
+
+    await this.audit.record({
+      tenantId: null,
+      action: 'platform.api_key.revoke',
+      entityType: 'platform_api_key',
+      entityId: row.id,
+      before: { revokedAt: existing.revokedAt },
+      after: { revokedAt: row.revokedAt },
+    });
+
+    return {
+      id: row.id,
+      name: row.name,
+      prefix: row.prefix,
+      scopes: row.scopes,
+      createdBy: row.createdBy,
+      lastUsedAt: row.lastUsedAt,
+      expiresAt: row.expiresAt,
+      revokedAt: row.revokedAt,
+      createdAt: row.createdAt,
+    };
+  }
+
+  private assertPlatformCaller(): void {
+    const role = this.cls.get(CLS_PLATFORM_ROLE) as string | null | undefined;
+    if (!role || !PLATFORM_BYPASS.has(role)) {
+      throw new ForbiddenException({
+        code: ERROR_CODES.FORBIDDEN,
+        message: 'Platform keys are minted by the platform, not by a tenant',
+      });
+    }
   }
 
   /**

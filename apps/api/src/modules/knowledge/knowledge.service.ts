@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,10 +9,12 @@ import { ClsService } from 'nestjs-cls';
 import { ERROR_CODES, PERMISSIONS } from '@aviora/shared';
 import type { Tx } from '@aviora/db';
 import { AuditService } from '../../common/audit/audit.service';
+import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { CLS_MEMBER_ID, PLATFORM_BYPASS } from '../../common/auth/permissions.guard';
 import { CLS_TENANT_ID } from '../../common/tenant/tenant-context.middleware';
 import { CLS_PLATFORM_ROLE } from '../../common/auth/jwt-auth.guard';
+import { STORAGE_PORT, type StoragePort } from '../../common/storage/storage.port';
 import { TeamScopeService, type AccessibleTeams } from '../team/team-scope.service';
 
 /**
@@ -51,7 +54,46 @@ export class KnowledgeService {
     private readonly cls: ClsService,
     private readonly teamScope: TeamScopeService,
     private readonly audit: AuditService,
+    private readonly prisma: PrismaService,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
+
+  /**
+   * The bytes of a catalogue picture we keep our own copy of (docs/74 §7).
+   *
+   * Only rows with a `stored_path` are served. A row that still points at
+   * somebody else's CDN is not proxied through here — the client has the URL
+   * and fetching it on their behalf would make this API a bandwidth relay for
+   * a file it does not own.
+   *
+   * Unlike a progress photograph, this is NOT private: it is a picture of a
+   * product every tenant can already see, so it may be cached.
+   */
+  async productImageContent(id: string): Promise<{ body: Buffer; contentType: string }> {
+    // Read WITHOUT tenant context, and deliberately: `product_images` carries
+    // no tenant_id at all — it hangs off a global product — and `TenantDb`
+    // refuses to open a transaction without one. The app role reaches it under
+    // the same `join_open` policy every other link table uses, so this is the
+    // ordinary path for the row rather than a way around a check.
+    const image = await this.prisma.app.productImage.findFirst({
+      where: { id },
+      select: { storedPath: true },
+    });
+    if (!image?.storedPath) {
+      throw new NotFoundException({
+        code: ERROR_CODES.NOT_FOUND,
+        message: 'No stored copy of this picture',
+      });
+    }
+    const object = await this.storage.get(image.storedPath);
+    if (!object) {
+      throw new NotFoundException({
+        code: ERROR_CODES.NOT_FOUND,
+        message: 'No stored copy of this picture',
+      });
+    }
+    return object;
+  }
 
   /**
    * The team articles this caller may READ (docs/37 §2).
@@ -158,7 +200,7 @@ export class KnowledgeService {
       const ingredientIds = [...new Set(topicIngredients.map((t) => t.ingredientId))];
       const articleIds = [...new Set(articleTopics.map((a) => a.articleId))];
 
-      const [ingredients, articles, evidence, productLinks] = await Promise.all([
+      const [ingredients, articles, evidence, productLinks, topicProductLinks] = await Promise.all([
         tx.ingredient.findMany({
           where: { id: { in: ingredientIds } },
           orderBy: { name: 'asc' },
@@ -191,10 +233,27 @@ export class KnowledgeService {
           where: { ingredientId: { in: ingredientIds } },
           select: { ingredientId: true, productId: true },
         }),
+        // Products that hang off a TOPIC directly (docs/74 §6). A water filter
+        // contains no ingredient, so without this it belongs to a goal that can
+        // never reach it.
+        tx.productTopic.findMany({
+          where: { topicId: { in: topicIds } },
+          select: { topicId: true, productId: true },
+        }),
       ]);
 
       const products = await tx.product.findMany({
-        where: { id: { in: [...new Set(productLinks.map((p) => p.productId))] }, status: 'active' },
+        where: {
+          id: {
+            in: [
+              ...new Set([
+                ...productLinks.map((p) => p.productId),
+                ...topicProductLinks.map((p) => p.productId),
+              ]),
+            ],
+          },
+          status: 'active',
+        },
         // brand-neutral ordering: by name only, never by brand
         orderBy: { name: 'asc' },
         select: {
@@ -206,6 +265,16 @@ export class KnowledgeService {
           lastVerifiedAt: true,
           safetyNotes: true,
           brand: { select: { id: true, code: true, name: true } },
+          /**
+           * The FIRST picture only (docs/74 §7). A card shows one thumbnail; a
+           * gallery is a product page this platform does not have, and sending
+           * twelve URLs per product to draw one of them is bytes nobody reads.
+           */
+          images: {
+            orderBy: { position: 'asc' as const },
+            take: 1,
+            select: { id: true, url: true, alt: true, storedPath: true },
+          },
         },
       });
       const productsByIngredient = new Map<string, string[]>();
@@ -213,6 +282,14 @@ export class KnowledgeService {
         const list = productsByIngredient.get(link.ingredientId) ?? [];
         list.push(link.productId);
         productsByIngredient.set(link.ingredientId, list);
+      }
+      // Same shape as `productsByIngredient`, so the UI keeps the journey
+      // visible whichever way a product was reached.
+      const productsByTopic = new Map<string, string[]>();
+      for (const link of topicProductLinks) {
+        const list = productsByTopic.get(link.topicId) ?? [];
+        list.push(link.productId);
+        productsByTopic.set(link.topicId, list);
       }
       const evidenceByIngredient = new Map<string, typeof evidence>();
       for (const e of evidence) {
@@ -231,6 +308,8 @@ export class KnowledgeService {
           id: t.id,
           code: t.code,
           ...localized(t, locale, { name: t.name, summary: t.summary }),
+          /** Products this topic reaches WITHOUT an ingredient (docs/74 §6). */
+          productIds: productsByTopic.get(t.id) ?? [],
         })),
         articles: articles.map((a) => ({
           id: a.id,
@@ -359,6 +438,16 @@ export class KnowledgeService {
           lastVerifiedAt: true,
           safetyNotes: true,
           brand: { select: { code: true, name: true } },
+          /**
+           * The FIRST picture only (docs/74 §7). A card shows one thumbnail; a
+           * gallery is a product page this platform does not have, and sending
+           * twelve URLs per product to draw one of them is bytes nobody reads.
+           */
+          images: {
+            orderBy: { position: 'asc' as const },
+            take: 1,
+            select: { id: true, url: true, alt: true, storedPath: true },
+          },
         },
       });
       return {
@@ -499,6 +588,16 @@ export class KnowledgeService {
               description: true,
               sourceUrl: true,
               brand: { select: { code: true, name: true } },
+              /**
+               * The FIRST picture only (docs/74 §7). A card shows one thumbnail; a
+               * gallery is a product page this platform does not have, and sending
+               * twelve URLs per product to draw one of them is bytes nobody reads.
+               */
+              images: {
+                orderBy: { position: 'asc' as const },
+                take: 1,
+                select: { id: true, url: true, alt: true, storedPath: true },
+              },
             },
           })
         : [];

@@ -7,6 +7,9 @@ import { ApiKeyService } from './api-key.service';
 import { ManifestController } from './manifest.controller';
 import { ManifestService } from './manifest.service';
 import { CatalogService } from './catalog.service';
+import { CatalogIngestService } from './catalog-ingest.service';
+import { IdempotencyService } from './idempotency.service';
+import { PlatformApiKeyController } from './platform-api-key.controller';
 import { ApiCatalogController } from './catalog.controller';
 import { PublicApiController } from './public.controller';
 import { PublicApiService } from './public.service';
@@ -35,11 +38,14 @@ import { WebhookService } from './webhook.service';
     ApiCatalogController,
     WebhookController,
     ApiKeyController,
+    PlatformApiKeyController,
     PublicApiController,
     ManifestController,
   ],
   providers: [
     CatalogService,
+    CatalogIngestService,
+    IdempotencyService,
     WebhookService,
     WebhookDispatcher,
     ApiKeyService,

@@ -622,6 +622,11 @@ export interface KnowledgeTopic {
   code: string;
   name: string;
   summary: string | null;
+  /**
+   * Products this topic reaches directly, without an ingredient (docs/74 §7).
+   * Optional because search and article responses carry topics without them.
+   */
+  productIds?: string[];
 }
 
 export interface ArticleSummary {
@@ -645,6 +650,18 @@ export interface ProductBrand {
   name: string;
 }
 
+export interface ProductImage {
+  id: string;
+  /** The source URL, kept whether or not a copy exists. */
+  url: string;
+  alt: string | null;
+  /**
+   * A copy lives on this platform. When set, the card asks the API for it
+   * rather than somebody else's CDN (docs/74 §7).
+   */
+  storedPath?: string | null;
+}
+
 export interface KnowledgeProduct {
   id: string;
   code: string;
@@ -654,6 +671,8 @@ export interface KnowledgeProduct {
   lastVerifiedAt?: string | null;
   safetyNotes?: string | null;
   brand: ProductBrand;
+  /** At most one — the card draws a thumbnail, not a gallery (docs/74 §7). */
+  images?: ProductImage[];
 }
 
 export interface JourneyIngredient {

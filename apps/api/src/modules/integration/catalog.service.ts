@@ -35,7 +35,9 @@ export interface CatalogEndpoint {
 const REFUSALS = [
   'No health data of any kind, for any member, in any aggregate — it is visible ' +
     'to the member alone unless they grant it to a named person (docs/13).',
-  'No cross-tenant reads. A key belongs to one tenant and sees that tenant only.',
+  'No cross-tenant reads. A tenant key belongs to one tenant and sees that tenant ' +
+    'only. The one route that is not tenant-scoped writes the shared knowledge ' +
+    'catalogue, which belongs to no tenant, and takes a platform key (docs/74).',
   'No payment execution. Orders and commissions are recorded; moving money needs ' +
     'a payout provider this platform does not have (docs/24, docs/26 §9).',
   'No wildcard scopes. A key lists what it may do (docs/30 §7).',
@@ -52,8 +54,11 @@ export class CatalogService {
   /** Endpoints of the public API, with the scope each one requires. */
   endpoints(): CatalogEndpoint[] {
     const prefix = Reflect.getMetadata(PATH_METADATA, PublicApiController) as string;
-    const instance = new PublicApiController(null as never);
-    const proto = Object.getPrototypeOf(instance);
+    // The PROTOTYPE, not an instance. Route metadata lives on the methods, so
+    // constructing the controller bought nothing and cost a fake argument for
+    // every dependency it acquired — a constructor change would break the
+    // catalogue for no reason a reader could see.
+    const proto = PublicApiController.prototype as unknown as Record<string, unknown>;
 
     const found: CatalogEndpoint[] = [];
     for (const key of this.scanner.getAllMethodNames(proto)) {
@@ -83,8 +88,11 @@ export class CatalogService {
       authentication: {
         scheme: 'Bearer',
         header: 'Authorization',
-        keyPrefix: 'ak_',
-        note: 'Keys are minted by a tenant and carry explicit scopes.',
+        keyPrefix: 'avk_',
+        platformKeyPrefix: 'avpk_',
+        note:
+          'A tenant mints `avk_` keys for its own data. `avpk_` keys belong to no ' +
+          'tenant and are minted by the platform; each carries explicit scopes either way.',
       },
       rateLimit: {
         requests: PUBLIC_RATE_LIMIT_DEFAULT,

@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { z } from 'zod';
 import { PERMISSIONS } from '@aviora/shared';
 import { RequirePermissions } from '../../common/auth/decorators';
@@ -80,6 +92,31 @@ export class KnowledgeController {
     return {
       ingredient: await this.knowledge.ingredient(code, resolveLocale(locale, acceptLanguage)),
     };
+  }
+
+  /**
+   * A catalogue picture, served from OUR copy (docs/74 §7).
+   *
+   * The ONE route in this module with no `@RequirePermissions`, and the reason
+   * is the browser: an `<img>` tag sends cookies and nothing else, so it cannot
+   * carry the tenant header a permission-gated route needs, and a picture that
+   * only loads from `fetch` is a picture that never appears on a page.
+   *
+   * Safe because of what this row IS. A catalogue image is global knowledge —
+   * `tenant_id IS NULL`, readable by every tenant already — so a tenant-scoped
+   * permission gates nothing here. Sign-in is still required: PermissionsGuard
+   * lets an authenticated caller through when no tenant is resolved, and still
+   * asserts membership when one is.
+   *
+   * Cacheable, unlike a progress photograph: a proxy holding a copy of this has
+   * copied nothing private.
+   */
+  @Get('product-images/:id/content')
+  async productImage(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const object = await this.knowledge.productImageContent(id);
+    res.setHeader('Content-Type', object.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(object.body);
   }
 
   @Get('search')
