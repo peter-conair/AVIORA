@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { BRAND } from '@aviora/shared';
 
 /**
  * Transactional email over SMTP (local dev: mailpit at :1025 → UI :8025).
@@ -46,10 +47,10 @@ export class EmailService {
     html: string;
   } {
     return {
-      subject: `You're invited to join ${params.tenantName} on AVIORA`,
+      subject: `You're invited to join ${params.tenantName} on ${BRAND.name}`,
       html: `<p>You have been invited to join <b>${escapeHtml(params.tenantName)}</b>.</p>
 <p><a href="${params.inviteUrl}">Accept your invitation</a> (link expires in 7 days).</p>
-<p>— AVIORA</p>`,
+<p>— ${BRAND.name}</p>`,
     };
   }
 
@@ -61,7 +62,7 @@ export class EmailService {
       subject: `Welcome to ${params.tenantName}`,
       html: `<p>Hi ${escapeHtml(params.displayName)},</p>
 <p>Your membership at <b>${escapeHtml(params.tenantName)}</b> is now active. Welcome aboard!</p>
-<p>— AVIORA</p>`,
+<p>— ${BRAND.name}</p>`,
     };
   }
 }

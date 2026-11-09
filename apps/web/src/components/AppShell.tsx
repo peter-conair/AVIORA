@@ -8,6 +8,7 @@ import { isPlatformAdmin, type AuthUser, type MeResponse, type TenantSummary } f
 import { NotificationBell } from '@/components/NotificationBell';
 import { NavIcon } from '@/components/NavIcon';
 import { HOME, visibleGroups, visibleTabs, type NavItem } from '@/lib/navigation';
+import { BRAND } from '@aviora/shared';
 
 interface AppShellProps {
   children: ReactNode;
@@ -192,7 +193,7 @@ export function AppShell({ children }: AppShellProps) {
             href={HOME.href}
             className="truncate text-lg font-bold tracking-tight text-brand-700 [color:var(--brand-primary,currentColor)]"
           >
-            {appName ?? 'AVIORA'}
+            {appName ?? BRAND.name}
           </Link>
           <div className="ml-auto flex min-w-0 items-center gap-1.5">
             {user ? <NotificationBell /> : null}

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { formatDate } from '@/lib/format';
+import { BRAND } from '@aviora/shared';
 
 const MIN_PASSWORD_LENGTH = 10;
 
@@ -79,7 +80,7 @@ export default function InvitePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4 py-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-brand-700">AVIORA</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-brand-700">{BRAND.name}</h1>
       </div>
 
       {loading ? (

@@ -12,3 +12,4 @@ export * from './prospecting/rank-ladder';
 export * from './prospecting/start-steps';
 export * from './prospecting/six-wny';
 export * from './prospecting/learning-path';
+export * from './brand/brand';
