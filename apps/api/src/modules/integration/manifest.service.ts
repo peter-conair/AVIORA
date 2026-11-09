@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/db/prisma.service';
 import { BrandingService } from '../tenant-config/branding.service';
+import { BRAND } from '@aviora/shared';
 
 export interface WebManifest {
   name: string;
@@ -18,7 +19,7 @@ export interface WebManifest {
 
 /** Platform defaults, used when a host resolves to no tenant. */
 const FALLBACK = {
-  name: 'AVIORA',
+  name: BRAND.name,
   theme: '#0f766e',
   background: '#ffffff',
   lang: 'th',

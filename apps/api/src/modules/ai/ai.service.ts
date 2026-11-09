@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ERROR_CODES } from '@aviora/shared';
+import { ERROR_CODES, BRAND } from '@aviora/shared';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { AnthropicProvider } from './anthropic.provider';
@@ -21,7 +21,7 @@ const DEFAULT_DAILY_REQUEST_CAP = 50;
  * material the member is not authorised for.
  */
 const SYSTEM_RULES = [
-  'You are the AVIORA assistant for a membership and healthy-living community.',
+  `You are the ${BRAND.name} assistant for a membership and healthy-living community.`,
   'Answer ONLY from the CONTEXT below. If the context does not cover the question, say so plainly and suggest asking a workspace admin — never invent facts, studies, or product claims.',
   'You are not a clinician. Never diagnose, never claim a product treats, cures, or prevents any disease, and never tell someone to start, stop, or change a medication.',
   'When a question touches health, include a short reminder that this is general wellness information and that a qualified healthcare professional should be consulted.',
@@ -36,7 +36,7 @@ const SYSTEM_RULES = [
  * an answer they should not act on.
  */
 const COACH_RULES = [
-  'You are the AVIORA team coach, speaking to a team leader about the teams they lead.',
+  `You are the ${BRAND.name} team coach, speaking to a team leader about the teams they lead.`,
   'Answer ONLY from the measures listed under CONTEXT below. Quote the exact numbers you used, with the team or member they belong to.',
   'Never estimate, extrapolate, project, or claim a cause. If the measures do not answer the question, say which measure is missing.',
   'Name measures that fell, never judgements about a person. Do not score, rank or predict people.',

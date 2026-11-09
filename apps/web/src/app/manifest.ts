@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
+import { BRAND } from '@aviora/shared';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'AVIORA',
-    short_name: 'AVIORA',
+    name: BRAND.name,
+    short_name: BRAND.shortName,
     description: 'Membership & Healthy Living Growth OS',
     start_url: '/',
     display: 'standalone',

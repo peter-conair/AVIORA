@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/db/prisma.service';
 import { EmailService } from '../../common/email/email.service';
 import { MAX_ATTEMPTS as OUTBOX_MAX_ATTEMPTS } from '../../common/events/outbox-relay.service';
+import { BRAND } from '@aviora/shared';
 
 /**
  * Alerting (docs/42).
@@ -261,7 +262,7 @@ export class AlertsService {
     try {
       await this.email.send(
         to,
-        `[AVIORA] ${verb}: ${check.check}`,
+        `[${BRAND.name}] ${verb}: ${check.check}`,
         `<p><b>${check.check}</b> — ${verb.toLowerCase()}</p>
 <p>${escapeHtml(check.summary)}</p>
 <p>measured <b>${check.value}</b> against a threshold of <b>${check.threshold}</b>.</p>

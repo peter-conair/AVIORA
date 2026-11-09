@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ERROR_CODES } from '@aviora/shared';
+import { ERROR_CODES, BRAND } from '@aviora/shared';
 import { PrismaService } from '../../common/db/prisma.service';
 import { TenantDb } from '../../common/db/tenant-db.service';
 import { AuditService } from '../../common/audit/audit.service';
@@ -71,7 +71,7 @@ export class BrandingService {
         where: { id: this.db.tenantId },
         select: { name: true, logoUrl: true },
       });
-      return view(branding, tenant?.name ?? 'AVIORA', tenant?.logoUrl ?? null);
+      return view(branding, tenant?.name ?? BRAND.name, tenant?.logoUrl ?? null);
     });
   }
 
@@ -108,7 +108,7 @@ export class BrandingService {
         : null,
       after: { appName: result.saved.appName, hiddenFeatures: result.saved.hiddenFeatures },
     });
-    return view(result.saved, result.tenant?.name ?? 'AVIORA', result.tenant?.logoUrl ?? null);
+    return view(result.saved, result.tenant?.name ?? BRAND.name, result.tenant?.logoUrl ?? null);
   }
 }
 

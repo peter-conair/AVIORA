@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { EVENTS } from '@aviora/shared';
+import { EVENTS, BRAND } from '@aviora/shared';
 import { EventBus } from '../../common/events/event-bus';
 import { EmailService } from '../../common/email/email.service';
 import { PrismaService } from '../../common/db/prisma.service';
@@ -106,11 +106,11 @@ export class NotificationHandlers implements OnModuleInit {
   }
 
   private async tenantName(tenantId: string | null): Promise<string> {
-    if (!tenantId) return 'AVIORA';
+    if (!tenantId) return BRAND.name;
     const t = await this.prisma.owner.tenant.findUnique({
       where: { id: tenantId },
       select: { name: true },
     });
-    return t?.name ?? 'AVIORA';
+    return t?.name ?? BRAND.name;
   }
 }

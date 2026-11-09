@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { formatDateTime } from '@/lib/format';
+import { BRAND } from '@aviora/shared';
 
 /**
  * A tenant's current legal document, and the record of accepting it
@@ -132,7 +133,7 @@ export default function LegalPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href="/dashboard" className="text-lg font-bold tracking-tight text-brand-700">
-          AVIORA
+          {BRAND.name}
         </Link>
         <Link
           href={`/legal/${rawKind}`}
